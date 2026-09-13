@@ -139,22 +139,22 @@
             background: #ffffff;
             border: 1px solid #dee2e6;
             border-radius: 8px;
-            padding: 6px 8px;
-            height: 195px;
+            padding: 5px 8px;
+            height: 178px;
             position: relative;
             box-shadow: 0 1px 4px rgba(0,0,0,0.03);
         }
         .chart-header {
-            font-size: 0.78rem;
+            font-size: 0.76rem;
             font-weight: 800;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .chart-canvas-wrapper {
             position: relative;
-            height: 165px;
+            height: 148px;
             width: 100%;
         }
 
@@ -163,12 +163,12 @@
             border: 1px solid #dee2e6;
             border-radius: 8px;
             overflow: hidden;
-            margin-top: 8px;
+            margin-top: 6px;
         }
         .log-header {
             background: #f8f9fa;
-            padding: 4px 10px;
-            font-size: 0.75rem;
+            padding: 3px 10px;
+            font-size: 0.74rem;
             font-weight: 800;
             border-bottom: 1px solid #dee2e6;
             display: flex;
@@ -176,27 +176,115 @@
             align-items: center;
         }
         .table-compact {
-            font-size: 0.72rem;
+            font-size: 0.70rem;
             margin-bottom: 0;
         }
         .table-compact th {
             background-color: #f1f5f9;
             color: #475569;
-            padding: 3px 4px;
+            padding: 2px 4px;
             font-weight: 700;
             text-align: center;
         }
         .table-compact td {
-            padding: 3px 4px;
+            padding: 2px 4px;
             text-align: center;
             vertical-align: middle;
+        }
+
+        /* Scouting & Coaching Diagnosis Card */
+        .scouting-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            overflow: hidden;
+            margin-top: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+        }
+        .scouting-header {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            border-bottom: 1px solid #cbd5e1;
+            color: #1e293b;
+        }
+        .analysis-box {
+            border-radius: 6px;
+            padding: 5px 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        .strength-box {
+            border-top: 3px solid #198754;
+            background: #fbfdfb;
+        }
+        .weakness-box {
+            border-top: 3px solid #dc3545;
+            background: #fdfbfb;
+        }
+        .action-box {
+            border-top: 3px solid #0d6efd;
+            background: #fbfcfe;
+        }
+        .analysis-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .analysis-item {
+            margin-bottom: 4px;
+            padding-bottom: 3px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .analysis-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .analysis-badge {
+            font-size: 0.60rem;
+            font-weight: 700;
+            padding: 1px 4px;
+        }
+        .analysis-sub-title {
+            font-size: 0.68rem;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+        .analysis-desc {
+            font-size: 0.64rem;
+            color: #475569;
+            line-height: 1.35;
+            margin: 0;
+        }
+        .coach-summary-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 5px 10px;
+        }
+        .coach-badge {
+            font-size: 0.70rem;
+            color: #1e40af;
+            font-weight: 800;
+        }
+        .coach-comment-text {
+            font-size: 0.66rem;
+            color: #1e293b;
+            line-height: 1.35;
         }
 
         /* Report Footer */
         .report-footer {
             border-top: 1px solid #cbd5e1;
-            padding-top: 4px;
-            font-size: 0.7rem;
+            padding-top: 3px;
+            font-size: 0.68rem;
             color: #64748b;
             display: flex;
             justify-content: space-between;
@@ -407,9 +495,89 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- 5. Scouting & Coaching Diagnosis Section (선수 장단점 및 개선방향 정밀 진단) -->
+                <div class="scouting-card">
+                    <div class="scouting-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fa-solid fa-clipboard-check text-primary me-1"></i>
+                            <strong>W.B.C 데이터 분석팀 선수 정밀 진단 & 코칭 솔루션</strong>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis" style="font-size: 0.65rem;">
+                            데이터 기반 개인별 맞춤 피드백
+                        </span>
+                    </div>
+                    <div class="scouting-body p-2">
+                        <div class="row g-2">
+                            <!-- Column 1: Strengths -->
+                            <div class="col-4">
+                                <div class="analysis-box strength-box h-100">
+                                    <div class="analysis-title text-success">
+                                        <i class="fa-solid fa-circle-check me-1"></i>핵심 강점 (Strengths)
+                                    </div>
+                                    {% for s in rep.scouting.strengths %}
+                                    <div class="analysis-item">
+                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle analysis-badge">{{ s.badge }}</span>
+                                            <strong class="analysis-sub-title">{{ s.title }}</strong>
+                                        </div>
+                                        <p class="analysis-desc">{{ s.desc }}</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Column 2: Weaknesses -->
+                            <div class="col-4">
+                                <div class="analysis-box weakness-box h-100">
+                                    <div class="analysis-title text-danger">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>보완점 & 주의사항 (Focus)
+                                    </div>
+                                    {% for w in rep.scouting.weaknesses %}
+                                    <div class="analysis-item">
+                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle analysis-badge">{{ w.badge }}</span>
+                                            <strong class="analysis-sub-title">{{ w.title }}</strong>
+                                        </div>
+                                        <p class="analysis-desc">{{ w.desc }}</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Column 3: Action Plan -->
+                            <div class="col-4">
+                                <div class="analysis-box action-box h-100">
+                                    <div class="analysis-title text-primary">
+                                        <i class="fa-solid fa-compass me-1"></i>개선 방향 & 훈련 팁 (Action Plan)
+                                    </div>
+                                    {% for a in rep.scouting.action_plans %}
+                                    <div class="analysis-item">
+                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle analysis-badge">{{ a.focus }}</span>
+                                            <strong class="analysis-sub-title">{{ a.title }}</strong>
+                                        </div>
+                                        <p class="analysis-desc">{{ a.desc }}</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coach Summary Banner -->
+                        <div class="coach-summary-box mt-2 d-flex align-items-center gap-2">
+                            <div class="coach-badge flex-shrink-0">
+                                <i class="fa-solid fa-chalkboard-user me-1"></i><strong>코칭 총평</strong>
+                            </div>
+                            <div class="coach-comment-text flex-grow-1">
+                                {{ rep.scouting.coach_comment }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- 5. Report Footer -->
+            <!-- 6. Report Footer -->
             <div class="report-footer">
                 <div>
                     <strong>W.B.C (World Believers Club)</strong> • 세계로교회 스크린야구 공식 분석 보고서

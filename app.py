@@ -1040,6 +1040,23 @@ def get_player_report_data(pid):
     best_game = max(timeline, key=lambda x: x['game_pts']) if timeline else None
 
     conn.close()
+
+    # 선수 맞춤형 장단점 및 개선방향 정밀 진단
+    scouting = generate_player_scouting_report({
+        'player': dict(player),
+        'overall_avg': overall_avg,
+        'overall_slg': overall_slg,
+        'total_ab': run_ab,
+        'total_hits': run_hits,
+        'total_hr': run_hr,
+        'total_rbi': run_rbi,
+        'total_k': run_k,
+        'total_dp': run_dp,
+        'total_games': total_games,
+        'radar': radar,
+        'style_title': style_title
+    })
+
     return {
         'player': dict(player),
         'total_games': total_games,
@@ -1063,7 +1080,185 @@ def get_player_report_data(pid):
         'mip_count': mip_count,
         'unsung_count': unsung_count,
         'best_game': best_game,
-        'timeline': timeline
+        'timeline': timeline,
+        'scouting': scouting
+    }
+
+def generate_player_scouting_report(d):
+    name = d['player']['name']
+    avg = d['overall_avg']
+    slg = d['overall_slg']
+    ab = d['total_ab']
+    hits = d['total_hits']
+    hr = d['total_hr']
+    rbi = d['total_rbi']
+    k = d['total_k']
+    dp = d['total_dp']
+    games = d['total_games']
+    
+    k_rate = (k / ab) if ab > 0 else 0.0
+    rbi_per_game = (rbi / games) if games > 0 else 0.0
+    
+    strengths = []
+    weaknesses = []
+    action_plans = []
+    
+    # 1. 핵심 강점 (Strengths)
+    if hr >= 2 or (hr >= 1 and slg >= 0.8):
+        strengths.append({
+            'badge': '장타력 폭발',
+            'title': '담장을 넘기는 리그 정상급 파워 스윙',
+            'desc': f'누적 {hr}홈런, 장타율 {slg:.3f}의 파괴력으로 일발 장타를 생산하는 하체 회전력과 배트 스피드가 압도적입니다.'
+        })
+    elif hr == 1:
+        strengths.append({
+            'badge': '장타 잠재력',
+            'title': '언제든 담장을 위협하는 펀치력 보유',
+            'desc': f'결정적인 한 방(1홈런)을 쳐낼 수 있는 파워 포텐셜을 갖추어 상대 투수에게 큰 위압감을 선사합니다.'
+        })
+
+    if avg >= 0.6:
+        strengths.append({
+            'badge': '정밀 컨택',
+            'title': '어떤 코스도 안타로 만드는 정교한 배트 컨트롤',
+            'desc': f'시즌 타율 {avg:.3f}의 경이로운 컨택 능력으로 투수의 공을 결대로 받아치는 스프레이 히팅이 일품입니다.'
+        })
+    elif avg >= 0.4:
+        strengths.append({
+            'badge': '안정적 컨택',
+            'title': '높은 집중력과 견고한 타격 밸런스',
+            'desc': f'타율 {avg:.3f}로 타석마다 흔들림 없는 밸런스를 유지하며 양질의 정타를 꾸준히 생산하고 있습니다.'
+        })
+    
+    if rbi >= 3 or rbi_per_game >= 2.0:
+        strengths.append({
+            'badge': '찬스 해결사',
+            'title': '주자를 모두 불러들이는 클러치 히팅',
+            'desc': f'총 {rbi}타점(경기당 {rbi_per_game:.1f}점)을 기록하며 득점권 찬스에서 승부를 결정짓는 집중력이 탁월합니다.'
+        })
+    elif rbi >= 1:
+        strengths.append({
+            'badge': '타점 생산력',
+            'title': '팀 배팅과 득점 기회에서의 해결 의지',
+            'desc': f'주자 출루 시 적극적인 배팅으로 귀중한 {rbi}타점을 수확하며 팀 득점의 윤활유 역할을 완벽히 수행합니다.'
+        })
+        
+    if k == 0 and ab >= 3:
+        strengths.append({
+            'badge': '무삼진/선구안',
+            'title': '단 1개의 삼진도 허용하지 않은 완벽한 컨택 존',
+            'desc': f'{ab}타석 무삼진으로 불리한 볼카운트에서도 반드시 인플레이 타구를 만들어내는 끈질김을 보유했습니다.'
+        })
+    elif k_rate <= 0.15 and ab >= 4:
+        strengths.append({
+            'badge': '선구안 안정',
+            'title': '스트라이크 존에 대한 뛰어난 판별력',
+            'desc': f'낮은 삼진율({k_rate*100:.1f}%)로 유인구에 쉽게 속지 않고 본인의 히팅 존을 철저하게 지켜냅니다.'
+        })
+
+    if dp == 0 and ab >= 3:
+        strengths.append({
+            'badge': '작전 수행',
+            'title': '병살타 0개의 팀 공격 흐름 유지',
+            'desc': '주자 출루 상황에서도 병살타 없이 안정적인 타격을 선보여 공격 흐름을 원활하게 이어갑니다.'
+        })
+
+    if len(strengths) == 0:
+        strengths.append({
+            'badge': '적극성',
+            'title': '자신감 있는 스윙과 과감한 타석 어프로치',
+            'desc': '타석에서 주저함 없이 본인의 스윙 궤적을 과감하게 가져가며 강한 타구를 생산할 잠재력이 충분합니다.'
+        })
+
+    # 2. 보완점 및 주의사항 (Weaknesses & Focus)
+    if k >= 3 or k_rate >= 0.35:
+        weaknesses.append({
+            'badge': '유인구 대처',
+            'title': '2스트라이크 이후 바깥쪽/낮은 공 유인구 헛스윙 관리',
+            'desc': f'삼진율({k_rate*100:.1f}%) 관리를 위해 볼카운트가 몰렸을 때 존을 벗어나는 유인구를 골라내는 선구안 보완이 요구됩니다.'
+        })
+    elif k >= 1:
+        weaknesses.append({
+            'badge': '선구안 보강',
+            'title': '결정구 타격 시 히팅 포인트 흔들림 방지',
+            'desc': '유리한 카운트에서는 좋은 타구가 나오나, 2스트라이크 이후 떨어지는 변화구에 배트가 끌려나가지 않도록 주의해야 합니다.'
+        })
+
+    if hr == 0 and (slg - avg) < 0.1 and hits >= 1:
+        weaknesses.append({
+            'badge': '장타력 보강',
+            'title': '단타 위주의 타구 형성 및 타구 발사각(Launch Angle) 개선',
+            'desc': '정타 비율은 우수하나 타구가 주로 내야나 낮게 형성됩니다. 공 밑을 약간 올려치는 어퍼스윙 궤도 보강이 필요합니다.'
+        })
+        
+    if avg < 0.300 and ab >= 3:
+        weaknesses.append({
+            'badge': '타격 타이밍',
+            'title': '패스트볼에 대한 테이크백 시점 및 배트 스타트 속도',
+            'desc': '빠른 볼 타이밍에 배트가 살짝 밀려 빗맞는 경우가 있으므로 테이크백을 반 박자 일찍 준비하는 훈련이 권장됩니다.'
+        })
+
+    if rbi == 0 and ab >= 3:
+        weaknesses.append({
+            'badge': '찬스 멘탈',
+            'title': '주자 득점권 상황에서의 불필요한 힘 빼기',
+            'desc': '주자가 있을 때 장타 의식으로 상체에 힘이 들어갈 수 있으므로, 결대로 가볍게 맞힌다는 여유로운 멘탈이 필요합니다.'
+        })
+
+    if dp >= 1:
+        weaknesses.append({
+            'badge': '땅볼 억제',
+            'title': '주자 1루 상황 시 내야 땅볼 타구 억제',
+            'desc': f'병살타 {dp}개를 기록한 바 있어 주자가 있을 때는 롤오버 땅볼보다는 공을 외야로 띄우는 어프로치가 중요합니다.'
+        })
+
+    if len(weaknesses) == 0:
+        weaknesses.append({
+            'badge': '타격 일관성',
+            'title': '상대 팀의 집중 견제 대비 및 체력 안배',
+            'desc': '탁월한 타격감으로 상대 투수진의 집중 표적이 될 수 있으므로, 매 타석 일정한 루틴과 집중력 유지가 핵심입니다.'
+        })
+
+    # 3. 개선 방향 및 훈련 솔루션 (Improvement Action Plan)
+    if k_rate >= 0.25 or avg < 0.300:
+        action_plans.append({
+            'focus': '타석 접근법',
+            'title': '2스트라이크 투혼: 배트 1인치 짧게 쥐고 컨택 존 형성',
+            'desc': '카운트가 불리할 때는 풀스윙 대신 배트를 짧게 쥐고 센터 방면으로 결대로 가볍게 툭 맞히는 컨택 위주 승부 권장.'
+        })
+    else:
+        action_plans.append({
+            'focus': '히팅 노림수',
+            'title': '초구 및 유리한 카운트에서 자신 있는 코스 전력 배팅',
+            'desc': '가장 자신 있는 코스 하나만 미리 노려두고 그 존으로 들어오는 공에는 초구부터 지체 없이 풀스윙으로 공략.'
+        })
+
+    if hr == 0 and slg < 0.5:
+        action_plans.append({
+            'focus': '스윙 궤적',
+            'title': '하체 중심 이동 및 10~15도 발사각 어퍼 블로우 연습',
+            'desc': '타격 시 앞발을 단단히 고정하고 골반 회전의 반동을 이용해 타구를 외야로 띄워 보내는 장타 메커니즘 훈련 추천.'
+        })
+    else:
+        action_plans.append({
+            'focus': '코스 공략',
+            'title': '우중간을 가르는 스프레이 히터(Spray Hitter)로의 진화',
+            'desc': '당겨치기에 그치지 않고 바깥쪽 코스를 우중간으로 결대로 밀어쳐 장타를 생산하면 상대 수비 시프트를 완벽히 무력화 가능.'
+        })
+
+    # 4. 코칭스태프 종합 총평
+    if avg >= 0.5 or hr >= 1:
+        coach_comment = f"{name} 선수는 팀 타선의 기둥이자 승부처를 직접 지배하는 특급 해결사입니다. 이미 증명된 강력한 스윙 궤적과 타격 자신감을 계속 유지한다면 이번 시즌 팀의 우승과 리그 최고 타자 타이틀을 동시에 거머쥘 것입니다."
+    elif avg >= 0.3 or rbi >= 1:
+        coach_comment = f"{name} 선수는 팀 배팅과 클러치 상황에서의 센스가 돋보이는 핵심 플레이어입니다. 타격 타이밍과 볼카운트별 접근법을 조금만 더 정교하게 다듬는다면 매 경기 멀티히트와 대량 타점을 쏟아낼 잠재력을 갖추고 있습니다."
+    else:
+        coach_comment = f"{name} 선수는 타석에서의 뜨거운 승부욕과 무한한 성장 잠재력을 지닌 선수입니다. 첫 경기의 경험을 발판 삼아 몸의 힘을 빼고 센터 방면으로 가볍게 결대로 맞히는 연습을 꾸준히 이어간다면 다음 경기에서 눈부신 반등을 보여줄 것입니다."
+
+    return {
+        'strengths': strengths[:3],
+        'weaknesses': weaknesses[:2],
+        'action_plans': action_plans[:2],
+        'coach_comment': coach_comment
     }
 
 @app.route('/report/player/<int:pid>')
