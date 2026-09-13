@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}선수 관리 - W.B.C{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-user-plus me-2"></i>신규 선수 등록</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('player_add') }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">선수 이름</label>
+                        <input type="text" name="name" class="form-control" placeholder="예: 홍길동" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">기본 소속팀</label>
+                        <select name="team" class="form-select" required>
+                            <option value="World">World Team ⚡</option>
+                            <option value="Believers">Believers Team 🔥</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-plus me-1"></i>선수 추가
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-users me-2"></i>등록 선수 명단 (총 {{ players|length }}명)</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>선수명</th>
+                            <th>기본 소속팀</th>
+                            <th>참여 경기수</th>
+                            <th>상태</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in players %}
+                        <tr>
+                            <td class="fw-bold">{{ p.name }}</td>
+                            <td>
+                                <span class="badge {{ 'badge-world' if p.team == 'World' else 'badge-believers' }}">
+                                    {{ p.team }}
+                                </span>
+                            </td>
+                            <td>{{ p.gc }}회</td>
+                            <td>
+                                {% if p.is_active %}
+                                <span class="badge bg-success-subtle text-success">활동중</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">비활성</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('player_toggle', pid=p.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {{ 'btn-outline-secondary' if p.is_active else 'btn-outline-success' }}">
+                                        {{ '비활성화' if p.is_active else '활성화' }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

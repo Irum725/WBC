@@ -1,0 +1,23 @@
+﻿__pycache__/
+*.py[cod]
+*.class
+*.log
+.env
+.venv
+env/
+venv/
+*.tmp
+check.txt
+cols.txt
+completed_season_dump.txt
+data.txt
+result.txt
+scratch_rbi_dump.txt
+season_result.txt
+sheets_detail.txt
+sns_preview.txt
+sns_template.txt
+structure.txt
+structure2.txt
+verify_result.txt
+안수집사 회계장부.xlsx

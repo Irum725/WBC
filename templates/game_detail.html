@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}경기 기록 상세 - W.B.C{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-1">
+                {{ fmt_date(game.game_date) }} 제{{ game.game_number or '?' }}회 정기 경기 타격 기록지
+            </h5>
+            <span class="text-muted small"><i class="fa-solid fa-location-dot me-1"></i>{{ game.location }}</span>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('export_excel', gid=game.id) }}" class="btn btn-success btn-sm">
+                <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드 (.xlsx)
+            </a>
+            <a href="{{ url_for('sns_page', gid=game.id) }}" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-share-nodes me-1"></i>SNS 생성
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle text-center mb-0" style="font-size:0.85rem; min-width: 900px;">
+                <thead class="table-dark text-nowrap">
+                    <tr>
+                        <th style="width: 70px;">팀</th>
+                        <th style="width: 50px;">타순</th>
+                        <th style="width: 110px; min-width: 100px;">선수명</th>
+                        {% for inn in range(1, 14) %}
+                        <th style="width: 35px;">{{ inn }}</th>
+                        {% endfor %}
+                        <th class="bg-secondary" style="width: 45px;">타수</th>
+                        <th class="bg-success" style="width: 45px;">안타</th>
+                        <th class="bg-warning text-dark" style="width: 50px;">타점</th>
+                        <th style="width: 45px;">2루타</th>
+                        <th style="width: 45px;">3루타</th>
+                        <th style="width: 45px;">홈런</th>
+                        <th style="width: 45px;">삼진</th>
+                        <th class="bg-primary text-white" style="width: 60px;">타율</th>
+                        <th style="width: 60px;">장타율</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td>
+                            <span class="badge {{ 'badge-world' if r.team == 'World' else 'badge-believers' }}">
+                                {{ r.team }}
+                            </span>
+                        </td>
+                        <td>{{ r.batting_order }}</td>
+                        <td class="fw-bold">{{ r.name }}</td>
+                        <td>{{ r.inn1 or '-' }}</td>
+                        <td>{{ r.inn2 or '-' }}</td>
+                        <td>{{ r.inn3 or '-' }}</td>
+                        <td>{{ r.inn4 or '-' }}</td>
+                        <td>{{ r.inn5 or '-' }}</td>
+                        <td>{{ r.inn6 or '-' }}</td>
+                        <td>{{ r.inn7 or '-' }}</td>
+                        <td>{{ r.inn8 or '-' }}</td>
+                        <td>{{ r.inn9 or '-' }}</td>
+                        <td>{{ r.inn10 or '-' }}</td>
+                        <td>{{ r.inn11 or '-' }}</td>
+                        <td>{{ r.inn12 or '-' }}</td>
+                        <td>{{ r.inn13 or '-' }}</td>
+                        <td class="fw-bold">{{ r.ab }}</td>
+                        <td class="fw-bold text-success">{{ r.hits }}</td>
+                        <td class="fw-bold text-warning-emphasis">{{ r.rbi or 0 }}</td>
+                        <td>{{ r.doubles }}</td>
+                        <td>{{ r.triples }}</td>
+                        <td class="fw-bold {{ 'text-danger' if r.hr > 0 else '' }}">{{ r.hr }}</td>
+                        <td>{{ r.k }}</td>
+                        <td class="stat-mono fw-bold text-primary">.{{ ('%0.3f' % r.avg).split('.')[1] }}</td>
+                        <td class="stat-mono">.{{ ('%0.3f' % r.slg).split('.')[1] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

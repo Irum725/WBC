@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}W.B.C 대시보드 - 홈{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Hero / Recent Game -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-trophy text-warning me-2"></i>최근 경기 결과</h5>
+                {% if latest %}
+                <span class="badge bg-secondary">{{ fmt_date(latest.game_date) }} (제{{ latest.game_number or '?' }}회)</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if latest %}
+                <div class="row text-center align-items-center py-3">
+                    <div class="col-5">
+                        <div class="p-3 rounded-3 bg-light border">
+                            <span class="badge badge-world mb-2 px-3 py-1">World Team</span>
+                            <h2 class="display-4 fw-bold text-primary mb-0">{{ latest.world_score if latest.world_score is not none else '-' }}</h2>
+                        </div>
+                    </div>
+                    <div class="col-2 text-muted fw-bold fs-4">VS</div>
+                    <div class="col-5">
+                        <div class="p-3 rounded-3 bg-light border">
+                            <span class="badge badge-believers mb-2 px-3 py-1">Believers Team</span>
+                            <h2 class="display-4 fw-bold text-danger mb-0">{{ latest.believers_score if latest.believers_score is not none else '-' }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <a href="{{ url_for('game_detail', gid=latest.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fa-solid fa-list-check me-1"></i>상세 타격 기록지
+                    </a>
+                    <a href="{{ url_for('sns_page', gid=latest.id) }}" class="btn btn-success btn-sm">
+                        <i class="fa-solid fa-share-nodes me-1"></i>SNS 메시지 복사
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-baseball-bat-ball fa-3x mb-3 text-secondary"></i>
+                    <p class="mb-3">아직 등록된 경기 결과가 없습니다.</p>
+                    <a href="{{ url_for('game_new') }}" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-1"></i>첫 경기 기록 입력하기
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="row g-3">
+            <div class="col-md-4">
+                <a href="{{ url_for('game_new') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-primary text-white text-center">
+                    <i class="fa-solid fa-pen-to-square fa-2x mb-2"></i>
+                    <h6 class="fw-bold mb-1">경기 기록 입력</h6>
+                    <small class="text-white-50">이닝별 버튼 클릭으로 간편 입력</small>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('rankings') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-dark text-white text-center">
+                    <i class="fa-solid fa-ranking-star fa-2x mb-2"></i>
+                    <h6 class="fw-bold mb-1">시즌 누적 순위표</h6>
+                    <small class="text-white-50">타율 / 장타율 / 홈런 순위</small>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{{ url_for('sns_page') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-success text-white text-center">
+                    <i class="fa-solid fa-comment-sms fa-2x mb-2"></i>
+                    <h6 class="fw-bold mb-1">SNS 결과 추천</h6>
+                    <small class="text-white-50">카톡 공유 메시지 자동 생성</small>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Season TOP 5 -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-medal text-danger me-2"></i>시즌 타율 TOP 5</h5>
+                <a href="{{ url_for('rankings') }}" class="btn btn-link btn-sm text-decoration-none p-0">전체보기</a>
+            </div>
+            <div class="card-body p-0">
+                {% if top5 %}
+                <ul class="list-group list-group-flush">
+                    {% for p in top5 %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fs-5 fw-bold" style="width: 25px;">
+                                {% if loop.index == 1 %}🥇
+                                {% elif loop.index == 2 %}🥈
+                                {% elif loop.index == 3 %}🥉
+                                {% else %}<span class="text-muted fs-6 ms-1">{{ loop.index }}</span>
+                                {% endif %}
+                            </span>
+                            <div>
+                                <span class="fw-bold text-dark">{{ p.name }}</span>
+                                <span class="badge {{ 'badge-world' if p.team == 'World' else 'badge-believers' }} ms-1" style="font-size:0.7rem;">
+                                    {{ p.team }}
+                                </span>
+                                <div class="text-muted small">{{ p.tab }}타수 {{ p.th }}안타 {% if p.thr > 0 %}<span class="text-danger fw-bold">({{ p.thr }}홈런)</span>{% endif %}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fs-5 fw-bold stat-mono text-primary">.{{ ('%0.3f' % p.savg).split('.')[1] }}</div>
+                            <small class="text-muted">장타 .{{ ('%0.3f' % p.sslg).split('.')[1] }}</small>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-4 text-muted small">
+                    경기 기록이 쌓이면 순위가 표시됩니다.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

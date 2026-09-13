@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}경기 히스토리 - W.B.C{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>경기 히스토리</h4>
+    <a href="{{ url_for('game_new') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i>새 경기 입력
+    </a>
+</div>
+
+<div class="row g-3">
+    {% for g in games %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                <span class="fw-bold text-dark">제{{ g.game_number or '?' }}회 정기 경기</span>
+                <span class="badge bg-light text-dark border">{{ fmt_date(g.game_date) }}</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-around align-items-center text-center my-2">
+                    <div>
+                        <span class="badge badge-world mb-1">World</span>
+                        <div class="fs-2 fw-bold text-primary">{{ g.world_score if g.world_score is not none else '-' }}</div>
+                        <small class="text-muted">{{ g.w_players or 0 }}명</small>
+                    </div>
+                    <div class="text-muted fw-bold">VS</div>
+                    <div>
+                        <span class="badge badge-believers mb-1">Believers</span>
+                        <div class="fs-2 fw-bold text-danger">{{ g.believers_score if g.believers_score is not none else '-' }}</div>
+                        <small class="text-muted">{{ g.b_players or 0 }}명</small>
+                    </div>
+                </div>
+                <div class="border-top pt-2 mt-2 text-muted small d-flex justify-content-between">
+                    <span>총 안타: <strong>{{ g.total_hits or 0 }}</strong></span>
+                    <span>총 홈런: <strong class="text-danger">{{ g.total_hr or 0 }}</strong></span>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0 d-flex justify-content-end gap-1 pb-3 flex-wrap">
+                <a href="{{ url_for('game_detail', gid=g.id) }}" class="btn btn-outline-primary btn-sm">
+                    상세보기
+                </a>
+                <a href="{{ url_for('export_excel', gid=g.id) }}" class="btn btn-outline-success btn-sm" title="엑셀 다운로드">
+                    <i class="fa-solid fa-file-excel me-1"></i>엑셀
+                </a>
+                <a href="{{ url_for('sns_page', gid=g.id) }}" class="btn btn-outline-secondary btn-sm" title="SNS 공유">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </a>
+                <form method="POST" action="{{ url_for('game_delete', gid=g.id) }}" class="d-inline" onsubmit="return confirm('정말 이 경기 기록을 삭제하시겠습니까?');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="삭제">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">
+        <p>등록된 경기 기록이 없습니다.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

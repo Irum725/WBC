@@ -1,0 +1,174 @@
+# ⚾ W.B.C 스크린야구 기록 관리 시스템 — 프로젝트 진행상황 및 작업 명세서
+
+> **안내**: 본 문서는 **안티그래비티(Antigravity)**와 **클로드(Claude)** 등 복수의 AI 및 개발자가 프로젝트를 상호 교차 편집하고 인수인계할 수 있도록 작성된 종합 명세서입니다.
+
+---
+
+## 1. 프로젝트 개요
+
+- **목적**: 세계로교회 W.B.C(World Believers Club) 스크린야구 동호회의 경기별 타격 기록 입력, 시즌 누적 통계/순위 자동 계산, 카카오톡/인스타용 SNS 공유 메시지 자동 생성 및 엑셀 다운로드를 원스톱으로 지원하는 웹 애플리케이션
+- **위치**: `c:\AppDeloper\스크린야구동호회\`
+- **기술 스택**:
+  - **백엔드**: Python 3.10+ / Flask 2.3+
+  - **데이터베이스**: SQLite (`wbc_data.db`)
+  - **프론트엔드**: HTML5, Jinja2, Bootstrap 5.3, FontAwesome 6.4, Vanilla JavaScript
+  - **엑셀 처리**: openpyxl
+  - **실행 환경**: Windows (배치파일), macOS/Linux (쉘 스크립트)
+
+---
+
+## 2. 파일 구조 및 역할
+
+```
+c:\AppDeloper\스크린야구동호회\
+├── app.py                          # [백엔드] Flask 메인 애플리케이션, 라우트, DB 처리, 계산 로직
+├── requirements.txt                # 파이썬 종속성 (Flask, openpyxl)
+├── wbc_run.bat                     # [실행] Windows 전용 원클릭 실행 배치파일 (자동 설치 + 브라우저 오픈)
+├── wbc_run.sh                      # [실행] macOS / Linux 전용 쉘 스크립트 (자동 설치 + 브라우저 오픈)
+├── wbc_data.db                     # SQLite 데이터베이스 파일 (9/13 초기 경기 시드 포함)
+├── PROJECT_STATUS.md               # [문서] 교차 편집 및 진행상황 공유 문서 (본 파일)
+│
+├── templates/                      # [프론트엔드] Jinja2 템플릿
+│   ├── base.html                   # 네비게이션바, 푸터, 공통 레이아웃 (Bootstrap 5.3)
+│   ├── index.html                  # 홈 대시보드 (최근 경기 스코어카드, 타율 TOP 5, 바로가기)
+│   ├── game_input.html             # 경기 기록 입력기 (이닝별 기호 인터랙티브 버튼 선택 + 실시간 타율 계산)
+│   ├── rankings.html               # 개인별 시즌 누적 순위표 (타율/안타/타수 3단 정렬, 팀 필터링)
+│   ├── history.html                # 역대 경기 히스토리 카드 목록 (상세보기, 삭제)
+│   ├── game_detail.html            # 개별 경기 상세 타격 기록지 (이닝별 기호, 엑셀 다운로드)
+│   ├── sns.html                    # SNS 공유 문구 생성기 (카톡 장문 / 인스타 단문, 클립보드 복사)
+│   └── players.html                # 선수 등록 및 활성/비활성 관리
+│
+├── static/                         # [정적 자산]
+│   ├── css/
+│   │   └── style.css               # 테마 스타일, 이닝 셀 색상, 순위 메달 효과
+│   └── js/
+│       └── app.js                  # 클립보드 복사 등 공통 유틸리티
+│
+└── 원본 엑셀 자료
+    ├── 스크린야구 타점&타율 집계표_9-13.xlsx        # 원본 입력 파일
+    └── 스크린야구 타점&타율 집계표_9-13_완성.xlsx    # Y(타율), Z(장타율), AA(출루율) 수식 및 누적시트 적용본
+```
+
+---
+
+## 3. 데이터베이스 스키마 (`wbc_data.db`)
+
+### 1) `players` (선수 테이블)
+- `id`: INTEGER PRIMARY KEY AUTOINCREMENT
+- `name`: TEXT (선수명)
+- `team`: TEXT ('World' | 'Believers')
+- `is_active`: INTEGER (1: 활성, 0: 비활성)
+- `created_at`: TEXT
+
+### 2) `games` (경기 정보 테이블)
+- `id`: INTEGER PRIMARY KEY AUTOINCREMENT
+- `game_date`: TEXT ('YYYY-MM-DD')
+- `game_number`: INTEGER (회차)
+- `location`: TEXT (장소)
+- `world_score`: INTEGER (World 팀 점수 또는 총점)
+- `believers_score`: INTEGER (Believers 팀 점수 또는 총점)
+- `match_type`: TEXT ('2teams' | '4teams')  # [신규] 2개 팀 단일 경기 또는 4개 팀(2개 조) 분할 경기
+- `score_details`: TEXT (4개 팀일 경우 각 조별 상세 점수 JSON 문자열)
+- `notes`: TEXT (특이사항)
+
+### 3) `batting_records` (타격 기록 테이블)
+- `id`: INTEGER PRIMARY KEY AUTOINCREMENT
+- `game_id`: INTEGER (FK -> games.id ON DELETE CASCADE)
+- `player_id`: INTEGER (FK -> players.id)
+- `team`: TEXT ('World' | 'Believers')
+- `batting_order`: INTEGER (타순)
+- `inn1` ~ `inn13`: TEXT (이닝별 기호: `1`, `2`, `3`, `★`/`HR`, `K`, `O`, `DP`, `-`)
+- `ab`: INTEGER (타수)
+- `hits`: INTEGER (안타 수)
+- `singles`, `doubles`, `triples`, `hr`: 각 안타 유형 수
+- `rbi`, `bb`, `k`, `out_count`, `dp`: 타점, 볼넷, 삼진, 아웃, 병살
+- `avg`, `slg`, `obp`: REAL (타율, 장타율, 출루율)
+
+---
+
+## 4. 핵심 로직 및 야구 통계 규칙
+
+### 1) 기호 파싱 및 계산 체계 (`app.py` 의 `calc_stats`)
+- `1` : 1루타 (타수 1, 안타 1, 루타 1)
+- `2` : 2루타 (타수 1, 안타 1, 루타 2)
+- `3` : 3루타 (타수 1, 안타 1, 루타 3)
+- `★` 또는 `HR` : 홈런 (타수 1, 안타 1, 루타 4)
+- `K` : 삼진 (타수 1, 안타 0)
+- `O` : 일반 아웃 (타수 1, 안타 0)
+- `DP`: 병살타 (타수 1, 안타 0)
+- `-` 또는 공백: 미타석 (타수 미포함)
+
+### 2) 통계 공식
+$$\text{타율(AVG)} = \frac{\text{총안타}}{\text{총타수}}$$
+$$\text{장타율(SLG)} = \frac{\text{1루타}\times 1 + \text{2루타}\times 2 + \text{3루타}\times 3 + \text{홈런}\times 4}{\text{총타수}}$$
+$$\text{출루율(OBP)} = \frac{\text{안타} + \text{볼넷}}{\text{타수} + \text{볼넷}} \quad (\text{현재 볼넷=0이므로 타율과 동일})$$
+
+---
+
+## 5. 실행 방법
+
+### Windows 환경
+1. `c:\AppDeloper\스크린야구동호회\` 폴더에서 `wbc_run.bat` 더블클릭
+2. 필요한 패키지(`Flask`, `openpyxl`) 자동 확인/설치
+3. 브라우저(`http://localhost:5000`)가 2초 뒤 자동 실행
+
+### macOS / Linux 환경
+1. 터미널을 열고 프로젝트 디렉토리로 이동:
+   ```bash
+   cd c:/AppDeloper/스크린야구동호회
+   chmod +x wbc_run.sh
+   ./wbc_run.sh
+   ```
+2. 기본 브라우저가 자동 실행되며 로컬 IP 주소로 모바일 접속 가능
+
+---
+
+## 6. 현재 완료된 작업 내역 (Current Status)
+
+1. [x] **엑셀 원본 파일 보정 및 수식화 완료**:
+   - `스크린야구 타점&타율 집계표_9-13_완성.xlsx`에 타율(Y), 장타율(Z), 출루율(AA) 수식 추가 및 합계행 SUM 처리
+   - 타율 기준 정렬된 `개인별 시즌 누적기록` 시트 첫 번째 탭으로 생성 완료
+2. [x] **실행 런처 구축**:
+   - `wbc_run.bat` (Windows용) 및 `wbc_run.sh` (macOS용) 작성
+3. [x] **Flask 웹 백엔드 구축 (`app.py`)**:
+   - SQLite DB 스키마 구축 및 14명 선수 데이터 시딩
+   - **2026-09-13 경기 데이터 (14명 타격 기록 및 실제 타점 11점) DB 완전 동기화 완료**:
+     - 박동진 (5타점), 김석희 (3타점), 임명길 (1타점), 서관승 (1타점), 김진혁 (1타점) 등 엑셀 원본 타점 수치 100% 일치 반영
+   - 전체 REST API 및 렌더링 라우트 구축 완료
+   - openpyxl 연동 엑셀 다운로드 라우트 (`/api/export/excel/<id>`) 구현
+4. [x] **프론트엔드 UI/UX 구현 (`templates/`, `static/`)**:
+   - 대시보드 (`index.html`)
+   - **스마트 경기 입력기 (`game_input.html`)**:
+     - **WBC 4대 팀 브랜드 체계 구축**:
+       - ⚡ **World (월드)** — 세계로 비전
+       - 🔥 **Believers (빌리버)** — 믿음의 공동체
+       - 🦅 **Faith (페이스)** — 흔들리지 않는 신앙
+       - 👑 **Grace (그레이스)** — 은혜와 교제
+     - **출전팀 대진 설정 (출전팀 : 출전팀)**:
+       - 2개 팀 단일 경기 (1개 룸): [팀1] vs [팀2] 맞대결 매치업 직접 선택
+       - 4개 팀 분할 경기 (2개 룸): A조([팀1] vs [팀2]), B조([팀3] vs [팀4]) 룸별 대진표 직접 편성
+     - **팀 선택 및 타순 설정 창**: 상단에서 모든 선수의 소속팀(불참/World/Believers/Faith/Grace)과 타순 번호를 한눈에 수정 가능
+     - **`[ ✨ 설정 적용하기 ]` 버튼**: 팀과 타순을 변경한 뒤 적용 버튼을 누르면 즉시 **지정한 팀별로 카드가 완전히 분리되고 1번 타자부터 순서대로 나열**됨
+     - **타순 및 타점 나란히 2개란 배치**: 타순(1, 2, 3...) 바로 옆에 `타점` 입력란(`-`, 숫자, `+` 퀵 버튼)을 나란히 배치하여 직관적이고 편리한 기록 지원
+     - **대타/게스트 현장 즉석 추가 (빈 공란 2개 기본 탑재)**: 각 팀 목록 하단에 기본으로 **2개의 빈 공란 행**이 마련되어 있어, 선수 관리 탭으로 이동할 필요 없이 현장에서 즉석으로 선수명을 적고 이닝 기록을 입력하면 자동으로 DB에 등록 및 저장
+     - **`[+ 빈 타자 칸 추가]` 버튼**: 필요 시 언제든 1클릭으로 공란을 무제한 추가 가능 (비워둔 공란은 저장 시 자동 제외)
+     - **팀 합계 행 실시간 집계**: 각 팀 테이블 하단에 팀 총타수, 총안타, 총타점, 팀 타율 자동 계산
+   - 개인별 시즌 누적 순위표 (`rankings.html`): 2팀/4팀 상관없이 선수 개인별 시즌 기록 자동 통합 합산
+   - SNS 공유 메시지 생성기 (`sns.html`): 4개 팀일 경우 모든 팀 타격 성적 및 타점왕(해결사) 하이라이트 자동 추출
+   - 경기 히스토리 (`history.html`) 및 상세 기록지 (`game_detail.html`): 타점 열 표시
+   - 선수 명단 관리 (`players.html`)
+5. [x] **배치파일 런처 완전 안정화 및 콘솔 오류 원천 차단**:
+   - `wbc_run.bat` 내부의 복잡한 괄호/for루프 문법 오류(`... was unexpected at this time`)를 완전히 제거하고, 순수 표준 ASCII 배치파일로 군더더기 없이 재작성
+   - `python app.py` 구동 성공 및 콘솔 창이 닫히지 않고 서버가 안정적으로 대기 상태를 유지함을 직접 검증 완료
+6. [x] **전체 라우트 자동화 테스트 통과**:
+   - `GET /`, `/rankings`, `/sns`, `/history`, `/game/1`, `/players`, `/game/new` (Status 200 OK)
+   - `POST /api/sns/generate` (Status 200 OK, 메시지 생성 검증 완료)
+   - `GET /api/export/excel/1` (Status 200 OK, 파일 다운로드 검증 완료)
+
+---
+
+## 7. 향후 추가 및 확장 포인트 (클로드 / 안티그래비티 작업 제안)
+
+- **볼넷(BB) 입력 활성화**: 경기 입력 화면(`game_input.html`)에서 볼넷 칸을 별도 수치 입력 또는 기호(`B` 또는 `BB`)로 선택할 수 있도록 추가 시, 정식 출루율 공식으로 자동 분리 가능.
+- **다중 시즌 관리**: 추후 연도별 또는 반기별(예: 2026 상반기/하반기) 시즌 필터 기능 추가.
+- **선수 프로필 상세 페이지**: 선수를 클릭하면 해당 선수의 경기별 타율 변화 추이 차트(Chart.js) 조회 기능.

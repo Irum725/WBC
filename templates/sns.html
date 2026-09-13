@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}SNS 경기 결과 생성 - W.B.C{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h4 class="fw-bold mb-1"><i class="fa-solid fa-share-nodes text-success me-2"></i>SNS 공유용 경기 결과 생성기</h4>
+    <p class="text-muted small">경기 데이터를 기반으로 카카오톡 단체방 및 인스타그램 공유 문구를 자동으로 생성합니다.</p>
+</div>
+
+<div class="row g-4">
+    <!-- Configuration Column -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-sliders me-2"></i>경기 선택 및 설정</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">대상 경기</label>
+                    <select class="form-select" id="gameSelect" onchange="location.href='/sns/' + this.value">
+                        {% for g in games %}
+                        <option value="{{ g.id }}" {% if sel and sel.id == g.id %}selected{% endif %}>
+                            {{ fmt_date(g.game_date) }} (제{{ g.game_number or '?' }}회) - World {{ g.world_score or 0 }} : Believers {{ g.believers_score or 0 }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if sel %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">오늘의 MVP 추천/선택</label>
+                    <div class="d-flex flex-column gap-2">
+                        {% for cand in mvp_cands %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="mvpRadio" id="mvp_{{ loop.index }}" value="{{ cand.name }}" {% if loop.first %}checked{% endif %}>
+                            <label class="form-check-label d-flex justify-content-between" for="mvp_{{ loop.index }}">
+                                <span><strong>{{ cand.name }}</strong> ({{ cand.team }})</span>
+                                <span class="text-muted small">{{ cand.ab }}타수 {{ cand.hits }}안타 {% if cand.hr > 0 %}<span class="text-danger">({{ cand.hr }}HR)</span>{% endif %}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="generateSns()">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>메시지 다시 생성하기
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if hr_list %}
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-2">
+                <span class="fw-bold text-danger small"><i class="fa-solid fa-fire me-1"></i>오늘의 홈런왕</span>
+            </div>
+            <div class="card-body py-2">
+                {% for h in hr_list %}
+                <span class="badge bg-danger p-2 me-1 mb-1">
+                    {{ h.name }} ({{ h.hr }}개) 🚀
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Message Output Column -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-2">
+                <ul class="nav nav-tabs card-header-tabs" id="snsTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold" id="long-tab" data-bs-toggle="tab" data-bs-target="#longContent">
+                            <i class="fa-solid fa-comment-dots text-warning me-1"></i>카카오톡 / 공지용 (상세)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="short-tab" data-bs-toggle="tab" data-bs-target="#shortContent">
+                            <i class="fa-solid fa-paper-plane text-info me-1"></i>인스타 / 문자용 (요약)
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="snsTabContent">
+                    <!-- Long Message -->
+                    <div class="tab-pane fade show active" id="longContent">
+                        <textarea class="form-control font-monospace mb-3" id="longText" rows="18" readonly style="font-size: 0.9rem; line-height: 1.5;"></textarea>
+                        <button class="btn btn-warning w-100 fw-bold py-2" onclick="copyText('longText')">
+                            <i class="fa-solid fa-copy me-1"></i>카카오톡 메시지 전체 복사
+                        </button>
+                    </div>
+
+                    <!-- Short Message -->
+                    <div class="tab-pane fade" id="shortContent">
+                        <textarea class="form-control font-monospace mb-3" id="shortText" rows="12" readonly style="font-size: 0.95rem; line-height: 1.5;"></textarea>
+                        <button class="btn btn-info text-white w-100 fw-bold py-2" onclick="copyText('shortText')">
+                            <i class="fa-solid fa-copy me-1"></i>요약 메시지 전체 복사
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateSns() {
+    const gid = document.getElementById('gameSelect').value;
+    const selectedMvp = document.querySelector('input[name="mvpRadio"]:checked');
+    const mvpVal = selectedMvp ? selectedMvp.value : '';
+
+    fetch('/api/sns/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gid, mvp: mvpVal })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.long) {
+            document.getElementById('longText').value = data.long;
+            document.getElementById('shortText').value = data.short;
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    {% if sel %}
+    generateSns();
+    {% endif %}
+});
+</script>
+{% endblock %}
