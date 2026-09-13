@@ -337,6 +337,33 @@ def history():
     conn.close()
     return render_template('history.html', games=games, fmt_date=fmt_date)
 
+def calc_mvp_points(r):
+    """
+    [WBC 공인 경기 MVP 종합 활약도 점수 산정 공식]
+    1. 타점 (득점 직접 기여 / 해결사 능력): +3.0점 (가장 중요)
+    2. 홈런 (장타 & 득점): +3.5점
+    3. 3루타: +2.5점
+    4. 2루타: +1.8점
+    5. 1루타(단타): +1.0점
+    6. 타율 보너스 (안타 생산율): (타율 * 2.0)점
+    7. 삼진(아웃 기여 감점): -0.5점
+    8. 병살타(찬스 무산 감점): -1.0점
+    """
+    if not r or r['ab'] <= 0:
+        return 0.0
+    
+    singles = r['singles'] if 'singles' in r.keys() else max(0, r['hits'] - (r['doubles'] or 0) - (r['triples'] or 0) - (r['hr'] or 0))
+    doubles = r['doubles'] or 0
+    triples = r['triples'] or 0
+    hr = r['hr'] or 0
+    rbi = r['rbi'] or 0
+    avg = r['avg'] or 0.0
+    k = r['k'] if 'k' in r.keys() else 0
+    dp = r['dp'] if 'dp' in r.keys() else 0
+
+    pts = (rbi * 3.0) + (hr * 3.5) + (triples * 2.5) + (doubles * 1.8) + (singles * 1.0) + (avg * 2.0) - (k * 0.5) - (dp * 1.0)
+    return round(max(0.0, pts), 1)
+
 @app.route('/sns')
 @app.route('/sns/<int:gid>')
 def sns_page(gid=None):
@@ -345,20 +372,20 @@ def sns_page(gid=None):
     sel = None; recs = []; mvp_cands = []; hr_list = []; rbi_list = []
     if gid:
         sel = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
-        recs = conn.execute('''
+        raw_recs = conn.execute('''
             SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
-                   br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.batting_order
+                   br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.rbi DESC, br.hits DESC, br.avg DESC
         ''',(gid,)).fetchall()
 
-        # MVP 추천 점수 산정: (타점 * 2.0) + (안타 * 1.5) + (홈런 * 2.0) + (타율 * 1.0)
-        # 점수를 뽑아내는 해결사/클러치 능력을 최우선 평가
-        def mvp_score(r):
-            if r['ab'] <= 0: return -1
-            return (r['rbi'] * 2.5) + (r['hits'] * 1.5) + (r['hr'] * 2.0) + (r['avg'] or 0)
+        recs = []
+        for r in raw_recs:
+            rd = dict(r)
+            rd['mvp_pts'] = calc_mvp_points(r)
+            recs.append(rd)
 
-        mvp_cands = sorted([r for r in recs if r['ab'] > 0], key=mvp_score, reverse=True)[:5]
+        mvp_cands = sorted([r for r in recs if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)[:5]
         hr_list   = sorted([r for r in recs if r['hr'] > 0], key=lambda x: -x['hr'])
         rbi_list  = sorted([r for r in recs if r['rbi'] > 0], key=lambda x: -x['rbi'])
     conn.close()
@@ -377,7 +404,7 @@ def sns_generate():
     if not game: return jsonify({'err':'없음'}),404
     recs = conn.execute('''
         SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
-               br.triples,br.hr,br.rbi,br.avg,br.slg
+               br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.avg DESC,br.hits DESC
     ''',(gid,)).fetchall()
@@ -388,7 +415,13 @@ def sns_generate():
     ws_score = game['world_score'] if game['world_score'] is not None else '?'
     bs_score = game['believers_score'] if game['believers_score'] is not None else '?'
 
-    distinct_teams = sorted(list(set(r['team'] for r in recs)))
+    rec_list = []
+    for r in recs:
+        rd = dict(r)
+        rd['mvp_pts'] = calc_mvp_points(r)
+        rec_list.append(rd)
+
+    distinct_teams = sorted(list(set(r['team'] for r in rec_list)))
     def ts(rs):
         ab=sum(r['ab'] for r in rs); h=sum(r['hits'] for r in rs)
         hr=sum(r['hr'] for r in rs)
@@ -397,25 +430,20 @@ def sns_generate():
     
     team_stats_blocks = []
     for tname in distinct_teams:
-        trs = [r for r in recs if r['team']==tname]
+        trs = [r for r in rec_list if r['team']==tname]
         tab, th, thr, trbi, tavg = ts(trs)
         team_stats_blocks.append(f"▶ {tname}\n  타수 {tab} | 안타 {th} | 타율 {tavg:.3f} | 홈런 {thr} | 타점 {trbi}")
     
     team_stats_str = "\n\n".join(team_stats_blocks)
 
-    # MVP 추천 점수 산정: 타점을 최우선 반영
-    def mvp_score(r):
-        if r['ab'] <= 0: return -1
-        return (r['rbi'] * 2.5) + (r['hits'] * 1.5) + (r['hr'] * 2.0) + (r['avg'] or 0)
-
-    sorted_hitters = sorted([r for r in recs if r['ab'] > 0], key=mvp_score, reverse=True)
-    hr_lead = sorted([r for r in recs if r['hr'] > 0], key=lambda x: -x['hr'])
-    rbi_lead = sorted([r for r in recs if r['rbi'] > 0], key=lambda x: -x['rbi'])
+    sorted_hitters = sorted([r for r in rec_list if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)
+    hr_lead = sorted([r for r in rec_list if r['hr'] > 0], key=lambda x: -x['hr'])
+    rbi_lead = sorted([r for r in rec_list if r['rbi'] > 0], key=lambda x: -x['rbi'])
 
     # MVP 선수 정보 추출
     mvp_row = None
     if mvp:
-        for r in recs:
+        for r in rec_list:
             if r['name'] == mvp:
                 mvp_row = r
                 break
@@ -425,7 +453,11 @@ def sns_generate():
     mvp_detail = ""
     if mvp_row:
         mvp_name = mvp_row['name']
-        mvp_detail = f" ({mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점, 타율 {mvp_row['avg']:.3f})"
+        mvp_pts = mvp_row.get('mvp_pts', calc_mvp_points(mvp_row))
+        mvp_detail = f" [🔥 종합 {mvp_pts}점 | {mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점"
+        if mvp_row['hr'] > 0:
+            mvp_detail += f" {mvp_row['hr']}홈런"
+        mvp_detail += f", 타율 {mvp_row['avg']:.3f}]"
     else:
         mvp_name = mvp or '—'
 
@@ -441,8 +473,9 @@ def sns_generate():
     top5 = ''
     for i, r in enumerate(sorted_hitters[:5]):
         m = medals[i] if i < 3 else f'  {i+1}'
-        top5 += f"\n   {m} {r['name']}  {r['ab']}타수 {r['hits']}안타  {r['rbi']}타점  타율 {r['avg']:.3f}"
-        if r['hr'] > 0: top5 += f"  (홈런 {r['hr']})"
+        top5 += f"\n   {m} {r['name']}  {r['mvp_pts']}점 ({r['ab']}타수 {r['hits']}안타 {r['rbi']}타점"
+        if r['hr'] > 0: top5 += f" {r['hr']}홈런"
+        top5 += f" 타율 {r['avg']:.3f})"
 
     long_msg = f"""⚾ W.B.C {gnum}번째 경기 결과! ⚾
 
@@ -467,7 +500,7 @@ def sns_generate():
 ━━━━━━━━━━━━━━━━━━━━━
 
 🏅 MVP: {mvp_name} 형제{mvp_detail}{rbi_line}{hr_line}
-📈 활약 타자 TOP 5{top5}
+📈 활약 타자 TOP 5 (가중치 종합점수순){top5}
 
 ━━━━━━━━━━━━━━━━━━━━━
 
@@ -479,7 +512,7 @@ def sns_generate():
     lead_hitter_info = "—"
     if sorted_hitters:
         lh = sorted_hitters[0]
-        lead_hitter_info = f"{lh['name']} ({lh['ab']}타수 {lh['hits']}안타 {lh['rbi']}타점 타율 {lh['avg']:.3f})"
+        lead_hitter_info = f"{lh['name']} [🔥 {lh['mvp_pts']}점] ({lh['ab']}타수 {lh['hits']}안타 {lh['rbi']}타점 타율 {lh['avg']:.3f})"
 
     short_msg = f"""⚾ W.B.C 경기 결과 | {dstr}
 
@@ -487,7 +520,7 @@ def sns_generate():
 🔥 Believers  {bs_score}점
 
 🏅 MVP: {mvp_name} 형제{mvp_detail}
-🎯 최다 타점/해결사: {lead_hitter_info}
+🎯 경기 최고 활약(종합 1위): {lead_hitter_info}
 {rbi_line}{hr_line}
 
 오늘도 감사합니다 🙏 믿음으로 스윙하라! ⚾

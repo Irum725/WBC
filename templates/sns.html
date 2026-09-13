@@ -28,7 +28,10 @@
 
                 {% if sel %}
                 <div class="mb-3">
-                    <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-crown me-1"></i>오늘의 MVP 추천/선택 (타점·해결사 우선)</label>
+                    <label class="form-label fw-bold small text-primary d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-crown me-1 text-warning"></i>오늘의 MVP 추천/선택</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">가중치 종합점수제</span>
+                    </label>
                     <div class="d-flex flex-column gap-2">
                         {% for cand in mvp_cands %}
                         <div class="form-check p-2 rounded border bg-light">
@@ -38,10 +41,11 @@
                                     {% if loop.first %}🥇 {% elif loop.index == 2 %}🥈 {% elif loop.index == 3 %}🥉 {% endif %}
                                     <strong>{{ cand.name }}</strong> <small class="text-muted">({{ cand.team }})</small>
                                 </span>
-                                <span class="small">
+                                <span class="small d-flex align-items-center gap-1">
+                                    <span class="badge bg-danger text-white">🔥 {{ cand.mvp_pts }}점</span>
                                     <strong class="text-warning-emphasis bg-warning-subtle px-1 rounded">{{ cand.rbi or 0 }}타점</strong>
-                                    <span class="text-muted ms-1">{{ cand.ab }}타수 {{ cand.hits }}안타</span>
-                                    {% if cand.hr > 0 %}<span class="text-danger fw-bold ms-1">({{ cand.hr }}HR)</span>{% endif %}
+                                    <span class="text-muted">{{ cand.ab }}타수 {{ cand.hits }}안타</span>
+                                    {% if cand.hr > 0 %}<span class="text-danger fw-bold">({{ cand.hr }}HR)</span>{% endif %}
                                 </span>
                             </label>
                         </div>
@@ -49,8 +53,23 @@
                     </div>
                 </div>
 
+                <!-- MVP Score Rules Card -->
+                <div class="alert alert-light border small p-2 mb-3 text-secondary">
+                    <div class="fw-bold mb-1"><i class="fa-solid fa-scale-balanced me-1 text-primary"></i>MVP 활약도 가중치 산정 기준</div>
+                    <div class="d-flex flex-wrap gap-x-2 gap-y-1" style="font-size: 0.8rem; row-gap: 3px; column-gap: 8px;">
+                        <span>🎯 타점: <strong>+3.0점</strong></span>
+                        <span>💣 홈런: <strong>+3.5점</strong></span>
+                        <span>💨 3루타: <strong>+2.5점</strong></span>
+                        <span>⚡ 2루타: <strong>+1.8점</strong></span>
+                        <span>⚾ 1루타: <strong>+1.0점</strong></span>
+                        <span>📈 타율: <strong>+(AVG×2.0)</strong></span>
+                        <span>🔻 삼진: <strong>-0.5점</strong></span>
+                        <span>⚠️ 병살: <strong>-1.0점</strong></span>
+                    </div>
+                </div>
+
                 <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="generateSns()">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>메시지 다시 생성하기
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>선택한 MVP로 메시지 다시 생성
                 </button>
                 {% endif %}
             </div>
