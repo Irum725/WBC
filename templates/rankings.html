@@ -11,6 +11,8 @@
         <a href="{{ url_for('rankings', team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체</a>
         <a href="{{ url_for('rankings', team='World') }}" class="btn btn-sm {{ 'btn-primary' if team_filter == 'World' else 'btn-outline-primary' }}">World ⚡</a>
         <a href="{{ url_for('rankings', team='Believers') }}" class="btn btn-sm {{ 'btn-warning text-dark' if team_filter == 'Believers' else 'btn-outline-warning' }}">Believers 🔥</a>
+        <a href="{{ url_for('rankings', team='Faith') }}" class="btn btn-sm {{ 'btn-success' if team_filter == 'Faith' else 'btn-outline-success' }}">Faith 🦅</a>
+        <a href="{{ url_for('rankings', team='Grace') }}" class="btn btn-sm {{ 'btn-secondary' if team_filter == 'Grace' else 'btn-outline-secondary' }}">Grace 👑</a>
     </div>
 </div>
 
@@ -50,9 +52,17 @@
                     </td>
                     <td class="fw-bold">{{ p.name }}</td>
                     <td>
-                        <span class="badge {{ 'badge-world' if p.team == 'World' else 'badge-believers' }}">
-                            {{ p.team }}
-                        </span>
+                        {% if p.team == 'World' %}
+                            <span class="badge badge-world">World</span>
+                        {% elif p.team == 'Believers' %}
+                            <span class="badge badge-believers">Believers</span>
+                        {% elif p.team == 'Faith' %}
+                            <span class="badge badge-faith">Faith</span>
+                        {% elif p.team == 'Grace' %}
+                            <span class="badge badge-grace">Grace</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ p.team }}</span>
+                        {% endif %}
                     </td>
                     <td>{{ p.games }}</td>
                     <td>{{ p.tab }}</td>

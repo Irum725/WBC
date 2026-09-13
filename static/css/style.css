@@ -52,6 +52,16 @@ body {
     color: white;
 }
 
+.badge-faith {
+    background-color: #43A047;
+    color: white;
+}
+
+.badge-grace {
+    background-color: #8E24AA;
+    color: white;
+}
+
 .score-card-box {
     border-radius: 12px;
     overflow: hidden;
