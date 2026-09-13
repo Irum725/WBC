@@ -1072,19 +1072,25 @@ def report_player(pid):
     if not data:
         flash('선수를 찾을 수 없습니다.', 'danger')
         return redirect(url_for('analytics_page'))
-    return render_template('report_player.html', reports=[data], is_single=True, fmt_date=fmt_date)
+    last_game_date = data['timeline'][-1]['game_date'] if data['timeline'] else date.today().strftime('%Y-%m-%d')
+    pname = data['player']['name']
+    doc_title = f"WBC_전력분석리포트_{last_game_date}_{pname}"
+    return render_template('report_player.html', reports=[data], is_single=True, doc_title=doc_title, last_game_date=last_game_date, fmt_date=fmt_date)
 
 @app.route('/report/all')
 def report_all():
     conn = get_db()
     players = conn.execute('SELECT id FROM players WHERE is_active=1 ORDER BY team, name').fetchall()
+    latest_game = conn.execute('SELECT game_date FROM games ORDER BY game_date DESC, id DESC LIMIT 1').fetchone()
     conn.close()
+    last_game_date = latest_game['game_date'] if latest_game else date.today().strftime('%Y-%m-%d')
     reports = []
     for p in players:
         d = get_player_report_data(p['id'])
         if d and d['total_games'] > 0:
             reports.append(d)
-    return render_template('report_player.html', reports=reports, is_single=False, fmt_date=fmt_date)
+    doc_title = f"WBC_전체선수_전력분석리포트_{last_game_date}"
+    return render_template('report_player.html', reports=reports, is_single=False, doc_title=doc_title, last_game_date=last_game_date, fmt_date=fmt_date)
 
 if __name__ == '__main__':
     init_db()
