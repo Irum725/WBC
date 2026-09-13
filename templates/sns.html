@@ -28,14 +28,21 @@
 
                 {% if sel %}
                 <div class="mb-3">
-                    <label class="form-label fw-bold small">오늘의 MVP 추천/선택</label>
+                    <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-crown me-1"></i>오늘의 MVP 추천/선택 (타점·해결사 우선)</label>
                     <div class="d-flex flex-column gap-2">
                         {% for cand in mvp_cands %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="mvpRadio" id="mvp_{{ loop.index }}" value="{{ cand.name }}" {% if loop.first %}checked{% endif %}>
-                            <label class="form-check-label d-flex justify-content-between" for="mvp_{{ loop.index }}">
-                                <span><strong>{{ cand.name }}</strong> ({{ cand.team }})</span>
-                                <span class="text-muted small">{{ cand.ab }}타수 {{ cand.hits }}안타 {% if cand.hr > 0 %}<span class="text-danger">({{ cand.hr }}HR)</span>{% endif %}</span>
+                        <div class="form-check p-2 rounded border bg-light">
+                            <input class="form-check-input ms-0 me-2" type="radio" name="mvpRadio" id="mvp_{{ loop.index }}" value="{{ cand.name }}" {% if loop.first %}checked{% endif %}>
+                            <label class="form-check-label d-flex justify-content-between align-items-center w-100 ps-2" for="mvp_{{ loop.index }}">
+                                <span>
+                                    {% if loop.first %}🥇 {% elif loop.index == 2 %}🥈 {% elif loop.index == 3 %}🥉 {% endif %}
+                                    <strong>{{ cand.name }}</strong> <small class="text-muted">({{ cand.team }})</small>
+                                </span>
+                                <span class="small">
+                                    <strong class="text-warning-emphasis bg-warning-subtle px-1 rounded">{{ cand.rbi or 0 }}타점</strong>
+                                    <span class="text-muted ms-1">{{ cand.ab }}타수 {{ cand.hits }}안타</span>
+                                    {% if cand.hr > 0 %}<span class="text-danger fw-bold ms-1">({{ cand.hr }}HR)</span>{% endif %}
+                                </span>
                             </label>
                         </div>
                         {% endfor %}
@@ -48,6 +55,21 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if rbi_list %}
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-white py-2">
+                <span class="fw-bold text-warning-emphasis small"><i class="fa-solid fa-bullseye me-1"></i>오늘의 타점왕 (클러치 히터)</span>
+            </div>
+            <div class="card-body py-2">
+                {% for r in rbi_list[:3] %}
+                <span class="badge bg-warning text-dark p-2 me-1 mb-1">
+                    🎯 {{ r.name }} ({{ r.rbi }}타점)
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if hr_list %}
         <div class="card shadow-sm border-0">
