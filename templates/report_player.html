@@ -3,68 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>W.B.C 선수 공식 전력분석 리포트</title>
+    <title>W.B.C 선수 성장 분석 & 경기 능률 리포트</title>
     <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome 6.4 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <!-- Chart.js -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Chart.js 4.4.1 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #e9ecef;
             color: #212529;
             margin: 0;
             padding: 0;
         }
 
-        /* Floating control bar (Hidden in print) */
+        /* Floating Top Bar (Hidden on print) */
         .no-print-bar {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(31, 78, 121, 0.95);
-            backdrop-filter: blur(8px);
+            background: #1F4E79;
             color: white;
-            padding: 12px 24px;
+            padding: 10px 24px;
             z-index: 9999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .report-wrapper {
-            margin-top: 70px;
-            padding-bottom: 40px;
+            margin-top: 65px;
+            padding-bottom: 30px;
         }
 
-        /* A4 Page Layout */
+        /* A4 Page Container */
         .report-page {
             width: 210mm;
-            min-height: 297mm;
-            padding: 14mm 16mm;
-            margin: 0 auto 30px auto;
+            height: 297mm;
+            max-height: 297mm;
+            padding: 10mm 12mm 8mm 12mm;
+            margin: 0 auto 25px auto;
             background: white;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
             box-sizing: border-box;
             position: relative;
             page-break-after: always;
+            page-break-inside: avoid;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            overflow: hidden;
         }
 
-        /* Print CSS Configuration */
+        /* Print Media Styles */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 8mm 10mm 8mm 10mm;
+                margin: 6mm 8mm 6mm 8mm;
             }
             body {
                 background: white !important;
@@ -81,94 +83,120 @@
             }
             .report-page {
                 width: 100% !important;
-                min-height: 280mm !important;
-                max-height: 280mm !important;
+                height: 282mm !important;
+                max-height: 282mm !important;
                 margin: 0 !important;
                 padding: 4mm 6mm !important;
                 box-shadow: none !important;
                 border: none !important;
                 page-break-after: always !important;
+                page-break-inside: avoid !important;
             }
         }
 
-        /* Report Custom Components */
+        /* Report Header */
         .report-header {
-            border-bottom: 2.5px solid #1F4E79;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+            border-bottom: 2px solid #1F4E79;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
-        .report-title {
-            font-size: 1.35rem;
+        .header-title {
+            font-size: 1.25rem;
             font-weight: 900;
             color: #1F4E79;
             letter-spacing: -0.5px;
         }
-        .profile-card {
-            background: #f8fafd;
-            border: 1px solid #dce4ec;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-bottom: 12px;
+
+        /* 4 KPI Mini Cards */
+        .kpi-row {
+            margin-bottom: 8px;
         }
-        .player-name {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: #1F4E79;
-        }
-        .kpi-box {
+        .kpi-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 8px 6px;
+            border-radius: 8px;
+            padding: 6px 4px;
             text-align: center;
+            border-top: 3.5px solid #0d6efd;
         }
         .kpi-title {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: #64748b;
-            font-weight: 600;
+            font-weight: 700;
         }
-        .kpi-val {
-            font-size: 1.2rem;
-            font-weight: 800;
-            margin: 2px 0;
+        .kpi-num {
+            font-size: 1.25rem;
+            font-weight: 900;
             line-height: 1.1;
+            margin: 2px 0;
         }
+        .kpi-sub {
+            font-size: 0.72rem;
+        }
+
+        /* 2x2 Charts Grid */
         .chart-box {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #dee2e6;
             border-radius: 8px;
-            padding: 8px;
-            height: 215px;
+            padding: 6px 8px;
+            height: 195px;
             position: relative;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
         }
-        .chart-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #334155;
-            margin-bottom: 4px;
+        .chart-header {
+            font-size: 0.78rem;
+            font-weight: 800;
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chart-canvas-wrapper {
+            position: relative;
+            height: 165px;
+            width: 100%;
+        }
+
+        /* Game Log Table */
+        .log-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .log-header {
+            background: #f8f9fa;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            border-bottom: 1px solid #dee2e6;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .table-compact {
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             margin-bottom: 0;
         }
         .table-compact th {
             background-color: #f1f5f9;
             color: #475569;
-            padding: 4px 6px;
+            padding: 3px 4px;
             font-weight: 700;
             text-align: center;
         }
         .table-compact td {
-            padding: 4px 6px;
+            padding: 3px 4px;
             text-align: center;
+            vertical-align: middle;
         }
+
+        /* Report Footer */
         .report-footer {
             border-top: 1px solid #cbd5e1;
-            padding-top: 6px;
-            font-size: 0.72rem;
+            padding-top: 4px;
+            font-size: 0.7rem;
             color: #64748b;
             display: flex;
             justify-content: space-between;
@@ -186,9 +214,9 @@
             </a>
             <span class="fw-bold ms-2 fs-6">
                 {% if is_single %}
-                [ {{ reports[0].player.name }} ] 선수 1페이지 리포트 미리보기
+                [ {{ reports[0].player.name }} ] 선수 A4 1페이지 리포트 (차트 4종 대시보드 뷰)
                 {% else %}
-                전체 선수 일괄 리포트 (총 {{ reports|length }}페이지)
+                전체 선수 일괄 리포트 (총 {{ reports|length }}명 / 선수당 1페이지)
                 {% endif %}
             </span>
         </div>
@@ -209,183 +237,179 @@
         {% for rep in reports %}
         <div class="report-page" id="report_page_{{ loop.index }}">
             
-            <!-- Page Top Content -->
+            <!-- Main Content Container -->
             <div>
-                <!-- Header -->
+                <!-- 1. Header Bar -->
                 <div class="report-header d-flex justify-content-between align-items-end">
                     <div>
-                        <div class="report-title">
-                            <span class="fs-4">⚾</span> W.B.C 공식 선수 전력분석 리포트
+                        <div class="header-title">
+                            <i class="fa-solid fa-chart-line text-primary me-1"></i>선수 성장 분석 & 경기 능률 차트 리포트
                         </div>
-                        <small class="text-muted" style="font-size: 0.75rem;">
-                            세계로교회 World Believers Club • 공식 기술기록위원회 공인
+                        <small class="text-muted" style="font-size: 0.72rem;">
+                            경기가 누적됨에 따라 선수의 타율 변화, 타점 생산력, 5대 능력치와 성장 곡선을 한눈에 분석합니다.
                         </small>
                     </div>
-                    <div class="text-end" style="font-size: 0.75rem;">
-                        <span class="badge bg-primary px-2 py-1">공식 인증</span>
-                        <div class="text-muted mt-1">발행: {{ fmt_date('2026-09-14') }}</div>
-                    </div>
-                </div>
-
-                <!-- Player Profile Header -->
-                <div class="profile-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="player-name">{{ rep.player.name }}</span>
-                            <span class="badge {{ 'bg-primary' if rep.player.team == 'World' else 'bg-danger' }} fs-6">
-                                {{ rep.player.team }} Team
-                            </span>
-                            <span class="badge bg-dark bg-opacity-75 fs-6">
-                                {{ rep.style_title }}
-                            </span>
-                        </div>
-                        <div class="text-secondary small mt-1" style="font-size: 0.8rem;">
-                            통산 <strong>{{ rep.total_games }}</strong>경기 출전 | 
-                            <strong>{{ rep.total_ab }}</strong>타수 <strong>{{ rep.total_hits }}</strong>안타 | 
-                            타점 <strong>{{ rep.total_rbi }}</strong> | 
-                            홈런 <strong>{{ rep.total_hr }}</strong>
-                        </div>
-                    </div>
                     <div class="text-end">
-                        {% if rep.mvp_count > 0 %}
-                        <span class="badge bg-warning text-dark px-2 py-1 fw-bold fs-6">🏅 경기 MVP {{ rep.mvp_count }}회</span>
-                        {% endif %}
-                        {% if rep.mip_count > 0 %}
-                        <span class="badge bg-success px-2 py-1 fw-bold fs-6 ms-1">✨ MIP {{ rep.mip_count }}회</span>
-                        {% endif %}
-                        {% if rep.unsung_count > 0 %}
-                        <span class="badge bg-info text-dark px-2 py-1 fw-bold fs-6 ms-1">🛡️ 언성히어로 {{ rep.unsung_count }}회</span>
-                        {% endif %}
+                        <div class="d-flex align-items-center gap-1 justify-content-end">
+                            <span class="badge {{ 'bg-primary' if rep.player.team == 'World' else 'bg-danger' }} fs-6 fw-bold">
+                                {{ rep.player.name }} ({{ rep.player.team }})
+                            </span>
+                            <span class="badge bg-dark small">{{ rep.style_title }}</span>
+                        </div>
+                        <small class="text-muted" style="font-size: 0.68rem;">W.B.C 세계로교회 스크린야구 공식 분석</small>
                     </div>
                 </div>
 
-                <!-- 8-KPI Grid -->
-                <div class="row g-2 mb-3">
+                <!-- 2. Four KPI Cards (Exact replica of user screenshot) -->
+                <div class="row g-2 kpi-row">
+                    <!-- KPI 1 -->
                     <div class="col-3">
-                        <div class="kpi-box border-primary">
-                            <div class="kpi-title">통산 타율 (AVG)</div>
-                            <div class="kpi-val text-primary">{{ '%0.3f'|format(rep.overall_avg) }}</div>
-                            <small class="text-muted" style="font-size: 0.7rem;">{{ rep.total_hits }}/{{ rep.total_ab }}</small>
+                        <div class="kpi-card" style="border-top-color: #0d6efd;">
+                            <div class="kpi-title">출전 경기수</div>
+                            <div class="kpi-num text-primary">{{ rep.total_games }}경기</div>
+                            <div class="kpi-sub text-secondary">총 {{ rep.total_ab }}타수</div>
                         </div>
                     </div>
+                    <!-- KPI 2 -->
                     <div class="col-3">
-                        <div class="kpi-box border-danger">
-                            <div class="kpi-title">통산 타점 (RBI)</div>
-                            <div class="kpi-val text-danger">{{ rep.total_rbi }}타점</div>
-                            <small class="text-muted" style="font-size: 0.7rem;">경기당 {{ (rep.total_rbi / rep.total_games)|round(1) }}</small>
+                        <div class="kpi-card" style="border-top-color: #ffc107;">
+                            <div class="kpi-title">통산 누적 타율</div>
+                            <div class="kpi-num text-dark">{{ '%0.3f'|format(rep.overall_avg) }}</div>
+                            <div class="kpi-sub text-success fw-bold">첫 경기 순항 🚀</div>
                         </div>
                     </div>
+                    <!-- KPI 3 -->
                     <div class="col-3">
-                        <div class="kpi-box border-warning">
-                            <div class="kpi-title">통산 홈런 (HR)</div>
-                            <div class="kpi-val text-warning-emphasis">{{ rep.total_hr }}홈런</div>
-                            <small class="text-muted" style="font-size: 0.7rem;">장타율 {{ '%0.3f'|format(rep.overall_slg) }}</small>
+                        <div class="kpi-card" style="border-top-color: #dc3545;">
+                            <div class="kpi-title">통산 안타 / 타점 / 홈런</div>
+                            <div class="kpi-num text-danger">{{ rep.total_hits }}안타</div>
+                            <div class="kpi-sub text-muted">{{ rep.total_rbi }}타점 / {{ rep.total_hr }}홈런</div>
                         </div>
                     </div>
+                    <!-- KPI 4 -->
                     <div class="col-3">
-                        <div class="kpi-box border-success">
-                            <div class="kpi-title">OPS (출루+장타)</div>
-                            <div class="kpi-val text-success">{{ '%0.3f'|format(rep.overall_ops) }}</div>
-                            <small class="text-muted" style="font-size: 0.7rem;">출루율 {{ '%0.3f'|format(rep.overall_obp) }}</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Visual Charts Section (Two columns side-by-side) -->
-                <div class="row g-3 mb-3">
-                    <!-- Chart 1: 5 Dimensions Radar -->
-                    <div class="col-6">
-                        <div class="chart-box">
-                            <div class="chart-title">
-                                <span><i class="fa-solid fa-hexagon-nodes text-primary me-1"></i>5대 핵심 능력치 레이더</span>
-                                <small class="text-muted">100점 만점</small>
+                        <div class="kpi-card" style="border-top-color: #198754;">
+                            <div class="kpi-title">평균 MVP 활약 점수</div>
+                            <div class="kpi-num text-success">{{ rep.avg_pts }}점</div>
+                            <div class="kpi-sub text-secondary">
+                                {% if rep.best_game %}최고 {{ rep.best_game.game_number }}회차 ({{ rep.best_game.game_pts }}점){% else %}기록 없음{% endif %}
                             </div>
-                            <div style="height: 180px; position: relative;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 2x2 Charts Grid (Exact replica of 4 charts from screenshot) -->
+                <div class="row g-2 mb-2">
+                    <!-- Chart 1: Batting Avg Progression (Top-Left) -->
+                    <div class="col-7">
+                        <div class="chart-box">
+                            <div class="chart-header text-primary">
+                                <span><i class="fa-solid fa-chart-line me-1"></i>경기별 타율 & 시즌 누적 타율 추이 (성장 곡선)</span>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">경기가 누적될수록 안정화</span>
+                            </div>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="avg_{{ loop.index }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: 5 Dimensions Radar (Top-Right) -->
+                    <div class="col-5">
+                        <div class="chart-box">
+                            <div class="chart-header text-success">
+                                <span><i class="fa-solid fa-hexagon-nodes me-1"></i>5대 핵심 능력치 레이더 (100점 만점)</span>
+                                <span class="badge bg-success-subtle text-success" style="font-size: 0.65rem;">선수 스타일 분석</span>
+                            </div>
+                            <div class="chart-canvas-wrapper d-flex align-items-center justify-content-center">
                                 <canvas id="radar_{{ loop.index }}"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Chart 2: Batting Avg Progression -->
-                    <div class="col-6">
+                    <!-- Chart 3: Hits & RBI Productivity Combo (Bottom-Left) -->
+                    <div class="col-7">
                         <div class="chart-box">
-                            <div class="chart-title">
-                                <span><i class="fa-solid fa-chart-line text-success me-1"></i>경기별 타율 & 성장 곡선</span>
-                                <small class="text-muted">당일(점선) / 누적(실선)</small>
+                            <div class="chart-header text-danger">
+                                <span><i class="fa-solid fa-chart-column me-1"></i>경기별 안타 유형 및 타점 생산력 (클러치 능률)</span>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.65rem;">안타(막대) + 타점(선)</span>
                             </div>
-                            <div style="height: 180px; position: relative;">
-                                <canvas id="avg_{{ loop.index }}"></canvas>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="prod_{{ loop.index }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart 4: MVP Points Trend (Bottom-Right) -->
+                    <div class="col-5">
+                        <div class="chart-box">
+                            <div class="chart-header text-warning-emphasis">
+                                <span><i class="fa-solid fa-fire text-danger me-1"></i>경기별 MVP 활약 종합점수 추이</span>
+                                <span class="badge bg-warning-subtle text-dark" style="font-size: 0.65rem;">기여도 변화</span>
+                            </div>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="pts_{{ loop.index }}"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Best Game Achievement Card -->
-                {% if rep.best_game %}
-                <div class="alert alert-light border py-2 px-3 mb-3 d-flex justify-content-between align-items-center" style="font-size: 0.82rem;">
-                    <div>
-                        <strong class="text-primary"><i class="fa-solid fa-star text-warning me-1"></i>커리어 하이 (최고 활약 경기):</strong>
-                        제{{ rep.best_game.game_number }}회 경기 ({{ rep.best_game.game_date }})
-                        — <strong>{{ rep.best_game.ab }}타수 {{ rep.best_game.hits }}안타 {{ rep.best_game.rbi }}타점</strong>
-                        {% if rep.best_game.hr > 0 %}<strong class="text-danger">({{ rep.best_game.hr }}홈런)</strong>{% endif %}
+                <!-- 4. Detailed Game Log Table (Bottom of screenshot) -->
+                <div class="log-card">
+                    <div class="log-header">
+                        <div>
+                            <i class="fa-solid fa-list-ol text-primary me-1"></i>선수별 전 경기 출전 상세 로그 (Game-by-Game)
+                        </div>
+                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                            {{ rep.player.name }} ({{ rep.player.team }})
+                        </span>
                     </div>
-                    <span class="badge bg-danger text-white">🔥 MVP 점수 {{ rep.best_game.game_pts }}점</span>
-                </div>
-                {% endif %}
-
-                <!-- Detailed Game Log Table -->
-                <div class="card border mb-2">
-                    <div class="card-header bg-light py-1 px-3 d-flex justify-content-between align-items-center">
-                        <strong style="font-size: 0.8rem;"><i class="fa-solid fa-list-check me-1"></i>전 경기 출전 상세 타격 로그 (Game-by-Game)</strong>
-                        <small class="text-muted" style="font-size: 0.72rem;">총 {{ rep.timeline|length }}경기 집계</small>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-compact mb-0">
-                            <thead>
-                                <tr>
-                                    <th>회차</th>
-                                    <th>경기일자</th>
-                                    <th>타수</th>
-                                    <th>안타</th>
-                                    <th>1루타</th>
-                                    <th>2루타</th>
-                                    <th>3루타</th>
-                                    <th>홈런</th>
-                                    <th>타점</th>
-                                    <th>삼진</th>
-                                    <th>당일타율</th>
-                                    <th>누적타율</th>
-                                    <th>활약점수</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for g in rep.timeline %}
-                                <tr>
-                                    <td class="fw-bold">제{{ g.game_number }}회</td>
-                                    <td>{{ g.game_date }}</td>
-                                    <td>{{ g.ab }}</td>
-                                    <td class="fw-bold text-primary">{{ g.hits }}</td>
-                                    <td>{{ g.singles }}</td>
-                                    <td>{{ g.doubles }}</td>
-                                    <td>{{ g.triples }}</td>
-                                    <td>{{ g.hr if g.hr > 0 else 0 }}</td>
-                                    <td class="fw-bold text-danger">{{ g.rbi }}</td>
-                                    <td>{{ g.k }}</td>
-                                    <td class="font-monospace">{{ '%0.3f'|format(g.game_avg) }}</td>
-                                    <td class="font-monospace fw-bold text-success">{{ '%0.3f'|format(g.cum_avg) }}</td>
-                                    <td><span class="badge bg-light text-dark border">{{ g.game_pts }}점</span></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="table table-bordered table-compact mb-0">
+                        <thead>
+                            <tr>
+                                <th>회차</th>
+                                <th>경기일자</th>
+                                <th>타수</th>
+                                <th>안타</th>
+                                <th>1루타</th>
+                                <th>2루타</th>
+                                <th>3루타</th>
+                                <th>홈런</th>
+                                <th>타점</th>
+                                <th>삼진</th>
+                                <th>병살</th>
+                                <th>당일 타율</th>
+                                <th>시즌 누적 타율</th>
+                                <th>MVP 종합점수</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in rep.timeline %}
+                            <tr>
+                                <td><span class="badge bg-secondary" style="font-size: 0.65rem;">제{{ g.game_number }}회</span></td>
+                                <td class="fw-bold text-primary">{{ g.game_date }}</td>
+                                <td>{{ g.ab }}</td>
+                                <td class="fw-bold text-primary">{{ g.hits }}</td>
+                                <td>{{ g.singles }}</td>
+                                <td>{{ g.doubles }}</td>
+                                <td>{{ g.triples }}</td>
+                                <td>{{ g.hr if g.hr > 0 else 0 }}</td>
+                                <td class="fw-bold text-warning-emphasis">{{ g.rbi }}</td>
+                                <td>{{ g.k }}</td>
+                                <td>{{ g.dp }}</td>
+                                <td class="font-monospace">{{ '%0.3f'|format(g.game_avg) }}</td>
+                                <td class="font-monospace fw-bold text-success">{{ '%0.3f'|format(g.cum_avg) }}</td>
+                                <td><span class="badge bg-danger-subtle text-danger fw-bold">🔥 {{ g.game_pts }}점</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Report Footer -->
+            <!-- 5. Report Footer -->
             <div class="report-footer">
                 <div>
-                    <strong>W.B.C (World Believers Club)</strong> • 세계로교회 스크린야구 전도회
+                    <strong>W.B.C (World Believers Club)</strong> • 세계로교회 스크린야구 공식 분석 보고서
                 </div>
                 <div>
                     믿음으로 스윙하라, 세계로 나아가라! ⚾ | Page {{ loop.index }} of {{ reports|length }}
@@ -394,69 +418,31 @@
 
         </div>
 
-        <!-- Render Scripts for each player -->
+        <!-- Render Scripts for this player's 4 charts -->
         <script>
         (function() {
-            // Radar Chart
-            const rCtx = document.getElementById('radar_{{ loop.index }}').getContext('2d');
-            new Chart(rCtx, {
-                type: 'radar',
-                data: {
-                    labels: ['컨택트', '파워', '클러치', '선구안', '기여도'],
-                    datasets: [{
-                        data: [
-                            {{ rep.radar.contact }},
-                            {{ rep.radar.power }},
-                            {{ rep.radar.clutch }},
-                            {{ rep.radar.discipline }},
-                            {{ rep.radar.impact }}
-                        ],
-                        backgroundColor: 'rgba(31, 78, 121, 0.25)',
-                        borderColor: '#1F4E79',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#1F4E79'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        r: {
-                            min: 0,
-                            max: 100,
-                            ticks: { display: false, stepSize: 25 },
-                            pointLabels: { font: { size: 10, weight: 'bold' } }
-                        }
-                    }
-                }
-            });
-
-            // Line Chart
-            const lCtx = document.getElementById('avg_{{ loop.index }}').getContext('2d');
             const labels = [{% for g in rep.timeline %}'{{ g.game_number }}회',{% endfor %}];
-            const gameAvg = [{% for g in rep.timeline %}{{ g.game_avg }},{% endfor %}];
-            const cumAvg = [{% for g in rep.timeline %}{{ g.cum_avg }},{% endfor %}];
 
-            new Chart(lCtx, {
+            // Chart 1: Batting Avg Progression
+            const ctxAvg = document.getElementById('avg_{{ loop.index }}').getContext('2d');
+            new Chart(ctxAvg, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: '당일 타율',
-                            data: gameAvg,
-                            borderColor: '#94a3b8',
+                            label: '{{ rep.player.name }} 당일 타율',
+                            data: [{% for g in rep.timeline %}{{ g.game_avg }},{% endfor %}],
+                            borderColor: 'rgba(54, 162, 235, 0.5)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
                             borderDash: [3, 3],
                             borderWidth: 1.5,
                             pointRadius: 3,
                             tension: 0.2
                         },
                         {
-                            label: '누적 타율',
-                            data: cumAvg,
+                            label: '{{ rep.player.name }} 누적 타율(성장)',
+                            data: [{% for g in rep.timeline %}{{ g.cum_avg }},{% endfor %}],
                             borderColor: '#0d6efd',
                             backgroundColor: 'rgba(13, 110, 253, 0.1)',
                             borderWidth: 2.5,
@@ -471,17 +457,163 @@
                     maintainAspectRatio: false,
                     animation: false,
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 9 } } }
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 9, weight: 'bold' } } }
+                    },
+                    scales: {
+                        y: { min: 0, max: 1.0, ticks: { callback: v => v.toFixed(3), font: { size: 8 } } },
+                        x: { ticks: { font: { size: 8 } } }
+                    }
+                }
+            });
+
+            // Chart 2: Radar Chart
+            const ctxRadar = document.getElementById('radar_{{ loop.index }}').getContext('2d');
+            new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['컨택트(타율)', '파워(장타)', '클러치(타점)', '선구안(아웃억제)', '기여도(MVP)'],
+                    datasets: [{
+                        label: '{{ rep.player.name }}',
+                        data: [
+                            {{ rep.radar.contact }},
+                            {{ rep.radar.power }},
+                            {{ rep.radar.clutch }},
+                            {{ rep.radar.discipline }},
+                            {{ rep.radar.impact }}
+                        ],
+                        backgroundColor: 'rgba(13, 110, 253, 0.25)',
+                        borderColor: '#0d6efd',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#0d6efd'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } }
+                    },
+                    scales: {
+                        r: {
+                            min: 0, max: 100,
+                            ticks: { display: false, stepSize: 25 },
+                            pointLabels: { font: { size: 9, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+
+            // Chart 3: Hits & RBI Productivity Combo
+            const ctxProd = document.getElementById('prod_{{ loop.index }}').getContext('2d');
+            new Chart(ctxProd, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: '타점 (RBI)',
+                            data: [{% for g in rep.timeline %}{{ g.rbi }},{% endfor %}],
+                            borderColor: '#ff9800',
+                            backgroundColor: '#ff9800',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            type: 'bar',
+                            label: '1루타',
+                            data: [{% for g in rep.timeline %}{{ g.singles }},{% endfor %}],
+                            backgroundColor: '#4caf50',
+                            stack: 'hits',
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'bar',
+                            label: '2루타',
+                            data: [{% for g in rep.timeline %}{{ g.doubles }},{% endfor %}],
+                            backgroundColor: '#2196f3',
+                            stack: 'hits',
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'bar',
+                            label: '3루타',
+                            data: [{% for g in rep.timeline %}{{ g.triples }},{% endfor %}],
+                            backgroundColor: '#9c27b0',
+                            stack: 'hits',
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'bar',
+                            label: '홈런 ★',
+                            data: [{% for g in rep.timeline %}{{ g.hr }},{% endfor %}],
+                            backgroundColor: '#f44336',
+                            stack: 'hits',
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 8 } } }
+                    },
+                    scales: {
+                        x: { stacked: true, ticks: { font: { size: 8 } } },
+                        y: {
+                            stacked: true,
+                            title: { display: true, text: '안타 수', font: { size: 8 } },
+                            ticks: { precision: 0, font: { size: 8 } },
+                            beginAtZero: true
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: '타점 수', font: { size: 8 } },
+                            ticks: { precision: 0, font: { size: 8 } },
+                            grid: { drawOnChartArea: false },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Chart 4: MVP Points Trend Area Chart
+            const ctxPts = document.getElementById('pts_{{ loop.index }}').getContext('2d');
+            new Chart(ctxPts, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '{{ rep.player.name }} 종합점수',
+                        data: [{% for g in rep.timeline %}{{ g.game_pts }},{% endfor %}],
+                        borderColor: '#e91e63',
+                        backgroundColor: 'rgba(233, 30, 99, 0.15)',
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#e91e63',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } }
                     },
                     scales: {
                         y: {
-                            min: 0,
-                            max: 1.0,
-                            ticks: { callback: v => v.toFixed(3), font: { size: 9 } }
+                            beginAtZero: true,
+                            title: { display: true, text: '활약도 점수', font: { size: 8 } },
+                            ticks: { font: { size: 8 } }
                         },
-                        x: {
-                            ticks: { font: { size: 9 } }
-                        }
+                        x: { ticks: { font: { size: 8 } } }
                     }
                 }
             });
