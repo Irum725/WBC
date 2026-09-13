@@ -923,6 +923,169 @@ def api_analytics_teams():
     conn.close()
     return jsonify({'games': [dict(g) for g in games]})
 
+def get_player_report_data(pid):
+    conn = get_db()
+    player = conn.execute('SELECT * FROM players WHERE id=?', (pid,)).fetchone()
+    if not player:
+        conn.close()
+        return None
+
+    recs = conn.execute('''
+        SELECT g.id as game_id, g.game_date, g.game_number,
+               br.ab, br.hits, br.singles, br.doubles, br.triples, br.hr,
+               br.rbi, br.k, br.dp, br.avg, br.slg, br.obp, br.team
+        FROM batting_records br
+        JOIN games g ON g.id = br.game_id
+        WHERE br.player_id = ?
+        ORDER BY g.game_date ASC, g.id ASC
+    ''', (pid,)).fetchall()
+
+    timeline = []
+    run_ab = 0; run_hits = 0; run_hr = 0; run_rbi = 0; run_pts = 0.0
+    run_singles = 0; run_doubles = 0; run_triples = 0; run_k = 0; run_dp = 0
+
+    for r in recs:
+        game_ab = r['ab'] or 0
+        game_hits = r['hits'] or 0
+        game_hr = r['hr'] or 0
+        game_rbi = r['rbi'] or 0
+        game_avg = r['avg'] or 0.0
+        game_pts = calc_mvp_points(r)
+
+        run_ab += game_ab
+        run_hits += game_hits
+        run_hr += game_hr
+        run_rbi += game_rbi
+        run_pts += game_pts
+        run_singles += (r['singles'] or 0)
+        run_doubles += (r['doubles'] or 0)
+        run_triples += (r['triples'] or 0)
+        run_k += (r['k'] or 0)
+        run_dp += (r['dp'] or 0)
+
+        c_avg = round(run_hits / run_ab, 3) if run_ab > 0 else 0.0
+
+        timeline.append({
+            'game_id': r['game_id'],
+            'game_number': r['game_number'],
+            'game_date': r['game_date'],
+            'label': f"{r['game_number']}회",
+            'ab': game_ab,
+            'hits': game_hits,
+            'singles': r['singles'] or 0,
+            'doubles': r['doubles'] or 0,
+            'triples': r['triples'] or 0,
+            'hr': game_hr,
+            'rbi': game_rbi,
+            'k': r['k'] or 0,
+            'dp': r['dp'] or 0,
+            'game_avg': game_avg,
+            'cum_avg': c_avg,
+            'game_pts': game_pts
+        })
+
+    total_games = len(recs)
+    overall_avg = round(run_hits / run_ab, 3) if run_ab > 0 else 0.0
+    overall_slg = round((run_singles + run_doubles*2 + run_triples*3 + run_hr*4) / run_ab, 3) if run_ab > 0 else 0.0
+    overall_obp = overall_avg
+    overall_ops = round(overall_obp + overall_slg, 3)
+    rbi_per_game = round(run_rbi / total_games, 2) if total_games > 0 else 0.0
+    hr_per_game = round(run_hr / total_games, 2) if total_games > 0 else 0.0
+    avg_pts = round(run_pts / total_games, 1) if total_games > 0 else 0.0
+
+    # 5대 능력치 레이더
+    contact_score = min(100, max(20, round(overall_avg * 120 + 20)))
+    power_score = min(100, max(20, round(overall_slg * 50 + (hr_per_game * 25))))
+    clutch_score = min(100, max(20, round(25 + rbi_per_game * 18)))
+    k_rate = (run_k / run_ab) if run_ab > 0 else 0.0
+    discipline_score = min(100, max(30, round(95 - k_rate * 80)))
+    impact_score = min(100, max(20, round(25 + avg_pts * 3.2)))
+
+    radar = {
+        'contact': contact_score,
+        'power': power_score,
+        'clutch': clutch_score,
+        'discipline': discipline_score,
+        'impact': impact_score
+    }
+
+    # 타자 스타일 타이틀
+    if overall_avg >= 0.6 and run_hr >= 2:
+        style_title = "전천후 슈퍼 슬러거 (Super Slugger)"
+    elif run_hr >= 1 or overall_slg >= 0.8:
+        style_title = "클러치 파워 히터 (Power Hitter)"
+    elif overall_avg >= 0.5:
+        style_title = "정밀 타격 마스터 (Precision Contact)"
+    elif run_rbi >= 2:
+        style_title = "찬스 해결사 (Clutch Specialist)"
+    elif discipline_score >= 90:
+        style_title = "안정적인 출루형 타자 (On-Base Machine)"
+    else:
+        style_title = "성장형 올라운드 플레이어 (Rising All-Rounder)"
+
+    # 시상 횟수 집계
+    all_game_ids = [g[0] for g in conn.execute('SELECT id FROM games').fetchall()]
+    mvp_count = 0
+    mip_count = 0
+    unsung_count = 0
+    for gid in all_game_ids:
+        aw = calc_game_awards(gid)
+        if aw.get('mvp') and aw['mvp']['player_id'] == pid:
+            mvp_count += 1
+        if aw.get('mip') and aw['mip']['player_id'] == pid:
+            mip_count += 1
+        if aw.get('unsung') and aw['unsung']['player_id'] == pid:
+            unsung_count += 1
+
+    best_game = max(timeline, key=lambda x: x['game_pts']) if timeline else None
+
+    conn.close()
+    return {
+        'player': dict(player),
+        'total_games': total_games,
+        'total_ab': run_ab,
+        'total_hits': run_hits,
+        'singles': run_singles,
+        'doubles': run_doubles,
+        'triples': run_triples,
+        'total_hr': run_hr,
+        'total_rbi': run_rbi,
+        'total_k': run_k,
+        'total_dp': run_dp,
+        'overall_avg': overall_avg,
+        'overall_slg': overall_slg,
+        'overall_obp': overall_obp,
+        'overall_ops': overall_ops,
+        'avg_pts': avg_pts,
+        'radar': radar,
+        'style_title': style_title,
+        'mvp_count': mvp_count,
+        'mip_count': mip_count,
+        'unsung_count': unsung_count,
+        'best_game': best_game,
+        'timeline': timeline
+    }
+
+@app.route('/report/player/<int:pid>')
+def report_player(pid):
+    data = get_player_report_data(pid)
+    if not data:
+        flash('선수를 찾을 수 없습니다.', 'danger')
+        return redirect(url_for('analytics_page'))
+    return render_template('report_player.html', reports=[data], is_single=True, fmt_date=fmt_date)
+
+@app.route('/report/all')
+def report_all():
+    conn = get_db()
+    players = conn.execute('SELECT id FROM players WHERE is_active=1 ORDER BY team, name').fetchall()
+    conn.close()
+    reports = []
+    for p in players:
+        d = get_player_report_data(p['id'])
+        if d and d['total_games'] > 0:
+            reports.append(d)
+    return render_template('report_player.html', reports=reports, is_single=False, fmt_date=fmt_date)
+
 if __name__ == '__main__':
     init_db()
     print('\n' + '='*52)

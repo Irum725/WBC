@@ -29,7 +29,8 @@
     </div>
     <div class="d-flex align-items-center gap-2">
         <a href="{{ url_for('rankings') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-ranking-star me-1"></i>시즌 순위표</a>
-        <a href="{{ url_for('game_new') }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i>새 경기 입력</a>
+        <a href="/report/all" target="_blank" class="btn btn-warning btn-sm fw-bold"><i class="fa-solid fa-book-open me-1"></i>전체 선수 리포트(A4/PDF)</a>
+        <a href="javascript:void(0)" onclick="openCurrentPlayerReport()" class="btn btn-success btn-sm fw-bold"><i class="fa-solid fa-file-pdf me-1"></i>선수 리포트 출력(1P)</a>
     </div>
 </div>
 
@@ -607,6 +608,13 @@ function renderPtsChart() {
             }
         }
     });
+}
+
+function openCurrentPlayerReport() {
+    const pid = document.getElementById('mainPlayerSelect').value;
+    if (pid) {
+        window.open(`/report/player/${pid}`, '_blank');
+    }
 }
 </script>
 {% endblock %}
