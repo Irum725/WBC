@@ -193,6 +193,13 @@ $$\text{출루율(OBP)} = \frac{\text{안타} + \text{볼넷}}{\text{타수} + \
      - 순위표(`rankings.html`) 및 선수 목록(`players.html`)에서 선수 이름 클릭 시 해당 선수 성장 차트로 원클릭 이동
 9. [x] **전체 라우트 자동화 테스트 통과 (13개 라우트 전원 200 OK)**:
    - `GET /`, `/game/new`, `/rankings`, `/analytics`, `/analytics?player_id=9`, `/history`, `/sns`, `/sns/1`, `/players`, `/api/players`, `/api/analytics/player/9`, `/api/analytics/teams`, `/game/1` 모두 통과
+10. [x] **데이터 기반 명예의 특별 시상 체계 구축 (`calc_game_awards`)**:
+   - 🏅 **MVP (최우수 선수)**: 가중치 종합점수 1위 (타점, 홈런, 장타, 출루 종합 기여도)
+   - ✨ **MIP (Most Improved Player / 기량 발전상)**: 이전 경기 누적 대비 타율 상승 폭(+Δ)이 가장 크거나 탁월한 집중력을 선보인 성장형 선수
+   - 🛡️ **언성 히어로 (Unsung Hero / 숨은 공로상)**: 4번 타순 이상 하위 타선에서 묵묵히 득점과 찬스를 만든 알짜배기 비-MVP 선수
+   - 🔥 **허슬 플레이어 (Hustle Player / 열정 투혼상)**: 삼진 0개 및 최다 타석으로 끈질기게 인플레이를 만들어낸 투혼의 선수
+   - **SNS 공유 메시지 생성기 (`sns.html`)**: 특별 시상자 자동 추천 및 드롭다운 커스텀 선택 기능, 카카오톡/인스타그램 공유 문구에 훈훈하고 격려 넘치는 수여 문구 자동 출력
+   - **경기 상세 기록지 (`game_detail.html`)**: 상단에 W.B.C 공인 4대 영예의 시상(MVP, MIP, 언성 히어로, 허슬 플레이어) 하이라이트 배너 카드 탑재
 
 ---
 

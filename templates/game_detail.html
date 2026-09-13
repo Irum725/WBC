@@ -22,6 +22,62 @@
             </a>
         </div>
     </div>
+    {% if awards and awards.mvp %}
+    <div class="px-3 pt-3">
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #1F4E79, #2C3E50); color: white; border-radius: 10px;">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-secondary">
+                    <span class="fw-bold small text-warning"><i class="fa-solid fa-trophy me-1"></i>오늘의 경기 영예의 시상 (Official Awards)</span>
+                    <span class="badge bg-warning text-dark fw-bold">W.B.C 공인</span>
+                </div>
+                <div class="row g-2 text-center">
+                    <!-- MVP -->
+                    <div class="col-md-3 col-6">
+                        <div class="p-2 rounded bg-white bg-opacity-10 h-100">
+                            <span class="badge bg-warning text-dark mb-1">🏅 경기 MVP</span>
+                            <div class="fw-bold fs-6">{{ awards.mvp.name }} <small class="text-white-50">({{ awards.mvp.team }})</small></div>
+                            <small class="text-warning fw-bold">{{ awards.mvp.mvp_pts }}점</small>
+                            <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.mvp.ab }}타수 {{ awards.mvp.hits }}안타 {{ awards.mvp.rbi }}타점</div>
+                        </div>
+                    </div>
+                    <!-- MIP -->
+                    {% if awards.mip %}
+                    <div class="col-md-3 col-6">
+                        <div class="p-2 rounded bg-white bg-opacity-10 h-100">
+                            <span class="badge bg-success mb-1">✨ MIP (기량발전)</span>
+                            <div class="fw-bold fs-6">{{ awards.mip.name }} <small class="text-white-50">({{ awards.mip.team }})</small></div>
+                            <small class="text-light fw-bold">타율 {{ '%0.3f'|format(awards.mip.avg) }}</small>
+                            <div class="text-white-50 text-truncate" style="font-size: 0.75rem;" title="{{ awards.mip_reason }}">{{ awards.mip_reason }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <!-- Unsung Hero -->
+                    {% if awards.unsung %}
+                    <div class="col-md-3 col-6">
+                        <div class="p-2 rounded bg-white bg-opacity-10 h-100">
+                            <span class="badge bg-info text-dark mb-1">🛡️ 언성 히어로</span>
+                            <div class="fw-bold fs-6">{{ awards.unsung.name }} <small class="text-white-50">({{ awards.unsung.team }})</small></div>
+                            <small class="text-light fw-bold">{{ awards.unsung.batting_order }}번 타순</small>
+                            <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.unsung.hits }}안타 {{ awards.unsung.rbi }}타점 기여</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <!-- Hustle Player -->
+                    {% if awards.hustle %}
+                    <div class="col-md-3 col-6">
+                        <div class="p-2 rounded bg-white bg-opacity-10 h-100">
+                            <span class="badge bg-danger mb-1">🔥 허슬 플레이어</span>
+                            <div class="fw-bold fs-6">{{ awards.hustle.name }} <small class="text-white-50">({{ awards.hustle.team }})</small></div>
+                            <small class="text-light fw-bold">삼진 {{ awards.hustle.k }}개</small>
+                            <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.hustle.ab }}타수 적극 스윙</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-bordered table-sm align-middle text-center mb-0" style="font-size:0.85rem; min-width: 900px;">

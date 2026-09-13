@@ -53,6 +53,51 @@
                     </div>
                 </div>
 
+                <!-- Special Awards (MIP, Unsung Hero) Selection -->
+                <div class="card border-0 bg-light p-2 mb-3 rounded">
+                    <div class="fw-bold small text-dark mb-2">
+                        <i class="fa-solid fa-award text-warning me-1"></i>명예의 특별상 추천
+                    </div>
+                    
+                    <!-- MIP Selection -->
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-success mb-1 d-flex justify-content-between align-items-center">
+                            <span>✨ MIP (기량 발전상)</span>
+                            {% if awards and awards.mip %}<span class="badge bg-success-subtle text-success">추천: {{ awards.mip.name }}</span>{% endif %}
+                        </label>
+                        <select class="form-select form-select-sm" id="mipSelect">
+                            <option value="">(선택 안함)</option>
+                            {% for r in records %}
+                            <option value="{{ r.name }}" {% if awards and awards.mip and awards.mip.name == r.name %}selected{% endif %}>
+                                {{ r.name }} ({{ r.team }}) - {{ r.ab }}타수 {{ r.hits }}안타 (타율 {{ '%0.3f'|format(r.avg) }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if awards and awards.mip_reason %}
+                        <small class="text-muted" style="font-size: 0.78rem;">💡 {{ awards.mip_reason }}</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Unsung Hero Selection -->
+                    <div>
+                        <label class="form-label small fw-bold text-info-emphasis mb-1 d-flex justify-content-between align-items-center">
+                            <span>🛡️ 언성 히어로 (숨은 공로상)</span>
+                            {% if awards and awards.unsung %}<span class="badge bg-info-subtle text-info">추천: {{ awards.unsung.name }}</span>{% endif %}
+                        </label>
+                        <select class="form-select form-select-sm" id="unsungSelect">
+                            <option value="">(선택 안함)</option>
+                            {% for r in records %}
+                            <option value="{{ r.name }}" {% if awards and awards.unsung and awards.unsung.name == r.name %}selected{% endif %}>
+                                {{ r.name }} ({{ r.team }}) - {{ r.batting_order }}번 타순 / {{ r.rbi }}타점
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if awards and awards.unsung_reason %}
+                        <small class="text-muted" style="font-size: 0.78rem;">💡 {{ awards.unsung_reason }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <!-- MVP Score Rules Card -->
                 <div class="alert alert-light border small p-2 mb-3 text-secondary">
                     <div class="fw-bold mb-1"><i class="fa-solid fa-scale-balanced me-1 text-primary"></i>MVP 활약도 가중치 산정 기준</div>
@@ -69,7 +114,7 @@
                 </div>
 
                 <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="generateSns()">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>선택한 MVP로 메시지 다시 생성
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>선택한 시상자로 메시지 다시 생성
                 </button>
                 {% endif %}
             </div>
@@ -127,7 +172,7 @@
                 <div class="tab-content" id="snsTabContent">
                     <!-- Long Message -->
                     <div class="tab-pane fade show active" id="longContent">
-                        <textarea class="form-control font-monospace mb-3" id="longText" rows="18" readonly style="font-size: 0.9rem; line-height: 1.5;"></textarea>
+                        <textarea class="form-control font-monospace mb-3" id="longText" rows="20" readonly style="font-size: 0.9rem; line-height: 1.5;"></textarea>
                         <button class="btn btn-warning w-100 fw-bold py-2" onclick="copyText('longText')">
                             <i class="fa-solid fa-copy me-1"></i>카카오톡 메시지 전체 복사
                         </button>
@@ -135,7 +180,7 @@
 
                     <!-- Short Message -->
                     <div class="tab-pane fade" id="shortContent">
-                        <textarea class="form-control font-monospace mb-3" id="shortText" rows="12" readonly style="font-size: 0.95rem; line-height: 1.5;"></textarea>
+                        <textarea class="form-control font-monospace mb-3" id="shortText" rows="14" readonly style="font-size: 0.95rem; line-height: 1.5;"></textarea>
                         <button class="btn btn-info text-white w-100 fw-bold py-2" onclick="copyText('shortText')">
                             <i class="fa-solid fa-copy me-1"></i>요약 메시지 전체 복사
                         </button>
@@ -153,11 +198,13 @@ function generateSns() {
     const gid = document.getElementById('gameSelect').value;
     const selectedMvp = document.querySelector('input[name="mvpRadio"]:checked');
     const mvpVal = selectedMvp ? selectedMvp.value : '';
+    const mipVal = document.getElementById('mipSelect') ? document.getElementById('mipSelect').value : '';
+    const unsungVal = document.getElementById('unsungSelect') ? document.getElementById('unsungSelect').value : '';
 
     fetch('/api/sns/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_id: gid, mvp: mvpVal })
+        body: JSON.stringify({ game_id: gid, mvp: mvpVal, mip: mipVal, unsung: unsungVal })
     })
     .then(res => res.json())
     .then(data => {

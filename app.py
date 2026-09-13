@@ -285,7 +285,8 @@ def game_detail(gid):
         WHERE br.game_id=? ORDER BY br.team,br.batting_order
     ''',(gid,)).fetchall()
     conn.close()
-    return render_template('game_detail.html', game=game, records=recs, fmt_date=fmt_date)
+    awards = calc_game_awards(gid)
+    return render_template('game_detail.html', game=game, records=recs, awards=awards, fmt_date=fmt_date)
 
 @app.route('/game/<int:gid>/delete', methods=['POST'])
 def game_delete(gid):
@@ -364,12 +365,137 @@ def calc_mvp_points(r):
     pts = (rbi * 3.0) + (hr * 3.5) + (triples * 2.5) + (doubles * 1.8) + (singles * 1.0) + (avg * 2.0) - (k * 0.5) - (dp * 1.0)
     return round(max(0.0, pts), 1)
 
+def calc_game_awards(gid):
+    """
+    [WBC 경기별 명예의 전당 / 특별 시상 체계]
+    1. 🏅 MVP (최우수 선수): 가중치 종합점수 1위
+    2. ✨ MIP (Most Improved Player / 기량 발전상):
+       - 이전 경기 누적 타율 대비 이번 경기 타율 상승 폭(+Δ)이 가장 큰 성장 선수
+       - 단일 경기인 경우 비-MVP 중 최고 타율/출루 선수
+    3. 🛡️ 언성 히어로 (Unsung Hero / 보이지 않는 영웅상):
+       - 4번 타순 이상 하위 타선에서 묵묵히 득점과 찬스를 만든 알짜배기 비-MVP 선수
+    4. 🔥 허슬 플레이어 (Hustle Player / 열정 투혼상):
+       - 삼진 0개 및 최다 타석으로 끈질기게 인플레이를 만들어낸 투혼의 선수
+    """
+    conn = get_db()
+    game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
+    if not game:
+        conn.close()
+        return {}
+
+    recs = conn.execute('''
+        SELECT p.id as player_id, p.name, p.team,
+               br.batting_order, br.ab, br.hits, br.singles, br.doubles,
+               br.triples, br.hr, br.rbi, br.k, br.dp, br.avg, br.slg
+        FROM batting_records br
+        JOIN players p ON p.id = br.player_id
+        WHERE br.game_id = ?
+    ''', (gid,)).fetchall()
+
+    rec_list = []
+    for r in recs:
+        rd = dict(r)
+        rd['mvp_pts'] = calc_mvp_points(r)
+        rec_list.append(rd)
+
+    if not rec_list:
+        conn.close()
+        return {}
+
+    # 1. MVP: 최고 활약점수 1위
+    sorted_mvp = sorted([r for r in rec_list if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)
+    mvp = sorted_mvp[0] if sorted_mvp else None
+
+    # 2. MIP (Most Improved Player / 기량 발전상)
+    prior_games = conn.execute('''
+        SELECT id FROM games 
+        WHERE game_date < ? OR (game_date = ? AND id < ?)
+        ORDER BY game_date ASC, id ASC
+    ''', (game['game_date'], game['game_date'], gid)).fetchall()
+
+    mip = None
+    mip_reason = ""
+    if prior_games:
+        prior_gids = [g['id'] for g in prior_games]
+        placeholders = ','.join('?' * len(prior_gids))
+        prior_stats = conn.execute(f'''
+            SELECT player_id, SUM(ab) pab, SUM(hits) phits
+            FROM batting_records
+            WHERE game_id IN ({placeholders})
+            GROUP BY player_id
+        ''', prior_gids).fetchall()
+        p_dict = {p['player_id']: (p['phits'] / p['pab'] if p['pab'] > 0 else 0.0) for p in prior_stats}
+
+        improvement_list = []
+        for r in rec_list:
+            if r['ab'] >= 2 and (not mvp or r['player_id'] != mvp['player_id']):
+                p_avg = p_dict.get(r['player_id'], 0.0)
+                diff = r['avg'] - p_avg
+                improvement_list.append((diff, r, p_avg))
+        if improvement_list:
+            improvement_list.sort(key=lambda x: x[0], reverse=True)
+            best_diff, best_r, p_avg = improvement_list[0]
+            if best_diff > 0:
+                mip = best_r
+                mip_reason = f"이전 누적 대비 타율 +{best_diff:.3f} 대폭 상승! ({p_avg:.3f} → {best_r['avg']:.3f})"
+
+    if not mip:
+        non_mvp_cands = [r for r in rec_list if (not mvp or r['player_id'] != mvp['player_id']) and r['hits'] >= 1]
+        if non_mvp_cands:
+            non_mvp_cands.sort(key=lambda x: (x['avg'], x['hits']), reverse=True)
+            mip = non_mvp_cands[0]
+            mip_reason = f"놀라운 집중력과 정교한 타격 ({mip['ab']}타수 {mip['hits']}안타, 타율 {mip['avg']:.3f})"
+
+    # 3. 언성 히어로 (Unsung Hero / 보이지 않는 영웅상)
+    unsung_cands = [
+        r for r in rec_list 
+        if (r['batting_order'] or 1) >= 4 
+        and (not mvp or r['player_id'] != mvp['player_id'])
+        and (not mip or r['player_id'] != mip['player_id'])
+        and (r['hits'] >= 1 or r['rbi'] >= 1)
+    ]
+    unsung = None
+    unsung_reason = ""
+    if unsung_cands:
+        unsung_cands.sort(key=lambda x: (x['mvp_pts'], x['rbi'], x['hits']), reverse=True)
+        unsung = unsung_cands[0]
+        unsung_reason = f"하위 타선({unsung['batting_order']}번 타순) 알짜배기 활약 ({unsung['ab']}타수 {unsung['hits']}안타 {unsung['rbi']}타점)"
+    else:
+        remain = [r for r in sorted_mvp if (not mvp or r['player_id'] != mvp['player_id']) and (not mip or r['player_id'] != mip['player_id'])]
+        if remain:
+            unsung = remain[0]
+            unsung_reason = f"팀을 위한 묵묵한 공헌 ({unsung['ab']}타수 {unsung['hits']}안타)"
+
+    # 4. 허슬 플레이어 (Hustle Player / 열정 투혼상)
+    hustle_cands = [
+        r for r in rec_list
+        if r['ab'] >= 3 and r['k'] == 0
+        and (not mvp or r['player_id'] != mvp['player_id'])
+    ]
+    hustle = None
+    hustle_reason = ""
+    if hustle_cands:
+        hustle_cands.sort(key=lambda x: (x['ab'], x['hits']), reverse=True)
+        hustle = hustle_cands[0]
+        hustle_reason = f"{hustle['ab']}타수 삼진 0개! 끈질긴 인플레이와 전력 배팅"
+
+    conn.close()
+    return {
+        'mvp': mvp,
+        'mip': mip,
+        'mip_reason': mip_reason,
+        'unsung': unsung,
+        'unsung_reason': unsung_reason,
+        'hustle': hustle,
+        'hustle_reason': hustle_reason
+    }
+
 @app.route('/sns')
 @app.route('/sns/<int:gid>')
 def sns_page(gid=None):
     conn = get_db()
     games = conn.execute('SELECT * FROM games ORDER BY game_date DESC LIMIT 30').fetchall()
-    sel = None; recs = []; mvp_cands = []; hr_list = []; rbi_list = []
+    sel = None; recs = []; mvp_cands = []; hr_list = []; rbi_list = []; awards = {}
     if gid:
         sel = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
         raw_recs = conn.execute('''
@@ -388,11 +514,12 @@ def sns_page(gid=None):
         mvp_cands = sorted([r for r in recs if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)[:5]
         hr_list   = sorted([r for r in recs if r['hr'] > 0], key=lambda x: -x['hr'])
         rbi_list  = sorted([r for r in recs if r['rbi'] > 0], key=lambda x: -x['rbi'])
+        awards    = calc_game_awards(gid)
     conn.close()
     return render_template('sns.html',
         games=games, sel=sel, records=recs,
         mvp_cands=mvp_cands, hr_list=hr_list, rbi_list=rbi_list,
-        gid=gid, fmt_date=fmt_date)
+        awards=awards, gid=gid, fmt_date=fmt_date)
 
 @app.route('/api/sns/generate', methods=['POST'])
 def sns_generate():
@@ -440,26 +567,71 @@ def sns_generate():
     hr_lead = sorted([r for r in rec_list if r['hr'] > 0], key=lambda x: -x['hr'])
     rbi_lead = sorted([r for r in rec_list if r['rbi'] > 0], key=lambda x: -x['rbi'])
 
-    # MVP 선수 정보 추출
-    mvp_row = None
-    if mvp:
+    # MVP 및 특별 시상자 (MIP, 언성히어로, 허슬플레이어) 산정
+    awards = calc_game_awards(gid)
+    mip_input    = d.get('mip', '').strip()
+    unsung_input = d.get('unsung', '').strip()
+    hustle_input = d.get('hustle', '').strip()
+
+    def get_row(name):
         for r in rec_list:
-            if r['name'] == mvp:
-                mvp_row = r
-                break
-    if not mvp_row and sorted_hitters:
-        mvp_row = sorted_hitters[0]
+            if r['name'] == name: return r
+        return None
+
+    # MVP
+    mvp_row = None
+    if mvp: mvp_row = get_row(mvp)
+    if not mvp_row and sorted_hitters: mvp_row = sorted_hitters[0]
 
     mvp_detail = ""
     if mvp_row:
         mvp_name = mvp_row['name']
         mvp_pts = mvp_row.get('mvp_pts', calc_mvp_points(mvp_row))
         mvp_detail = f" [🔥 종합 {mvp_pts}점 | {mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점"
-        if mvp_row['hr'] > 0:
-            mvp_detail += f" {mvp_row['hr']}홈런"
+        if mvp_row['hr'] > 0: mvp_detail += f" {mvp_row['hr']}홈런"
         mvp_detail += f", 타율 {mvp_row['avg']:.3f}]"
     else:
         mvp_name = mvp or '—'
+
+    # MIP (기량 발전상)
+    mip_row = get_row(mip_input) if mip_input else awards.get('mip')
+    mip_name = mip_row['name'] if mip_row else ''
+    mip_detail = ""
+    if mip_row:
+        if awards.get('mip') and mip_name == awards['mip']['name'] and awards.get('mip_reason'):
+            mip_detail = f" {awards['mip_reason']}"
+        else:
+            mip_detail = f" {mip_row['ab']}타수 {mip_row['hits']}안타 (타율 {mip_row['avg']:.3f}) 눈부신 기량 발전!"
+
+    # Unsung Hero (숨은 공로상)
+    unsung_row = get_row(unsung_input) if unsung_input else awards.get('unsung')
+    unsung_name = unsung_row['name'] if unsung_row else ''
+    unsung_detail = ""
+    if unsung_row:
+        if awards.get('unsung') and unsung_name == awards['unsung']['name'] and awards.get('unsung_reason'):
+            unsung_detail = f" {awards['unsung_reason']}"
+        else:
+            unsung_detail = f" {unsung_row['batting_order']}번 타순 {unsung_row['ab']}타수 {unsung_row['hits']}안타 {unsung_row['rbi']}타점 팀 헌신!"
+
+    # Hustle Player (열정 투혼상)
+    hustle_row = get_row(hustle_input) if hustle_input else awards.get('hustle')
+    hustle_name = hustle_row['name'] if hustle_row else ''
+    hustle_detail = ""
+    if hustle_row:
+        if awards.get('hustle') and hustle_name == awards['hustle']['name'] and awards.get('hustle_reason'):
+            hustle_detail = f" {awards['hustle_reason']}"
+        else:
+            hustle_detail = f" 삼진 {hustle_row['k']}개 {hustle_row['ab']}타수 전력 배팅과 투혼!"
+
+    special_awards_lines = []
+    if mip_name and mip_name != mvp_name:
+        special_awards_lines.append(f"✨ MIP (기량 발전상): {mip_name} 형제 [{mip_detail.strip()}]")
+    if unsung_name and unsung_name != mvp_name and unsung_name != mip_name:
+        special_awards_lines.append(f"🛡️ 언성 히어로 (숨은 공로상): {unsung_name} 형제 [{unsung_detail.strip()}]")
+    if hustle_name and hustle_name != mvp_name and hustle_name != mip_name and hustle_name != unsung_name:
+        special_awards_lines.append(f"🔥 허슬 플레이어 (열정 투혼상): {hustle_name} 형제 [{hustle_detail.strip()}]")
+
+    special_awards_str = ("\n" + "\n".join(special_awards_lines)) if special_awards_lines else ""
 
     hr_line = ''
     if hr_lead:
@@ -496,10 +668,11 @@ def sns_generate():
 {team_stats_str}
 
 ━━━━━━━━━━━━━━━━━━━━━
-🎊 오늘의 하이라이트
+🎊 오늘의 영예의 시상 (Awards)
 ━━━━━━━━━━━━━━━━━━━━━
 
-🏅 MVP: {mvp_name} 형제{mvp_detail}{rbi_line}{hr_line}
+🏅 MVP: {mvp_name} 형제{mvp_detail}{special_awards_str}{rbi_line}{hr_line}
+
 📈 활약 타자 TOP 5 (가중치 종합점수순){top5}
 
 ━━━━━━━━━━━━━━━━━━━━━
@@ -508,6 +681,9 @@ def sns_generate():
 
 #세계로교회 #WBC #WorldBelieversClub
 #스크린야구 #전도회 #야빠"""
+
+    short_mip_str = f"\n✨ MIP (기량발전): {mip_name} 형제" if mip_name else ""
+    short_unsung_str = f"\n🛡️ 언성 히어로: {unsung_name} 형제" if unsung_name else ""
 
     lead_hitter_info = "—"
     if sorted_hitters:
@@ -519,7 +695,7 @@ def sns_generate():
 ⚡ World Team  {ws_score}점
 🔥 Believers  {bs_score}점
 
-🏅 MVP: {mvp_name} 형제{mvp_detail}
+🏅 MVP: {mvp_name} 형제{mvp_detail}{short_mip_str}{short_unsung_str}
 🎯 경기 최고 활약(종합 1위): {lead_hitter_info}
 {rbi_line}{hr_line}
 
