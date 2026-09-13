@@ -155,13 +155,18 @@ $$\text{출루율(OBP)} = \frac{\text{안타} + \text{볼넷}}{\text{타수} + \
      - **팀 합계 행 실시간 집계**: 각 팀 테이블 하단에 팀 총타수, 총안타, 총타점, 팀 타율 자동 계산
    - 개인별 시즌 누적 순위표 (`rankings.html`): 2팀/4팀 상관없이 선수 개인별 시즌 기록 자동 통합 합산
    - SNS 공유 메시지 생성기 (`sns.html`): 4개 팀일 경우 모든 팀 타격 성적 및 타점왕(해결사) 하이라이트 자동 추출
-   - 경기 히스토리 (`history.html`) 및 상세 기록지 (`game_detail.html`): 타점 열 표시
-   - 선수 명단 관리 (`players.html`)
-5. [x] **배치파일 런처 완전 안정화 및 콘솔 오류 원천 차단**:
+    - 경기 히스토리 (`history.html`) 및 상세 기록지 (`game_detail.html`):
+      - 타점 열 및 엑셀 다운로드 지원
+      - **`[✏️ 기록 수정]` 기능 전면 탑재**: 상세 화면 및 히스토리 목록 카드에서 수정 버튼 클릭 시 기존 선수, 타순, 이닝별 기호, 타점, 스코어가 100% 복원된 입력기(`game_input.html`)로 이동하여 자유로운 부분 수정 및 즉시 업데이트 지원
+    - 선수 명단 관리 (`players.html`)
+5. [x] **기존 경기 기록 수정 및 업데이트 엔진 구현**:
+   - `/game/<int:gid>/edit` 라우트 및 `game_save` UPDATE 로직 탑재
+   - 기존 경기 데이터를 세부 이닝 기호까지 그대로 복원하여 수정 후 1클릭 저장 지원
+6. [x] **배치파일 런처 완전 안정화 및 콘솔 오류 원천 차단**:
    - `wbc_run.bat` 내부의 복잡한 괄호/for루프 문법 오류(`... was unexpected at this time`)를 완전히 제거하고, 순수 표준 ASCII 배치파일로 군더더기 없이 재작성
    - `python app.py` 구동 성공 및 콘솔 창이 닫히지 않고 서버가 안정적으로 대기 상태를 유지함을 직접 검증 완료
-6. [x] **전체 라우트 자동화 테스트 통과**:
-   - `GET /`, `/rankings`, `/sns`, `/history`, `/game/1`, `/players`, `/game/new` (Status 200 OK)
+7. [x] **전체 라우트 자동화 테스트 통과**:
+   - `GET /`, `/rankings`, `/sns`, `/history`, `/game/1`, `/game/1/edit`, `/players`, `/game/new` (Status 200 OK)
    - `POST /api/sns/generate` (Status 200 OK, 메시지 생성 검증 완료)
    - `GET /api/export/excel/1` (Status 200 OK, 파일 다운로드 검증 완료)
 

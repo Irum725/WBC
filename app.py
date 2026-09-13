@@ -178,7 +178,32 @@ def game_new():
     conn.close()
     return render_template('game_input.html',
         players=players, today=date.today().isoformat(),
-        next_num=game_count+1)
+        next_num=game_count+1, edit_game=None, edit_records=[])
+
+@app.route('/game/<int:gid>/edit')
+def game_edit(gid):
+    conn = get_db()
+    game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
+    if not game:
+        conn.close()
+        flash('수정할 경기 정보를 찾을 수 없습니다.', 'danger')
+        return redirect(url_for('history'))
+    
+    players = conn.execute(
+        'SELECT * FROM players WHERE is_active=1 ORDER BY team, id'
+    ).fetchall()
+    recs = conn.execute('''
+        SELECT p.name, p.team, br.*
+        FROM batting_records br JOIN players p ON p.id=br.player_id
+        WHERE br.game_id=? ORDER BY br.team, br.batting_order
+    ''', (gid,)).fetchall()
+    conn.close()
+
+    return render_template('game_input.html',
+        players=players, today=game['game_date'],
+        next_num=game['game_number'],
+        edit_game=dict(game),
+        edit_records=[dict(r) for r in recs])
 
 @app.route('/game/save', methods=['POST'])
 def game_save():
@@ -188,19 +213,32 @@ def game_save():
     conn = get_db()
     try:
         c = conn.cursor()
+        edit_gid = data.get('edit_game_id')
         match_type = data.get('match_type', '2teams')
         score_details = data.get('score_details', '')
-        c.execute('''INSERT INTO games(game_date,game_number,location,world_score,believers_score,notes,match_type,score_details)
-                     VALUES(?,?,?,?,?,?,?,?)''',
-            (data.get('game_date'), data.get('game_number'),
-             data.get('location','스크린야구장'),
-             data.get('world_score'), data.get('believers_score'),
-             data.get('notes',''), match_type, score_details))
-        gid = c.lastrowid
+
+        if edit_gid:
+            gid = int(edit_gid)
+            c.execute('''UPDATE games 
+                         SET game_date=?, game_number=?, location=?, world_score=?, believers_score=?, notes=?, match_type=?, score_details=?
+                         WHERE id=?''',
+                (data.get('game_date'), data.get('game_number'),
+                 data.get('location','스크린야구장'),
+                 data.get('world_score'), data.get('believers_score'),
+                 data.get('notes',''), match_type, score_details, gid))
+            c.execute('DELETE FROM batting_records WHERE game_id=?', (gid,))
+        else:
+            c.execute('''INSERT INTO games(game_date,game_number,location,world_score,believers_score,notes,match_type,score_details)
+                         VALUES(?,?,?,?,?,?,?,?)''',
+                (data.get('game_date'), data.get('game_number'),
+                 data.get('location','스크린야구장'),
+                 data.get('world_score'), data.get('believers_score'),
+                 data.get('notes',''), match_type, score_details))
+            gid = c.lastrowid
+
         for rec in data.get('records',[]):
             pid = rec.get('player_id')
             pname = str(rec.get('name') or '').strip()
-            # If completely empty row (no name and no id, or no plate appearances and empty name), skip
             if not pname and not pid:
                 continue
             

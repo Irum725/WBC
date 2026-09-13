@@ -80,7 +80,14 @@
 <!-- 상단 헤더 & 모드 선택 -->
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-        <h4 class="fw-bold mb-1"><i class="fa-solid fa-baseball-bat-ball text-primary me-2"></i>경기 기록 입력</h4>
+        <h4 class="fw-bold mb-1">
+            {% if edit_game %}
+            <i class="fa-solid fa-pen-to-square text-warning me-2"></i>제{{ edit_game.game_number }}회 경기 기록 수정
+            <span class="badge bg-warning text-dark fs-6 ms-2">수정 모드</span>
+            {% else %}
+            <i class="fa-solid fa-baseball-bat-ball text-primary me-2"></i>경기 기록 입력
+            {% endif %}
+        </h4>
         <p class="text-muted small mb-0">동호회 4대 팀(World·Believers·Faith·Grace) 중 맞붙을 <strong>출전팀:출전팀</strong>을 직접 설정할 수 있습니다.</p>
     </div>
     <div class="btn-group shadow-sm" role="group">
@@ -103,6 +110,9 @@
         <span class="badge bg-light text-dark border" id="modeBadge">2개 팀 경기</span>
     </div>
     <div class="card-body py-3">
+        <!-- 수정 모드 경기 ID -->
+        <input type="hidden" id="editGameId" value="{{ edit_game.id if edit_game else '' }}">
+
         <!-- 일자, 회차, 장소 -->
         <div class="row g-2 mb-3 align-items-center">
             <div class="col-6 col-md-2">
@@ -116,7 +126,7 @@
                 <input type="date" id="gameDate" class="form-control form-control-sm" value="{{ today }}">
             </div>
             <div class="col-12 col-md-4">
-                <input type="text" id="gameLocation" class="form-control form-control-sm" value="스크린야구장" placeholder="경기 장소">
+                <input type="text" id="gameLocation" class="form-control form-control-sm" value="{{ edit_game.location if edit_game else '스크린야구장' }}" placeholder="경기 장소">
             </div>
         </div>
 
@@ -295,8 +305,8 @@
         <div class="text-muted small">
             <i class="fa-solid fa-circle-check text-success me-1"></i>즉석 추가한 대타/게스트는 자동으로 선수명단에 등록되며 누적 기록에 합산됩니다.
         </div>
-        <button type="button" class="btn btn-primary btn-lg px-4 fw-bold shadow" onclick="saveGameRecords()">
-            <i class="fa-solid fa-floppy-disk me-2"></i>이 경기 전체 기록 저장 완료
+        <button type="button" class="btn {% if edit_game %}btn-warning text-dark{% else %}btn-primary{% endif %} btn-lg px-4 fw-bold shadow" onclick="saveGameRecords()">
+            <i class="fa-solid fa-floppy-disk me-2"></i>{% if edit_game %}이 경기 수정 내용 최종 저장 완료{% else %}이 경기 전체 기록 저장 완료{% endif %}
         </button>
     </div>
 </div>
@@ -338,7 +348,11 @@ const dbPlayers = [
     {% endfor %}
 ];
 
-let matchMode = '2teams'; // '2teams' | '4teams'
+// 수정 모드 데이터 (존재 시)
+const editGame = {{ edit_game | tojson if edit_game else 'null' }};
+const editRecords = {{ edit_records | tojson if edit_records else '[]' }};
+
+let matchMode = (editGame && editGame.match_type) ? editGame.match_type : '2teams'; // '2teams' | '4teams'
 
 // W.B.C 4대 팀 마스터 메타 정보
 const WBC_TEAM_META = {
@@ -358,6 +372,63 @@ let symbolModal = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     symbolModal = new bootstrap.Modal(document.getElementById('symbolModal'));
+
+    // 수정 모드일 때 라디오 버튼 및 대진 점수 복원
+    if (editGame) {
+        if (editGame.match_type === '4teams') {
+            document.getElementById('m_4teams').checked = true;
+            matchMode = '4teams';
+            document.getElementById('matchupSec2Teams').classList.add('d-none');
+            document.getElementById('matchupSec4Teams').classList.remove('d-none');
+            document.getElementById('modeBadge').innerText = '4개 팀 (2개 룸) 경기';
+
+            try {
+                const det = JSON.parse(editGame.score_details || '{}');
+                if (det.room1) {
+                    const r1Keys = Object.keys(det.room1);
+                    if (r1Keys.length >= 2) {
+                        document.getElementById('selectR1T1').value = r1Keys[0];
+                        document.getElementById('scoreR1T1').value = det.room1[r1Keys[0]];
+                        document.getElementById('selectR1T2').value = r1Keys[1];
+                        document.getElementById('scoreR1T2').value = det.room1[r1Keys[1]];
+                    }
+                }
+                if (det.room2) {
+                    const r2Keys = Object.keys(det.room2);
+                    if (r2Keys.length >= 2) {
+                        document.getElementById('selectR2T1').value = r2Keys[0];
+                        document.getElementById('scoreR2T1').value = det.room2[r2Keys[0]];
+                        document.getElementById('selectR2T2').value = r2Keys[1];
+                        document.getElementById('scoreR2T2').value = det.room2[r2Keys[1]];
+                    }
+                }
+            } catch(e) {}
+        } else {
+            document.getElementById('m_2teams').checked = true;
+            matchMode = '2teams';
+            document.getElementById('matchupSec2Teams').classList.remove('d-none');
+            document.getElementById('matchupSec4Teams').classList.add('d-none');
+            document.getElementById('modeBadge').innerText = '2개 팀 경기';
+
+            try {
+                const det = JSON.parse(editGame.score_details || '{}');
+                const tKeys = Object.keys(det);
+                if (tKeys.length >= 2) {
+                    document.getElementById('selectTeam1').value = tKeys[0];
+                    document.getElementById('scoreTeam1').value = det[tKeys[0]];
+                    document.getElementById('selectTeam2').value = tKeys[1];
+                    document.getElementById('scoreTeam2').value = det[tKeys[1]];
+                } else {
+                    document.getElementById('scoreTeam1').value = editGame.world_score || 0;
+                    document.getElementById('scoreTeam2').value = editGame.believers_score || 0;
+                }
+            } catch(e) {
+                document.getElementById('scoreTeam1').value = editGame.world_score || 0;
+                document.getElementById('scoreTeam2').value = editGame.believers_score || 0;
+            }
+        }
+    }
+
     updateActiveTeams();
     initSetupList();
     renderSetupTable();
@@ -411,26 +482,63 @@ function updateActiveTeams() {
 
 function initSetupList() {
     setupList = [];
-    dbPlayers.forEach((p, idx) => {
-        let assignedTeam = p.defaultTeam;
-        if (!currentActiveTeamKeys.includes(assignedTeam)) {
-            assignedTeam = currentActiveTeamKeys[idx % currentActiveTeamKeys.length];
-        }
-        setupList.push({
-            player_id: p.id,
-            name: p.name,
-            team: assignedTeam,
-            order: 0,
-            rbi: 0,
-            innings: Array(13).fill('')
+
+    if (editRecords && editRecords.length > 0) {
+        // [수정 모드] 기존에 저장되어 있던 선수 타순과 이닝 기호, 타점 그대로 로드
+        const loadedPlayerIds = new Set();
+
+        editRecords.forEach(r => {
+            const inns = [];
+            for (let i = 1; i <= 13; i++) {
+                inns.push(r['inn' + i] || '');
+            }
+            setupList.push({
+                player_id: r.player_id || 0,
+                name: r.name,
+                team: r.team,
+                order: r.batting_order || 1,
+                rbi: r.rbi || 0,
+                innings: inns
+            });
+            if (r.player_id) loadedPlayerIds.add(r.player_id);
         });
-    });
 
-    recalcAutoOrders();
+        // DB 선수 중 이 경기에 출전하지 않았던 선수들은 불참(None)으로 목록에 추가
+        dbPlayers.forEach(p => {
+            if (!loadedPlayerIds.has(p.id)) {
+                setupList.push({
+                    player_id: p.id,
+                    name: p.name,
+                    team: 'None',
+                    order: 99,
+                    rbi: 0,
+                    innings: Array(13).fill('')
+                });
+            }
+        });
+    } else {
+        // [신규 모드] 기존 신규 생성 로직
+        dbPlayers.forEach((p, idx) => {
+            let assignedTeam = p.defaultTeam;
+            if (!currentActiveTeamKeys.includes(assignedTeam)) {
+                assignedTeam = currentActiveTeamKeys[idx % currentActiveTeamKeys.length];
+            }
+            setupList.push({
+                player_id: p.id,
+                name: p.name,
+                team: assignedTeam,
+                order: 0,
+                rbi: 0,
+                innings: Array(13).fill('')
+            });
+        });
 
-    // 대타용 빈 공란 2개 기본 추가!
-    addSetupBlankRow();
-    addSetupBlankRow();
+        recalcAutoOrders();
+
+        // 대타용 빈 공란 2개 기본 추가!
+        addSetupBlankRow();
+        addSetupBlankRow();
+    }
 }
 
 function recalcAutoOrders() {
@@ -838,7 +946,10 @@ function saveGameRecords() {
         });
     }
 
+    const editGameId = document.getElementById('editGameId') ? document.getElementById('editGameId').value : '';
+
     const payload = {
+        edit_game_id: editGameId ? parseInt(editGameId) : null,
         game_number: parseInt(document.getElementById('gameNumber').value) || 1,
         game_date: document.getElementById('gameDate').value,
         location: document.getElementById('gameLocation').value,

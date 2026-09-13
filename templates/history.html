@@ -40,6 +40,9 @@
                 <a href="{{ url_for('game_detail', gid=g.id) }}" class="btn btn-outline-primary btn-sm">
                     상세보기
                 </a>
+                <a href="{{ url_for('game_edit', gid=g.id) }}" class="btn btn-outline-warning text-dark btn-sm fw-bold" title="기록 수정">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>수정
+                </a>
                 <a href="{{ url_for('export_excel', gid=g.id) }}" class="btn btn-outline-success btn-sm" title="엑셀 다운로드">
                     <i class="fa-solid fa-file-excel me-1"></i>엑셀
                 </a>

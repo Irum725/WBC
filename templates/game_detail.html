@@ -11,6 +11,9 @@
             <span class="text-muted small"><i class="fa-solid fa-location-dot me-1"></i>{{ game.location }}</span>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ url_for('game_edit', gid=game.id) }}" class="btn btn-warning btn-sm fw-bold">
+                <i class="fa-solid fa-pen-to-square me-1"></i>기록 수정
+            </a>
             <a href="{{ url_for('export_excel', gid=game.id) }}" class="btn btn-success btn-sm">
                 <i class="fa-solid fa-file-excel me-1"></i>엑셀 다운로드 (.xlsx)
             </a>
