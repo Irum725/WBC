@@ -48,7 +48,11 @@
                     <tbody>
                         {% for p in players %}
                         <tr>
-                            <td class="fw-bold">{{ p.name }}</td>
+                            <td class="fw-bold">
+                                <a href="{{ url_for('analytics_page', player_id=p.id) }}" class="text-decoration-none text-dark hover-primary" title="성장 분석 차트 보기">
+                                    {{ p.name }} <i class="fa-solid fa-chart-line text-primary small ms-1"></i>
+                                </a>
+                            </td>
                             <td>
                                 <span class="badge {{ 'badge-world' if p.team == 'World' else 'badge-believers' }}">
                                     {{ p.team }}

@@ -52,25 +52,32 @@
 
         <!-- Quick Links -->
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
                 <a href="{{ url_for('game_new') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-primary text-white text-center">
                     <i class="fa-solid fa-pen-to-square fa-2x mb-2"></i>
                     <h6 class="fw-bold mb-1">경기 기록 입력</h6>
-                    <small class="text-white-50">이닝별 버튼 클릭으로 간편 입력</small>
+                    <small class="text-white-50">이닝별 간편 입력</small>
                 </a>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
                 <a href="{{ url_for('rankings') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-dark text-white text-center">
                     <i class="fa-solid fa-ranking-star fa-2x mb-2"></i>
-                    <h6 class="fw-bold mb-1">시즌 누적 순위표</h6>
-                    <small class="text-white-50">타율 / 장타율 / 홈런 순위</small>
+                    <h6 class="fw-bold mb-1">시즌 순위표</h6>
+                    <small class="text-white-50">타율/홈런 순위</small>
                 </a>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
+                <a href="{{ url_for('analytics_page') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 text-white text-center" style="background: linear-gradient(135deg, #6610f2, #8540f5);">
+                    <i class="fa-solid fa-chart-line fa-2x mb-2"></i>
+                    <h6 class="fw-bold mb-1">성장 분석 차트</h6>
+                    <small class="text-white-50">선수 실력 향상도</small>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
                 <a href="{{ url_for('sns_page') }}" class="card text-decoration-none shadow-sm border-0 h-100 p-3 bg-success text-white text-center">
                     <i class="fa-solid fa-comment-sms fa-2x mb-2"></i>
                     <h6 class="fw-bold mb-1">SNS 결과 추천</h6>
-                    <small class="text-white-50">카톡 공유 메시지 자동 생성</small>
+                    <small class="text-white-50">카톡 공유 자동 생성</small>
                 </a>
             </div>
         </div>

@@ -607,6 +607,146 @@ def api_players():
     conn.close()
     return jsonify([dict(p) for p in pl])
 
+@app.route('/analytics')
+def analytics_page():
+    pid = request.args.get('player_id', type=int)
+    conn = get_db()
+    players = conn.execute('SELECT id, name, team FROM players WHERE is_active=1 ORDER BY team, name').fetchall()
+    sel_player = None
+    if pid:
+        sel_player = conn.execute('SELECT * FROM players WHERE id=?', (pid,)).fetchone()
+    if not sel_player and players:
+        top_p = conn.execute('''
+            SELECT p.*, COUNT(br.id) gc 
+            FROM players p JOIN batting_records br ON br.player_id=p.id
+            GROUP BY p.id ORDER BY gc DESC, p.id ASC LIMIT 1
+        ''').fetchone()
+        sel_player = top_p if top_p else players[0]
+    conn.close()
+    return render_template('analytics.html', players=players, sel_player=sel_player)
+
+@app.route('/api/analytics/player/<int:pid>')
+def api_analytics_player(pid):
+    conn = get_db()
+    player = conn.execute('SELECT * FROM players WHERE id=?', (pid,)).fetchone()
+    if not player:
+        conn.close()
+        return jsonify({'err': '선수 없음'}), 404
+
+    recs = conn.execute('''
+        SELECT g.id as game_id, g.game_date, g.game_number,
+               br.ab, br.hits, br.singles, br.doubles, br.triples, br.hr,
+               br.rbi, br.k, br.dp, br.avg, br.slg, br.team
+        FROM batting_records br
+        JOIN games g ON g.id = br.game_id
+        WHERE br.player_id = ?
+        ORDER BY g.game_date ASC, g.id ASC
+    ''', (pid,)).fetchall()
+    conn.close()
+
+    timeline = []
+    run_ab = 0
+    run_hits = 0
+    run_hr = 0
+    run_rbi = 0
+    run_pts = 0.0
+
+    for r in recs:
+        game_ab = r['ab'] or 0
+        game_hits = r['hits'] or 0
+        game_hr = r['hr'] or 0
+        game_rbi = r['rbi'] or 0
+        game_avg = r['avg'] or 0.0
+        game_pts = calc_mvp_points(r)
+
+        run_ab += game_ab
+        run_hits += game_hits
+        run_hr += game_hr
+        run_rbi += game_rbi
+        run_pts += game_pts
+
+        c_avg = round(run_hits / run_ab, 3) if run_ab > 0 else 0.0
+
+        label = f"{r['game_number']}회차 ({fmt_date(r['game_date'])})"
+        timeline.append({
+            'game_id': r['game_id'],
+            'game_number': r['game_number'],
+            'game_date': r['game_date'],
+            'label': label,
+            'ab': game_ab,
+            'hits': game_hits,
+            'singles': r['singles'] or 0,
+            'doubles': r['doubles'] or 0,
+            'triples': r['triples'] or 0,
+            'hr': game_hr,
+            'rbi': game_rbi,
+            'k': r['k'] or 0,
+            'dp': r['dp'] or 0,
+            'game_avg': game_avg,
+            'cum_avg': c_avg,
+            'game_pts': game_pts,
+            'cum_pts': round(run_pts, 1)
+        })
+
+    total_games = len(recs)
+    overall_avg = round(run_hits / run_ab, 3) if run_ab > 0 else 0.0
+    rbi_per_game = round(run_rbi / total_games, 2) if total_games > 0 else 0.0
+    hr_per_game = round(run_hr / total_games, 2) if total_games > 0 else 0.0
+    avg_pts = round(run_pts / total_games, 1) if total_games > 0 else 0.0
+
+    # 5대 핵심 지표 산출 (100점 만점 정규화)
+    contact_score = min(100, max(20, round(overall_avg * 120 + 20)))
+    total_slg = round(sum(r['slg'] or 0 for r in recs) / total_games, 3) if total_games > 0 else 0.0
+    power_score = min(100, max(20, round(total_slg * 50 + (hr_per_game * 25))))
+    clutch_score = min(100, max(20, round(25 + rbi_per_game * 18)))
+    total_k = sum(r['k'] or 0 for r in recs)
+    k_rate = (total_k / run_ab) if run_ab > 0 else 0.0
+    discipline_score = min(100, max(30, round(95 - k_rate * 80)))
+    impact_score = min(100, max(20, round(25 + avg_pts * 3.2)))
+
+    radar = {
+        'contact': contact_score,
+        'power': power_score,
+        'clutch': clutch_score,
+        'discipline': discipline_score,
+        'impact': impact_score
+    }
+
+    best_game = max(timeline, key=lambda x: x['game_pts']) if timeline else None
+
+    trend = '유지'
+    if len(timeline) >= 2:
+        last_g = timeline[-1]
+        prev_g = timeline[-2]
+        if last_g['cum_avg'] > prev_g['cum_avg'] + 0.01:
+            trend = '상승세 🔥'
+        elif last_g['cum_avg'] < prev_g['cum_avg'] - 0.01:
+            trend = '조정기 💤'
+    elif len(timeline) == 1:
+        trend = '첫 경기 순항 🚀'
+
+    return jsonify({
+        'player': dict(player),
+        'total_games': total_games,
+        'total_ab': run_ab,
+        'total_hits': run_hits,
+        'total_hr': run_hr,
+        'total_rbi': run_rbi,
+        'overall_avg': overall_avg,
+        'avg_pts': avg_pts,
+        'radar': radar,
+        'trend': trend,
+        'best_game': best_game,
+        'timeline': timeline
+    })
+
+@app.route('/api/analytics/teams')
+def api_analytics_teams():
+    conn = get_db()
+    games = conn.execute('SELECT id, game_date, game_number, world_score, believers_score FROM games ORDER BY game_date ASC, id ASC').fetchall()
+    conn.close()
+    return jsonify({'games': [dict(g) for g in games]})
+
 if __name__ == '__main__':
     init_db()
     print('\n' + '='*52)

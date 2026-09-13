@@ -179,10 +179,20 @@ $$\text{출루율(OBP)} = \frac{\text{안타} + \text{볼넷}}{\text{타수} + \
 6. [x] **배치파일 런처 완전 안정화 및 콘솔 오류 원천 차단**:
    - `wbc_run.bat` 내부의 복잡한 괄호/for루프 문법 오류(`... was unexpected at this time`)를 완전히 제거하고, 순수 표준 ASCII 배치파일로 군더더기 없이 재작성
    - `python app.py` 구동 성공 및 콘솔 창이 닫히지 않고 서버가 안정적으로 대기 상태를 유지함을 직접 검증 완료
-7. [x] **전체 라우트 자동화 테스트 통과**:
-   - `GET /`, `/rankings`, `/sns`, `/history`, `/game/1`, `/game/1/edit`, `/players`, `/game/new` (Status 200 OK)
-   - `POST /api/sns/generate` (Status 200 OK, 메시지 생성 검증 완료)
-   - `GET /api/export/excel/1` (Status 200 OK, 파일 다운로드 검증 완료)
+8. [x] **선수 성장 분석 및 경기 능률 차트 시스템 구축 (`/analytics`, `templates/analytics.html`)**:
+   - **경기가 누적될수록 실력 향상도가 뚜렷해지는 타임라인 시각화**:
+     - **차트 1 (타율 성장 곡선)**: 경기별 당일 타율(점선)과 시즌 누적 타율(굵은 실선)을 함께 표기하여 선수의 실제 실력 향상 및 안정화 궤적을 확인
+     - **차트 2 (클러치/생산력)**: 1루타/2루타/3루타/홈런 적층 막대그래프(Stacked Bar) + 타점(Line)을 결합하여 해결사 능력의 경기별 추이 분석
+     - **차트 3 (5대 핵심 능력치 레이더)**: 컨택트(타율), 파워(장타율/홈런), 클러치(타점), 선구안(삼진/병살 억제), 기여도(MVP 점수) 100점 만점 육각형 방사형 차트
+     - **차트 4 (MVP 종합 활약도 추이)**: 경기별 가중치 종합점수(MVP 점수) 변동 폭 및 최고 경기(Career-High) 시각화
+   - **1:1 라이벌 비교 모드 (Head-to-Head)**: 두 선수를 선택하여 누적 타율 및 레이더 능력치를 한 화면에서 즉각 비교 분석
+   - **전체 경기 출전 상세 로그 테이블 (Game Log)**: 경기별 세부 안타/타점/타율/MVP점수 히스토리 조회
+   - **전체 메뉴 및 순위표 연동**:
+     - 네비게이션 바에 `[성장분석]` 탭 신설
+     - 대시보드 홈(`index.html`)에 바로가기 카드 배치
+     - 순위표(`rankings.html`) 및 선수 목록(`players.html`)에서 선수 이름 클릭 시 해당 선수 성장 차트로 원클릭 이동
+9. [x] **전체 라우트 자동화 테스트 통과 (13개 라우트 전원 200 OK)**:
+   - `GET /`, `/game/new`, `/rankings`, `/analytics`, `/analytics?player_id=9`, `/history`, `/sns`, `/sns/1`, `/players`, `/api/players`, `/api/analytics/player/9`, `/api/analytics/teams`, `/game/1` 모두 통과
 
 ---
 
