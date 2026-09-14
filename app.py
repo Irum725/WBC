@@ -4,9 +4,10 @@ WBC 스크린야구 기록 관리 시스템 - Flask 메인 애플리케이션
 세계로교회 World Believers Club
 """
 from flask import (Flask, render_template, request, jsonify,
-                   redirect, url_for, send_file, flash)
+                   redirect, url_for, send_file, flash, session)
 import sys, os, io, sqlite3, json
 from datetime import date, datetime
+from functools import wraps
 try:
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
@@ -14,18 +15,41 @@ except Exception:
     pass
 
 app = Flask(__name__)
-app.secret_key = 'wbc-screen-baseball-secret-2026'
+app.secret_key = os.environ.get('SECRET_KEY', 'wbc-screen-baseball-secret-2026')
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wbc_data.db')
 
+# 운영진 마스터 비밀번호 (교회 전화번호 뒷자리 7500, 환경변수 ADMIN_PASSWORD로 변경 가능)
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '7500')
+
 # ─────────────────────────────────────────────
-# DB 헬퍼
+# 운영진 인증 헬퍼 및 컨텍스트
+# ─────────────────────────────────────────────
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_admin'):
+            if request.is_json or request.path.startswith('/api/'):
+                return jsonify({'ok': False, 'err': '운영진 권한이 필요합니다. 먼저 로그인해주세요.'}), 401
+            flash('🔒 운영진 권한이 필요한 기능입니다. 비밀번호를 입력해주세요.', 'warning')
+            return redirect(url_for('login_page', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.context_processor
+def inject_auth():
+    return {'is_admin': session.get('is_admin', False)}
+
+# ─────────────────────────────────────────────
+# DB 헬퍼 (WAL 모드 & Busy Timeout 동시성 강화)
 # ─────────────────────────────────────────────
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON')
+    conn.execute('PRAGMA journal_mode = WAL')
+    conn.execute('PRAGMA busy_timeout = 5000')
     return conn
 
 def init_db():
@@ -133,6 +157,38 @@ def fmt_date(d):
         return str(d)
 
 # ─────────────────────────────────────────────
+# 운영진 인증 라우트
+# ─────────────────────────────────────────────
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    next_url = request.args.get('next') or request.form.get('next') or url_for('index')
+    if request.method == 'POST':
+        pw = request.form.get('password', '').strip()
+        if pw == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            flash('🔓 운영진 모드로 로그인되었습니다.', 'success')
+            return redirect(next_url)
+        else:
+            flash('❌ 비밀번호가 올바르지 않습니다. 다시 확인해주세요.', 'danger')
+            return render_template('login.html', next=next_url)
+    return render_template('login.html', next=next_url)
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.get_json() or {}
+    pw = str(data.get('password', '')).strip()
+    if pw == ADMIN_PASSWORD:
+        session['is_admin'] = True
+        return jsonify({'ok': True, 'msg': '로그인 성공'})
+    return jsonify({'ok': False, 'err': '비밀번호가 올바르지 않습니다.'}), 401
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    session.pop('is_admin', None)
+    flash('🔒 로그아웃되었습니다. 일반 열람 모드로 전환됩니다.', 'info')
+    return redirect(request.referrer or url_for('index'))
+
+# ─────────────────────────────────────────────
 # 라우트
 # ─────────────────────────────────────────────
 @app.route('/')
@@ -169,6 +225,7 @@ def index():
         top5=top5, latest_recs=latest_recs, fmt_date=fmt_date)
 
 @app.route('/game/new')
+@admin_required
 def game_new():
     conn = get_db()
     players = conn.execute(
@@ -181,6 +238,7 @@ def game_new():
         next_num=game_count+1, edit_game=None, edit_records=[])
 
 @app.route('/game/<int:gid>/edit')
+@admin_required
 def game_edit(gid):
     conn = get_db()
     game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
@@ -206,6 +264,7 @@ def game_edit(gid):
         edit_records=[dict(r) for r in recs])
 
 @app.route('/game/save', methods=['POST'])
+@admin_required
 def game_save():
     data = request.get_json()
     if not data:
@@ -289,6 +348,7 @@ def game_detail(gid):
     return render_template('game_detail.html', game=game, records=recs, awards=awards, fmt_date=fmt_date)
 
 @app.route('/game/<int:gid>/delete', methods=['POST'])
+@admin_required
 def game_delete(gid):
     conn = get_db()
     conn.execute('DELETE FROM games WHERE id=?',(gid,))
@@ -706,6 +766,7 @@ def sns_generate():
     return jsonify({'long': long_msg, 'short': short_msg})
 
 @app.route('/players')
+@admin_required
 def players_page():
     conn = get_db()
     pl = conn.execute('''
@@ -717,6 +778,7 @@ def players_page():
     return render_template('players.html', players=pl)
 
 @app.route('/players/add', methods=['POST'])
+@admin_required
 def player_add():
     name = request.form.get('name','').strip()
     team = request.form.get('team','')
@@ -728,6 +790,7 @@ def player_add():
     return redirect(url_for('players_page'))
 
 @app.route('/players/<int:pid>/toggle', methods=['POST'])
+@admin_required
 def player_toggle(pid):
     conn = get_db()
     conn.execute('UPDATE players SET is_active=1-is_active WHERE id=?',(pid,))

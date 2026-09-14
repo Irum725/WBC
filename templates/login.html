@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}운영진 로그인 - W.B.C 기록 관리{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-5 col-sm-8 col-11">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-dark text-white text-center py-4">
+                <div class="fs-1 mb-2">🔐</div>
+                <h4 class="fw-bold mb-1">운영진 인증</h4>
+                <p class="text-white-50 small mb-0">경기 기록 입력, 수정, 삭제를 위한 비밀번호를 입력해주세요.</p>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <form method="POST" action="{{ url_for('login_page') }}">
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <div class="mb-4">
+                        <label for="password" class="form-label fw-bold text-secondary small">운영진 비밀번호 (PIN)</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-key text-muted"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="운영진 비밀번호 4자리 입력" autofocus required autocomplete="current-password">
+                        </div>
+                        <div class="form-text mt-2 text-muted small">
+                            <i class="fa-solid fa-circle-info me-1"></i>일반 회원(열람 전용)은 로그인 없이 자유롭게 이용하실 수 있습니다.
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm">
+                            <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> 로그인하기
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            홈으로 돌아가기
+                        </a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-light text-center py-3 text-muted small">
+                세계로교회 W.B.C 스크린야구 기술기록위원회
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -50,10 +50,66 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('players_page') }}"><i class="fa-solid fa-users me-1"></i>선수관리</a>
                     </li>
+                    <!-- 운영진 인증 버튼/상태 -->
+                    {% if is_admin %}
+                    <li class="nav-item d-flex align-items-center ms-lg-3 my-2 my-lg-0">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 me-2" title="현재 경기 입력, 수정, 삭제가 가능합니다.">
+                            <i class="fa-solid fa-lock-open me-1"></i>운영진 모드
+                        </span>
+                        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light text-nowrap">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>로그아웃
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item ms-lg-3 my-2 my-lg-0">
+                        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold text-nowrap shadow-sm" data-bs-toggle="modal" data-bs-target="#adminLoginModal">
+                            <i class="fa-solid fa-lock me-1"></i>운영진 로그인
+                        </button>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Admin Login Modal -->
+    <div class="modal fade" id="adminLoginModal" tabindex="-1" aria-labelledby="adminLoginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="adminLoginModalLabel">
+                        <i class="fa-solid fa-key me-2 text-warning"></i>운영진 비밀번호 인증
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('login_page') }}">
+                    <div class="modal-body p-4">
+                        <p class="text-muted small mb-3">
+                            경기 기록 입력, 수정, 삭제 및 선수 관리를 위해 운영진 비밀번호를 입력해주세요.
+                        </p>
+                        <input type="hidden" name="next" value="{{ request.url }}">
+                        <div class="mb-3">
+                            <label for="modalPassword" class="form-label fw-bold text-secondary small">운영진 PIN / 비밀번호</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
+                                <input type="password" class="form-control" id="modalPassword" name="password" 
+                                       placeholder="운영진 비밀번호 4자리 입력" required autocomplete="current-password">
+                            </div>
+                            <div class="form-text mt-2 text-muted small">
+                                <i class="fa-solid fa-shield-halved me-1"></i>일반 회원 조회(순위표, 차트, 리포트 등)는 로그인 없이 열람 가능합니다.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                        <button type="submit" class="btn btn-primary fw-bold px-4">
+                            <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> 로그인
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Flash Messages -->
     <div class="container mt-3">
