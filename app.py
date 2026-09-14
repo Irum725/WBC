@@ -556,6 +556,9 @@ def sns_page(gid=None):
     conn = get_db()
     games = conn.execute('SELECT * FROM games ORDER BY game_date DESC LIMIT 30').fetchall()
     sel = None; recs = []; mvp_cands = []; hr_list = []; rbi_list = []; awards = {}
+    if not gid and games:
+        gid = games[0]['id']
+
     if gid:
         sel = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
         raw_recs = conn.execute('''

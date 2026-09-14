@@ -79,7 +79,7 @@
                     </div>
 
                     <!-- Unsung Hero Selection -->
-                    <div>
+                    <div class="mb-2">
                         <label class="form-label small fw-bold text-info-emphasis mb-1 d-flex justify-content-between align-items-center">
                             <span>🛡️ 언성 히어로 (숨은 공로상)</span>
                             {% if awards and awards.unsung %}<span class="badge bg-info-subtle text-info">추천: {{ awards.unsung.name }}</span>{% endif %}
@@ -94,6 +94,25 @@
                         </select>
                         {% if awards and awards.unsung_reason %}
                         <small class="text-muted" style="font-size: 0.78rem;">💡 {{ awards.unsung_reason }}</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hustle Player Selection -->
+                    <div>
+                        <label class="form-label small fw-bold text-danger-emphasis mb-1 d-flex justify-content-between align-items-center">
+                            <span>🔥 허슬 플레이어 (열정 투혼상)</span>
+                            {% if awards and awards.hustle %}<span class="badge bg-danger-subtle text-danger">추천: {{ awards.hustle.name }}</span>{% endif %}
+                        </label>
+                        <select class="form-select form-select-sm" id="hustleSelect">
+                            <option value="">(선택 안함)</option>
+                            {% for r in records %}
+                            <option value="{{ r.name }}" {% if awards and awards.hustle and awards.hustle.name == r.name %}selected{% endif %}>
+                                {{ r.name }} ({{ r.team }}) - {{ r.ab }}타수 삼진 {{ r.k }}개
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if awards and awards.hustle_reason %}
+                        <small class="text-muted" style="font-size: 0.78rem;">💡 {{ awards.hustle_reason }}</small>
                         {% endif %}
                     </div>
                 </div>
@@ -200,11 +219,12 @@ function generateSns() {
     const mvpVal = selectedMvp ? selectedMvp.value : '';
     const mipVal = document.getElementById('mipSelect') ? document.getElementById('mipSelect').value : '';
     const unsungVal = document.getElementById('unsungSelect') ? document.getElementById('unsungSelect').value : '';
+    const hustleVal = document.getElementById('hustleSelect') ? document.getElementById('hustleSelect').value : '';
 
     fetch('/api/sns/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_id: gid, mvp: mvpVal, mip: mipVal, unsung: unsungVal })
+        body: JSON.stringify({ game_id: gid, mvp: mvpVal, mip: mipVal, unsung: unsungVal, hustle: hustleVal })
     })
     .then(res => res.json())
     .then(data => {
