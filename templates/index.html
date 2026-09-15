@@ -77,38 +77,93 @@
             </div>
 
             <div class="scoreboard-body">
-                <div class="row text-center align-items-center g-3">
-                    <!-- World Team Score -->
-                    <div class="col-5">
-                        <div class="score-box {{ 'winner' if w_is_win else '' }}">
-                            {% if w_is_win %}<span class="winner-crown">WINNER 👑</span>{% endif %}
-                            <span class="score-team-badge badge-world">World ⚡</span>
-                            <div class="score-digit text-primary">{{ w_score }}</div>
-                            {% if latest_team_stats.get('World') %}
-                            <div class="text-white-50 small mt-2" style="font-size: 0.75rem;">
-                                안타 {{ latest_team_stats['World']['thits'] }} • 홈런 {{ latest_team_stats['World']['thr'] }}
-                            </div>
-                            {% endif %}
-                        </div>
+                <!-- 경기 결과 상단 요약 배너 -->
+                <div class="scoreboard-subbanner">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-warning fs-5">🏆</span>
+                        {% if b_is_win %}
+                        <strong class="text-warning">Believers WIN!!</strong>
+                        <span class="badge bg-danger text-white">10 : 1 승리</span>
+                        {% elif w_is_win %}
+                        <strong class="text-primary">World WIN!!</strong>
+                        <span class="badge bg-primary text-white">{{ w_score }} : {{ b_score }} 승리</span>
+                        {% else %}
+                        <span class="badge bg-secondary text-white">무승부</span>
+                        {% endif %}
                     </div>
-
-                    <!-- VS Center Pillar -->
-                    <div class="col-2">
-                        <div class="text-secondary fw-black fs-3" style="font-style: italic; opacity: 0.6;">VS</div>
-                        <span class="badge bg-dark border border-secondary text-white-50 small px-2 py-1 mt-1" style="font-size: 0.65rem;">9이닝종료</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-baseball-bat-ball me-1"></i>스크린 6이닝 매치 (4회~9회 진행)
+                        </span>
                     </div>
+                </div>
 
-                    <!-- Believers Team Score -->
-                    <div class="col-5">
-                        <div class="score-box {{ 'winner' if b_is_win else '' }}">
-                            {% if b_is_win %}<span class="winner-crown">WINNER 👑</span>{% endif %}
-                            <span class="score-team-badge badge-believers">Believers 🔥</span>
-                            <div class="score-digit text-danger">{{ b_score }}</div>
-                            {% if latest_team_stats.get('Believers') %}
-                            <div class="text-white-50 small mt-2" style="font-size: 0.75rem;">
-                                안타 {{ latest_team_stats['Believers']['thits'] }} • 홈런 {{ latest_team_stats['Believers']['thr'] }}
-                            </div>
-                            {% endif %}
+                <!-- 회별 전광판 표기식 매트릭스 테이블 -->
+                <div class="table-responsive mb-2">
+                    <div class="scoreboard-matrix-wrap">
+                        <table class="scoreboard-matrix-table">
+                            <thead>
+                                <tr>
+                                    <th class="th-team">SCORE BOARD</th>
+                                    {% for inn in range(1, 10) %}
+                                    <th class="th-inn {% if inn >= 4 %}active-match-inn{% endif %}">
+                                        <div>{{ inn }}</div>
+                                        {% if inn >= 4 %}<span class="sub-inn-label">{{ inn - 3 }}회</span>{% endif %}
+                                    </th>
+                                    {% endfor %}
+                                    <th class="th-stat th-r">R</th>
+                                    <th class="th-stat th-h">H</th>
+                                    <th class="th-stat th-e">E</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if scoreboard and scoreboard.teams %}
+                                    {% for t in scoreboard.teams %}
+                                    <tr class="{% if t.is_winner %}winner-row{% endif %}">
+                                        <td class="td-team">
+                                            <span class="badge {{ t.badge_class }} me-1">{{ t.name }}</span>
+                                            <span class="order-chip text-white-50">{{ t.order_label }}</span>
+                                            {% if t.is_winner %}<span class="winner-mark ms-1">👑</span>{% endif %}
+                                        </td>
+                                        {% for s in t.scores %}
+                                        {% set inn_idx = loop.index %}
+                                        <td class="td-inn {% if inn_idx >= 4 %}active-match-inn{% endif %} {% if s not in [0, '0', '-', ''] %}scoring-cell{% endif %}">
+                                            {{ s }}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="td-stat td-r {% if t.is_winner %}winner-r{% endif %}">{{ t.r }}</td>
+                                        <td class="td-stat td-h">{{ t.h }}</td>
+                                        <td class="td-stat td-e">{{ t.e }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td class="td-team"><span class="badge badge-world me-1">World ⚡</span> <span class="order-chip text-white-50">초 (선공)</span></td>
+                                        <td class="td-inn">0</td><td class="td-inn">0</td><td class="td-inn">0</td>
+                                        <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">1</td>
+                                        <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td>
+                                        <td class="td-stat td-r">{{ w_score }}</td>
+                                        <td class="td-stat td-h">{{ latest_team_stats.get('World', {}).get('thits', 7) }}</td>
+                                        <td class="td-stat td-e">0</td>
+                                    </tr>
+                                    <tr class="winner-row">
+                                        <td class="td-team"><span class="badge badge-believers me-1">Believers 🔥</span> <span class="order-chip text-white-50">말 (후공)</span> <span class="winner-mark ms-1">👑</span></td>
+                                        <td class="td-inn">0</td><td class="td-inn">0</td><td class="td-inn">0</td>
+                                        <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">2</td>
+                                        <td class="td-inn active-match-inn scoring-cell">3</td><td class="td-inn active-match-inn scoring-cell">5</td><td class="td-inn active-match-inn">X</td>
+                                        <td class="td-stat td-r winner-r">{{ b_score }}</td>
+                                        <td class="td-stat td-h">{{ latest_team_stats.get('Believers', {}).get('thits', 15) }}</td>
+                                        <td class="td-stat td-e">0</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+
+                        <div class="scoreboard-note-bar">
+                            <i class="fa-solid fa-circle-info text-info"></i>
+                            <span>
+                                <strong>안내:</strong> 스크린야구 6이닝 매치 규정으로 <strong>4회~9회(실제 1~6회)</strong>가 진행되었으며, 초(World)/말(Believers) 공격 순서가 반영되었습니다.
+                            </span>
                         </div>
                     </div>
                 </div>

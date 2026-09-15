@@ -211,6 +211,77 @@ def logout():
     return redirect(request.referrer or url_for('index'))
 
 # ─────────────────────────────────────────────
+# 전광판(Scoreboard) 데이터 파싱 헬퍼
+# ─────────────────────────────────────────────
+def get_scoreboard_data(game, conn=None):
+    if not game:
+        return None
+    details = {}
+    if game['score_details']:
+        try:
+            details = json.loads(game['score_details'])
+        except Exception:
+            details = {}
+    
+    if details.get('teams') and isinstance(details['teams'], list):
+        return details
+    
+    gid = game['id']
+    close_conn = False
+    if conn is None:
+        conn = get_db()
+        close_conn = True
+        
+    t_stats = conn.execute('''
+        SELECT team, SUM(ab) tab, SUM(hits) thits, SUM(hr) thr, SUM(rbi) trbi
+        FROM batting_records WHERE game_id = ?
+        GROUP BY team
+    ''', (gid,)).fetchall()
+    
+    stat_map = {row['team']: dict(row) for row in t_stats}
+    if close_conn:
+        conn.close()
+        
+    w_score = game['world_score'] if game['world_score'] is not None else 0
+    b_score = game['believers_score'] if game['believers_score'] is not None else 0
+    
+    teams = [
+        {
+            'name': 'World',
+            'team_name': 'World ⚡',
+            'badge_class': 'badge-world',
+            'order': 'top',
+            'order_label': '초 (선공)',
+            'scores': ['-'] * 9,
+            'r': w_score,
+            'h': stat_map.get('World', {}).get('thits', 0),
+            'e': 0,
+            'hr': stat_map.get('World', {}).get('thr', 0),
+            'is_winner': w_score > b_score
+        },
+        {
+            'name': 'Believers',
+            'team_name': 'Believers 🔥',
+            'badge_class': 'badge-believers',
+            'order': 'bottom',
+            'order_label': '말 (후공)',
+            'scores': ['-'] * 9,
+            'r': b_score,
+            'h': stat_map.get('Believers', {}).get('thits', 0),
+            'e': 0,
+            'hr': stat_map.get('Believers', {}).get('thr', 0),
+            'is_winner': b_score > w_score
+        }
+    ]
+    return {
+        'innings_count': 9,
+        'start_inning': 1,
+        'played_innings': 9,
+        'note': '정규 경기',
+        'teams': teams
+    }
+
+# ─────────────────────────────────────────────
 # 라우트
 # ─────────────────────────────────────────────
 @app.route('/')
@@ -254,8 +325,10 @@ def index():
     latest_recs = []
     latest_team_stats = {}
     latest_awards = {}
+    scoreboard = None
     if latest:
         gid = latest['id']
+        scoreboard = get_scoreboard_data(latest, conn)
         latest_recs = conn.execute('''
             SELECT p.name,p.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
@@ -277,7 +350,7 @@ def index():
         latest=latest, game_count=game_count, total_players=total_players,
         season_hits=season_hits, season_hr=season_hr, season_rbi=season_rbi, season_avg=season_avg,
         top5=top5, latest_recs=latest_recs, latest_team_stats=latest_team_stats,
-        latest_awards=latest_awards, fmt_date=fmt_date)
+        latest_awards=latest_awards, scoreboard=scoreboard, fmt_date=fmt_date)
 
 @app.route('/game/new')
 @admin_required
@@ -393,6 +466,7 @@ def game_detail(gid):
     conn = get_db()
     game = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
     if not game: return redirect(url_for('history'))
+    scoreboard = get_scoreboard_data(game, conn)
     recs = conn.execute('''
         SELECT p.name,p.team,br.*
         FROM batting_records br JOIN players p ON p.id=br.player_id
@@ -400,7 +474,7 @@ def game_detail(gid):
     ''',(gid,)).fetchall()
     conn.close()
     awards = calc_game_awards(gid)
-    return render_template('game_detail.html', game=game, records=recs, awards=awards, fmt_date=fmt_date)
+    return render_template('game_detail.html', game=game, records=recs, awards=awards, scoreboard=scoreboard, fmt_date=fmt_date)
 
 @app.route('/game/<int:gid>/delete', methods=['POST'])
 @admin_required

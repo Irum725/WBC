@@ -350,3 +350,161 @@ body {
 .medal-3 { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
 .medal-other { background: transparent; color: #94a3b8; font-size: 0.85rem; }
 
+/* 7. 스타디움 LED 이닝 전광판 (회별 전광판 표기식) */
+.scoreboard-matrix-wrap {
+    background: radial-gradient(circle at 50% 20%, #0d1a33 0%, #060b17 100%);
+    border: 1px solid rgba(56, 189, 248, 0.28);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+.scoreboard-matrix-wrap::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+}
+.scoreboard-matrix-table {
+    width: 100%;
+    min-width: 580px;
+    border-collapse: separate;
+    border-spacing: 3px;
+    text-align: center;
+}
+.scoreboard-matrix-table th {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 700;
+    padding: 6px 3px;
+    vertical-align: middle;
+}
+.scoreboard-matrix-table th.th-team {
+    text-align: left;
+    color: #38bdf8;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    padding-left: 8px;
+    width: 130px;
+}
+.scoreboard-matrix-table th.th-inn {
+    width: 32px;
+}
+.scoreboard-matrix-table th.active-match-inn {
+    color: #facc15;
+    background: rgba(250, 204, 21, 0.08);
+    border-radius: 6px 6px 0 0;
+}
+.sub-inn-label {
+    display: block;
+    font-size: 0.62rem;
+    color: #38bdf8;
+    font-weight: 600;
+    line-height: 1;
+    margin-top: 2px;
+}
+.scoreboard-matrix-table th.th-stat {
+    width: 44px;
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+.th-r { color: #fbbf24 !important; }
+.th-h { color: #34d399 !important; }
+.th-e { color: #cbd5e1 !important; }
+
+.scoreboard-matrix-table td {
+    padding: 8px 3px;
+    vertical-align: middle;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+.td-team {
+    text-align: left !important;
+    padding-left: 8px !important;
+    white-space: nowrap;
+}
+.td-team .order-chip {
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.td-team .winner-mark {
+    font-size: 0.85rem;
+    filter: drop-shadow(0 0 4px #ffc107);
+}
+.td-inn {
+    font-family: 'Consolas', monospace;
+    font-weight: 700;
+    color: #475569;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+}
+.td-inn.active-match-inn {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.04);
+}
+.td-inn.scoring-cell {
+    background: rgba(250, 204, 21, 0.22) !important;
+    color: #fef08a !important;
+    font-weight: 900;
+    font-size: 1.15rem;
+    box-shadow: inset 0 0 8px rgba(250, 204, 21, 0.45);
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.75);
+}
+.td-stat {
+    font-family: 'Consolas', monospace;
+    font-size: 1.15rem;
+    font-weight: 900;
+}
+.td-r {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+    font-size: 1.3rem;
+}
+.td-r.winner-r {
+    color: #ffffff;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.55);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.td-h {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+}
+.td-e {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.08);
+}
+.winner-row {
+    background: rgba(250, 204, 21, 0.035);
+}
+
+.scoreboard-subbanner {
+    background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(245, 158, 11, 0.2) 50%, rgba(30, 58, 138, 0.4) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.88rem;
+}
+.scoreboard-note-bar {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
