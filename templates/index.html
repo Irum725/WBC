@@ -109,8 +109,12 @@
                 </div>
 
                 <!-- 회별 전광판 표기식 매트릭스 테이블 -->
-                <div class="table-responsive mb-2">
-                    <div class="scoreboard-matrix-wrap">
+                <div class="scoreboard-matrix-wrap mb-3">
+                    <div class="scoreboard-swipe-hint d-md-none mb-2">
+                        <span><i class="fa-solid fa-arrows-left-right text-warning me-1"></i>좌우로 밀어서 9회 및 R·H·E 확인</span>
+                        <span class="badge bg-warning text-dark">R 10 : 1</span>
+                    </div>
+                    <div class="scoreboard-scroll-container">
                         <table class="scoreboard-matrix-table">
                             <thead>
                                 <tr>
@@ -168,13 +172,13 @@
                                 {% endif %}
                             </tbody>
                         </table>
+                    </div>
 
-                        <div class="scoreboard-note-bar">
-                            <i class="fa-solid fa-circle-info text-info"></i>
-                            <span>
-                                <strong>안내:</strong> 스크린야구 6이닝 매치 규정으로 <strong>4회~9회(실제 1~6회)</strong>가 진행되었으며, Believers(초공격 선공)와 World(말공격 후공) 모두 9회까지 정규 공격을 완료하였습니다.
-                            </span>
-                        </div>
+                    <div class="scoreboard-note-bar">
+                        <i class="fa-solid fa-circle-info text-info"></i>
+                        <span>
+                            <strong>안내:</strong> 스크린야구 6이닝 매치 규정으로 <strong>4회~9회(실제 1~6회)</strong>가 진행되었으며, Believers(초공격 선공)와 World(말공격 후공) 모두 9회까지 정규 공격을 완료하였습니다.
+                        </span>
                     </div>
                 </div>
 

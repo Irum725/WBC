@@ -366,6 +366,39 @@ body {
     top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
 }
+.scoreboard-swipe-hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px dashed rgba(56, 189, 248, 0.35);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: #94a3b8;
+}
+.scoreboard-scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.4) rgba(0, 0, 0, 0.25);
+    padding-bottom: 2px;
+}
+.scoreboard-scroll-container::-webkit-scrollbar {
+    height: 5px;
+}
+.scoreboard-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+}
+.scoreboard-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.4);
+    border-radius: 4px;
+}
+.scoreboard-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.7);
+}
 .scoreboard-matrix-table {
     width: 100%;
     min-width: 580px;
@@ -560,5 +593,62 @@ body {
 .sort-preset-btn.active {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     font-weight: 800;
+}
+
+/* 9. 모바일 & 웹 유기적 반응형 최적화 (Scoreboard & Tables) */
+@media (max-width: 768px) {
+    .scoreboard-matrix-wrap {
+        padding: 10px 8px;
+    }
+    .scoreboard-matrix-table {
+        min-width: 480px;
+        border-spacing: 2px;
+    }
+    /* 모바일 좌측 팀명 고정 (Sticky Left Column) */
+    .scoreboard-matrix-table th.th-team,
+    .scoreboard-matrix-table td.td-team {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: #091326;
+        box-shadow: 3px 0 8px rgba(0, 0, 0, 0.7);
+        width: 105px;
+        min-width: 105px;
+        padding-left: 6px !important;
+    }
+    .scoreboard-matrix-table th.th-inn {
+        width: 28px;
+        min-width: 28px;
+        padding: 5px 1px;
+        font-size: 0.75rem;
+    }
+    .scoreboard-matrix-table td.td-inn {
+        padding: 6px 1px;
+        font-size: 0.85rem;
+    }
+    .scoreboard-matrix-table th.th-stat {
+        width: 32px;
+        min-width: 32px;
+        padding: 5px 1px;
+        font-size: 0.78rem;
+    }
+    .scoreboard-matrix-table td.td-stat {
+        padding: 6px 2px;
+        font-size: 0.95rem;
+    }
+    .scoreboard-note-bar {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .td-team .order-chip {
+        display: none; /* 초소형 모바일에서 초/말 텍스트를 숨겨 팀명 가독성 확보 */
+    }
+    .td-team .badge {
+        font-size: 0.75rem;
+        padding: 4px 6px;
+    }
 }
 

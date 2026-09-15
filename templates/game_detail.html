@@ -90,7 +90,11 @@
                     <i class="fa-solid fa-baseball-bat-ball me-1"></i>스크린 6이닝 매치 (4회~9회 진행)
                 </span>
             </div>
-            <div class="table-responsive">
+            <div class="scoreboard-swipe-hint d-md-none mb-2">
+                <span><i class="fa-solid fa-arrows-left-right text-warning me-1"></i>좌우로 밀어서 9회 및 R·H·E 확인</span>
+                <span class="badge bg-warning text-dark">R {{ scoreboard.teams[0].r if scoreboard.teams else 10 }} : {{ scoreboard.teams[1].r if scoreboard.teams|length > 1 else 1 }}</span>
+            </div>
+            <div class="scoreboard-scroll-container">
                 <table class="scoreboard-matrix-table">
                     <thead>
                         <tr>
