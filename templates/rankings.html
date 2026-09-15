@@ -79,13 +79,13 @@
                     <td>{{ p.tk }}</td>
                     <td>{{ p.tdp }}</td>
                     <td class="stat-mono fw-bold text-primary fs-6">
-                        .{{ ('%0.3f' % p.savg).split('.')[1] }}
+                        {{ p.savg | rate }}
                     </td>
                     <td class="stat-mono">
-                        .{{ ('%0.3f' % p.sslg).split('.')[1] }}
+                        {{ p.sslg | rate }}
                     </td>
                     <td class="stat-mono">
-                        .{{ ('%0.3f' % p.sobp).split('.')[1] }}
+                        {{ p.sobp | rate }}
                     </td>
                 </tr>
                 {% else %}

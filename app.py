@@ -37,9 +37,31 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# 야구 표준 타율/장타율/출루율 포맷팅 (1.000 이상은 1.000 / 1.500 / 2.000 등 정수부 보존, 1미만은 .333 표기)
+def fmt_rate(val):
+    if val is None:
+        return ".000"
+    try:
+        v = float(val)
+    except (ValueError, TypeError):
+        return ".000"
+    if v >= 1.0:
+        return f"{v:.3f}"
+    s = f"{v:.3f}"
+    if s.startswith('0.'):
+        return s[1:]
+    return s
+
+@app.template_filter('rate')
+def rate_filter(val):
+    return fmt_rate(val)
+
 @app.context_processor
 def inject_auth():
-    return {'is_admin': session.get('is_admin', False)}
+    return {
+        'is_admin': session.get('is_admin', False),
+        'fmt_rate': fmt_rate
+    }
 
 # ─────────────────────────────────────────────
 # DB 헬퍼 (WAL 모드 & Busy Timeout 동시성 강화)

@@ -112,8 +112,8 @@
                             </div>
                         </div>
                         <div class="text-end">
-                            <div class="fs-5 fw-bold stat-mono text-primary">.{{ ('%0.3f' % p.savg).split('.')[1] }}</div>
-                            <small class="text-muted">장타 .{{ ('%0.3f' % p.sslg).split('.')[1] }}</small>
+                            <div class="fs-5 fw-bold stat-mono text-primary">{{ p.savg | rate }}</div>
+                            <small class="text-muted">장타 {{ p.sslg | rate }}</small>
                         </div>
                     </li>
                     {% endfor %}

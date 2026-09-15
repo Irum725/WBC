@@ -130,8 +130,8 @@
                         <td>{{ r.triples }}</td>
                         <td class="fw-bold {{ 'text-danger' if r.hr > 0 else '' }}">{{ r.hr }}</td>
                         <td>{{ r.k }}</td>
-                        <td class="stat-mono fw-bold text-primary">.{{ ('%0.3f' % r.avg).split('.')[1] }}</td>
-                        <td class="stat-mono">.{{ ('%0.3f' % r.slg).split('.')[1] }}</td>
+                        <td class="stat-mono fw-bold text-primary">{{ r.avg | rate }}</td>
+                        <td class="stat-mono">{{ r.slg | rate }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -739,7 +739,7 @@ function renderSeparatedTables() {
                     <!-- 타수 / 안타 / 타율 -->
                     <td class="fw-bold text-center" style="width: 38px;">${stats.ab}</td>
                     <td class="fw-bold text-success text-center" style="width: 38px;">${stats.hits}</td>
-                    <td class="stat-mono fw-bold text-primary text-center" style="width: 50px;">.${(stats.avg.toFixed(3)).split('.')[1]}</td>
+                    <td class="stat-mono fw-bold text-primary text-center" style="width: 50px;">${formatRateJs(stats.avg)}</td>
 
                     <!-- 삭제 -->
                     <td style="width: 32px;" class="text-center">
@@ -795,7 +795,7 @@ function renderSeparatedTables() {
                                     <td colspan="13" class="text-muted small text-start ps-2">팀 타격 합계</td>
                                     <td class="text-dark">${teamAb}</td>
                                     <td class="text-success">${teamHits}</td>
-                                    <td class="text-primary stat-mono">.${(teamAvg.toFixed(3)).split('.')[1]}</td>
+                                    <td class="text-primary stat-mono">${formatRateJs(teamAvg)}</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
@@ -874,6 +874,14 @@ function calcStats(innings) {
         else if (s === 'K' || s === 'O' || s === 'DP') { ab++; }
     });
     return { ab, hits, avg: ab > 0 ? (hits / ab) : 0 };
+}
+
+function formatRateJs(val) {
+    if (val === null || val === undefined || isNaN(val)) return '.000';
+    const num = parseFloat(val);
+    if (num >= 1.0) return num.toFixed(3);
+    const s = num.toFixed(3);
+    return s.startsWith('0.') ? s.substring(1) : s;
 }
 
 function getSymClass(sym) {
