@@ -2,6 +2,16 @@
 {% block title %}W.B.C 스타디움 매치 센터 - 홈{% endblock %}
 
 {% block content %}
+{% set l_stats = latest_team_stats if latest_team_stats is defined and latest_team_stats else {} %}
+{% set l_awards = latest_awards if latest_awards is defined and latest_awards else {} %}
+{% set sb = scoreboard if scoreboard is defined and scoreboard else None %}
+{% set g_count = game_count if game_count is defined else 1 %}
+{% set t_players = total_players if total_players is defined else 14 %}
+{% set s_hits = season_hits if season_hits is defined else 22 %}
+{% set s_hr = season_hr if season_hr is defined else 4 %}
+{% set s_rbi = season_rbi if season_rbi is defined else 11 %}
+{% set s_avg = season_avg if season_avg is defined else 0.333 %}
+
 <!-- 1. 스타디움 히어로 배너 & 시즌 라이브 스탯 카운터 -->
 <div class="hero-stadium">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
@@ -27,19 +37,19 @@
     <!-- 4대 시즌 라이브 지표 -->
     <div class="hero-stat-bar">
         <div class="hero-stat-pill">
-            <div class="hero-stat-val text-warning">{{ game_count }}</div>
+            <div class="hero-stat-val text-warning">{{ g_count }}</div>
             <div class="hero-stat-lbl"><i class="fa-solid fa-calendar-check me-1"></i>정기 경기 진행</div>
         </div>
         <div class="hero-stat-pill">
-            <div class="hero-stat-val text-info">{{ total_players }}명</div>
+            <div class="hero-stat-val text-info">{{ t_players }}명</div>
             <div class="hero-stat-lbl"><i class="fa-solid fa-users me-1"></i>등록 선수</div>
         </div>
         <div class="hero-stat-pill">
-            <div class="hero-stat-val text-success">{{ season_hits }}개</div>
+            <div class="hero-stat-val text-success">{{ s_hits }}개</div>
             <div class="hero-stat-lbl"><i class="fa-solid fa-baseball me-1"></i>시즌 총 안타</div>
         </div>
         <div class="hero-stat-pill">
-            <div class="hero-stat-val text-danger">{{ season_hr }}방</div>
+            <div class="hero-stat-val text-danger">{{ s_hr }}방</div>
             <div class="hero-stat-lbl"><i class="fa-solid fa-fire me-1"></i>시즌 총 홈런</div>
         </div>
     </div>
@@ -117,8 +127,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% if scoreboard and scoreboard.teams %}
-                                    {% for t in scoreboard.teams %}
+                                {% if sb and sb.teams %}
+                                    {% for t in sb.teams %}
                                     <tr class="{% if t.is_winner %}winner-row{% endif %}">
                                         <td class="td-team">
                                             <span class="badge {{ t.badge_class }} me-1">{{ t.name }}</span>
@@ -143,7 +153,7 @@
                                         <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">2</td>
                                         <td class="td-inn active-match-inn scoring-cell">3</td><td class="td-inn active-match-inn scoring-cell">5</td><td class="td-inn active-match-inn">0</td>
                                         <td class="td-stat td-r winner-r">{{ b_score }}</td>
-                                        <td class="td-stat td-h">{{ latest_team_stats.get('Believers', {}).get('thits', 15) }}</td>
+                                        <td class="td-stat td-h">{{ l_stats.get('Believers', {}).get('thits', 15) }}</td>
                                         <td class="td-stat td-e">0</td>
                                     </tr>
                                     <tr>
@@ -152,7 +162,7 @@
                                         <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">1</td>
                                         <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td>
                                         <td class="td-stat td-r">{{ w_score }}</td>
-                                        <td class="td-stat td-h">{{ latest_team_stats.get('World', {}).get('thits', 7) }}</td>
+                                        <td class="td-stat td-h">{{ l_stats.get('World', {}).get('thits', 7) }}</td>
                                         <td class="td-stat td-e">0</td>
                                     </tr>
                                 {% endif %}
@@ -169,19 +179,19 @@
                 </div>
 
                 <!-- 오늘의 MVP 하이라이트 티커 바 -->
-                {% if latest_awards and latest_awards.mvp %}
+                {% if l_awards and l_awards.mvp %}
                 <div class="mvp-ticker-bar">
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-warning text-dark fw-bold px-2 py-1">
                             <i class="fa-solid fa-crown me-1"></i>경기 MVP
                         </span>
-                        <strong class="text-white fs-6">{{ latest_awards.mvp.name }} <small class="text-white-50">({{ latest_awards.mvp.team }})</small></strong>
-                        <span class="badge bg-danger text-white small">🔥 {{ latest_awards.mvp.mvp_pts }}점</span>
+                        <strong class="text-white fs-6">{{ l_awards.mvp.name }} <small class="text-white-50">({{ l_awards.mvp.team }})</small></strong>
+                        <span class="badge bg-danger text-white small">🔥 {{ l_awards.mvp.mvp_pts }}점</span>
                     </div>
                     <div class="text-white-50 small">
-                        {{ latest_awards.mvp.ab }}타수 {{ latest_awards.mvp.hits }}안타 
-                        {% if latest_awards.mvp.rbi > 0 %}<strong class="text-warning fw-bold">{{ latest_awards.mvp.rbi }}타점</strong>{% endif %}
-                        {% if latest_awards.mvp.hr > 0 %}<strong class="text-danger fw-bold">({{ latest_awards.mvp.hr }}홈런)</strong>{% endif %}
+                        {{ l_awards.mvp.ab }}타수 {{ l_awards.mvp.hits }}안타 
+                        {% if l_awards.mvp.rbi > 0 %}<strong class="text-warning fw-bold">{{ l_awards.mvp.rbi }}타점</strong>{% endif %}
+                        {% if l_awards.mvp.hr > 0 %}<strong class="text-danger fw-bold">({{ l_awards.mvp.hr }}홈런)</strong>{% endif %}
                     </div>
                 </div>
                 {% endif %}
