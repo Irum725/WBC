@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1"><i class="fa-solid fa-ranking-star text-primary me-2"></i>개인별 시즌 누적 순위표</h4>
-        <p class="text-muted small mb-0">팀 구분 없이 타율 및 안타 기준으로 자동 정렬됩니다.</p>
+        <p class="text-muted small mb-0">상단 항목(타율, 안타, 홈런 등)을 클릭하면 해당 분야별 실시간 순위로 즉시 정렬됩니다.</p>
     </div>
     <div class="btn-group" role="group">
         <a href="{{ url_for('rankings', team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체</a>
@@ -16,46 +16,94 @@
     </div>
 </div>
 
+<!-- 빠른 순위 정렬 프리셋 버튼 바 -->
+<div class="card shadow-sm border-0 mb-3 bg-light">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-2 flex-wrap">
+        <span class="text-dark small fw-bold text-nowrap">
+            <i class="fa-solid fa-arrow-down-wide-short text-primary me-1"></i>분야별 1위 보기:
+        </span>
+        <div class="d-flex gap-1 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-primary sort-preset-btn active" data-col="savg">🎯 타율순</button>
+            <button type="button" class="btn btn-sm btn-outline-success sort-preset-btn" data-col="th">⚡ 최다 안타순</button>
+            <button type="button" class="btn btn-sm btn-outline-danger sort-preset-btn" data-col="thr">🚀 홈런순</button>
+            <button type="button" class="btn btn-sm btn-outline-warning text-dark sort-preset-btn" data-col="trbi">🏆 타점순</button>
+            <button type="button" class="btn btn-sm btn-outline-info text-dark sort-preset-btn" data-col="sslg">💥 장타율순</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary sort-preset-btn" data-col="sobp">🛡️ 출루율순</button>
+            <button type="button" class="btn btn-sm btn-outline-dark sort-preset-btn" data-col="tab">🏏 타수순</button>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 text-center" style="min-width: 950px;">
+        <table class="table table-hover align-middle mb-0 text-center" id="rankingsTable" style="min-width: 950px;">
             <thead class="table-dark text-nowrap">
                 <tr>
-                    <th style="width: 70px;">순위</th>
-                    <th style="width: 110px; min-width: 100px;">선수명</th>
-                    <th style="width: 100px;">소속팀</th>
-                    <th style="width: 55px;">경기수</th>
-                    <th style="width: 55px;">타수</th>
-                    <th style="width: 55px;">안타</th>
-                    <th style="width: 55px;">1루타</th>
-                    <th style="width: 55px;">2루타</th>
-                    <th style="width: 55px;">3루타</th>
-                    <th style="width: 55px;">홈런</th>
-                    <th style="width: 55px;">타점</th>
-                    <th style="width: 55px;">삼진</th>
-                    <th style="width: 55px;">병살</th>
-                    <th class="bg-primary text-white" style="width: 70px;">타율</th>
-                    <th style="width: 70px;">장타율</th>
-                    <th style="width: 70px;">출루율</th>
+                    <th style="width: 75px;">순위</th>
+                    <th class="sortable-th" data-col="name" data-type="text" style="width: 110px; min-width: 100px;" title="클릭하여 선수명 정렬">
+                        선수명 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="team" data-type="text" style="width: 95px;" title="클릭하여 소속팀 정렬">
+                        소속팀 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="games" data-type="num" style="width: 55px;" title="클릭하여 경기수 정렬">
+                        경기수 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="tab" data-type="num" style="width: 55px;" title="클릭하여 타수 정렬">
+                        타수 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="th" data-type="num" style="width: 55px;" title="클릭하여 최다 안타 정렬">
+                        안타 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="t1b" data-type="num" style="width: 55px;" title="클릭하여 1루타 정렬">
+                        1루타 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="t2b" data-type="num" style="width: 55px;" title="클릭하여 2루타 정렬">
+                        2루타 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="t3b" data-type="num" style="width: 55px;" title="클릭하여 3루타 정렬">
+                        3루타 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="thr" data-type="num" style="width: 55px;" title="클릭하여 홈런 정렬">
+                        홈런 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="trbi" data-type="num" style="width: 55px;" title="클릭하여 타점 정렬">
+                        타점 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="tk" data-type="num" style="width: 55px;" title="클릭하여 삼진 정렬">
+                        삼진 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="tdp" data-type="num" style="width: 55px;" title="클릭하여 병살 정렬">
+                        병살 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th active-sort" data-col="savg" data-type="num" style="width: 75px;" title="클릭하여 타율 정렬">
+                        타율 <i class="fa-solid fa-sort-down sort-icon text-warning"></i>
+                    </th>
+                    <th class="sortable-th" data-col="sslg" data-type="num" style="width: 75px;" title="클릭하여 장타율 정렬">
+                        장타율 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
+                    <th class="sortable-th" data-col="sobp" data-type="num" style="width: 75px;" title="클릭하여 출루율 정렬">
+                        출루율 <i class="fa-solid fa-sort sort-icon"></i>
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in players %}
                 {% set rank_class = 'rank-gold' if loop.index == 1 else ('rank-silver' if loop.index == 2 else ('rank-bronze' if loop.index == 3 else '')) %}
                 <tr class="{{ rank_class }}">
-                    <td class="fw-bold">
+                    <td class="fw-bold rank-cell" data-col="rank" data-val="{{ loop.index }}">
                         {% if loop.index == 1 %}🥇 1위
                         {% elif loop.index == 2 %}🥈 2위
                         {% elif loop.index == 3 %}🥉 3위
                         {% else %}{{ loop.index }}위
                         {% endif %}
                     </td>
-                    <td class="fw-bold">
+                    <td class="fw-bold" data-col="name" data-val="{{ p.name }}">
                         <a href="{{ url_for('analytics_page', player_id=p.id) }}" class="text-decoration-none text-dark hover-primary" title="성장 분석 차트 보기">
                             {{ p.name }} <i class="fa-solid fa-chart-line text-primary small ms-1"></i>
                         </a>
                     </td>
-                    <td>
+                    <td data-col="team" data-val="{{ p.team }}">
                         {% if p.team == 'World' %}
                             <span class="badge badge-world">World</span>
                         {% elif p.team == 'Believers' %}
@@ -68,23 +116,23 @@
                             <span class="badge bg-secondary">{{ p.team }}</span>
                         {% endif %}
                     </td>
-                    <td>{{ p.games }}</td>
-                    <td>{{ p.tab }}</td>
-                    <td class="fw-bold text-success">{{ p.th }}</td>
-                    <td>{{ p.t1b }}</td>
-                    <td>{{ p.t2b }}</td>
-                    <td>{{ p.t3b }}</td>
-                    <td class="fw-bold {{ 'text-danger' if p.thr > 0 else '' }}">{{ p.thr }}</td>
-                    <td>{{ p.trbi }}</td>
-                    <td>{{ p.tk }}</td>
-                    <td>{{ p.tdp }}</td>
-                    <td class="stat-mono fw-bold text-primary fs-6">
+                    <td data-col="games" data-val="{{ p.games }}">{{ p.games }}</td>
+                    <td data-col="tab" data-val="{{ p.tab }}">{{ p.tab }}</td>
+                    <td class="fw-bold text-success" data-col="th" data-val="{{ p.th }}">{{ p.th }}</td>
+                    <td data-col="t1b" data-val="{{ p.t1b }}">{{ p.t1b }}</td>
+                    <td data-col="t2b" data-val="{{ p.t2b }}">{{ p.t2b }}</td>
+                    <td data-col="t3b" data-val="{{ p.t3b }}">{{ p.t3b }}</td>
+                    <td class="fw-bold {{ 'text-danger' if p.thr > 0 else '' }}" data-col="thr" data-val="{{ p.thr }}">{{ p.thr }}</td>
+                    <td class="fw-bold text-warning-emphasis" data-col="trbi" data-val="{{ p.trbi }}">{{ p.trbi }}</td>
+                    <td data-col="tk" data-val="{{ p.tk }}">{{ p.tk }}</td>
+                    <td data-col="tdp" data-val="{{ p.tdp }}">{{ p.tdp }}</td>
+                    <td class="stat-mono fw-bold text-primary fs-6 sorted-col-cell" data-col="savg" data-val="{{ p.savg }}">
                         {{ p.savg | rate }}
                     </td>
-                    <td class="stat-mono">
+                    <td class="stat-mono" data-col="sslg" data-val="{{ p.sslg }}">
                         {{ p.sslg | rate }}
                     </td>
-                    <td class="stat-mono">
+                    <td class="stat-mono" data-col="sobp" data-val="{{ p.sobp }}">
                         {{ p.sobp | rate }}
                     </td>
                 </tr>
@@ -97,7 +145,165 @@
         </table>
     </div>
 </div>
-<div class="mt-3 text-muted small">
-    <i class="fa-solid fa-circle-info me-1"></i>순위 정렬 기준: 1순위 타율 → 2순위 안타 → 3순위 타수 (볼넷/사구 데이터 미포함 시 출루율=타율)
+
+<div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small">
+    <div id="sortStatusText">
+        <i class="fa-solid fa-circle-info text-primary me-1"></i>현재 정렬 기준: <strong>타율 내림차순 (높은순 ⬇️)</strong> | 컬럼 헤더 클릭 시 즉시 순위가 재계산됩니다.
+    </div>
+    <div class="text-secondary">
+        ※ 볼넷/사구 데이터 미포함 시 출루율 = 타율
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentSortCol = 'savg';
+    let currentSortDir = 'desc';
+
+    const table = document.getElementById('rankingsTable');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('th.sortable-th');
+    const presetBtns = document.querySelectorAll('.sort-preset-btn');
+    const statusText = document.getElementById('sortStatusText');
+
+    const colLabels = {
+        name: '선수명', team: '소속팀', games: '경기수', tab: '타수',
+        th: '안타', t1b: '1루타', t2b: '2루타', t3b: '3루타',
+        thr: '홈런', trbi: '타점', tk: '삼진', tdp: '병살',
+        savg: '타율', sslg: '장타율', sobp: '출루율'
+    };
+
+    function sortTable(col, direction) {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (rows.length <= 1 && rows[0].querySelector('td[colspan]')) return;
+
+        const isText = (col === 'name' || col === 'team');
+
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.querySelector(`td[data-col="${col}"]`);
+            const cellB = rowB.querySelector(`td[data-col="${col}"]`);
+            if (!cellA || !cellB) return 0;
+
+            const valA = cellA.getAttribute('data-val') || '';
+            const valB = cellB.getAttribute('data-val') || '';
+
+            let comp = 0;
+            if (isText) {
+                comp = valA.localeCompare(valB, 'ko');
+            } else {
+                const numA = parseFloat(valA) || 0;
+                const numB = parseFloat(valB) || 0;
+                comp = numA - numB;
+            }
+
+            // 동률 시 정교한 보조 순위 판정 (타이 브레이커)
+            if (comp === 0 && !isText) {
+                const getSubVal = (row, c) => parseFloat(row.querySelector(`td[data-col="${c}"]`)?.getAttribute('data-val') || 0);
+                if (col === 'savg') {
+                    // 타율 동률 -> 안타 많은 순 -> 타수 많은 순
+                    comp = (getSubVal(rowA, 'th') - getSubVal(rowB, 'th')) || (getSubVal(rowA, 'tab') - getSubVal(rowB, 'tab'));
+                } else if (col === 'th') {
+                    // 안타 동률 -> 타율 높은 순 -> 홈런 많은 순
+                    comp = (getSubVal(rowA, 'savg') - getSubVal(rowB, 'savg')) || (getSubVal(rowA, 'thr') - getSubVal(rowB, 'thr'));
+                } else if (col === 'thr') {
+                    // 홈런 동률 -> 타점 많은 순 -> 장타율 높은 순
+                    comp = (getSubVal(rowA, 'trbi') - getSubVal(rowB, 'trbi')) || (getSubVal(rowA, 'sslg') - getSubVal(rowB, 'sslg'));
+                } else if (col === 'trbi') {
+                    // 타점 동률 -> 홈런 많은 순 -> 안타 많은 순
+                    comp = (getSubVal(rowA, 'thr') - getSubVal(rowB, 'thr')) || (getSubVal(rowA, 'th') - getSubVal(rowB, 'th'));
+                } else if (col === 'sslg' || col === 'sobp') {
+                    // 장타율/출루율 동률 -> 타율 높은 순 -> 홈런 많은 순
+                    comp = (getSubVal(rowA, 'savg') - getSubVal(rowB, 'savg')) || (getSubVal(rowA, 'thr') - getSubVal(rowB, 'thr'));
+                } else if (col === 'tab') {
+                    // 타수 동률 -> 안타 많은 순
+                    comp = (getSubVal(rowA, 'th') - getSubVal(rowB, 'th'));
+                }
+            }
+
+            return direction === 'asc' ? comp : -comp;
+        });
+
+        // 정렬된 순서대로 tbody 재구성 및 순위 메달 재부여
+        tbody.innerHTML = '';
+        rows.forEach((row, idx) => {
+            const rankCell = row.querySelector('.rank-cell');
+            if (rankCell) {
+                const rankNum = idx + 1;
+                if (rankNum === 1) rankCell.innerHTML = '🥇 1위';
+                else if (rankNum === 2) rankCell.innerHTML = '🥈 2위';
+                else if (rankNum === 3) rankCell.innerHTML = '🥉 3위';
+                else rankCell.innerHTML = `${rankNum}위`;
+            }
+
+            // 순위 배경색 갱신
+            row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
+            if (idx === 0) row.classList.add('rank-gold');
+            else if (idx === 1) row.classList.add('rank-silver');
+            else if (idx === 2) row.classList.add('rank-bronze');
+
+            // 현재 정렬 기준 셀 하이라이트 적용
+            row.querySelectorAll('td').forEach(td => td.classList.remove('sorted-col-cell'));
+            const activeTd = row.querySelector(`td[data-col="${col}"]`);
+            if (activeTd) activeTd.classList.add('sorted-col-cell');
+
+            tbody.appendChild(row);
+        });
+
+        // 헤더 UI 상태 갱신 (아이콘 및 활성 클래스)
+        headers.forEach(th => {
+            th.classList.remove('active-sort');
+            const icon = th.querySelector('.sort-icon');
+            if (icon) icon.className = 'fa-solid fa-sort sort-icon';
+            
+            if (th.getAttribute('data-col') === col) {
+                th.classList.add('active-sort');
+                if (icon) {
+                    icon.className = direction === 'asc' 
+                        ? 'fa-solid fa-sort-up sort-icon text-warning' 
+                        : 'fa-solid fa-sort-down sort-icon text-warning';
+                }
+            }
+        });
+
+        // 프리셋 버튼 상태 갱신
+        presetBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-col') === col && direction === 'desc');
+        });
+
+        // 하단 안내 문구 갱신
+        const label = colLabels[col] || col;
+        const dirLabel = direction === 'desc' ? '내림차순 (높은순 ⬇️)' : '오름차순 (낮은순 ⬆️)';
+        if (statusText) {
+            statusText.innerHTML = `<i class="fa-solid fa-circle-info text-primary me-1"></i>현재 정렬 기준: <strong>${label} ${dirLabel}</strong> | 항목 클릭 시 정렬 순서가 전환됩니다.`;
+        }
+
+        currentSortCol = col;
+        currentSortDir = direction;
+    }
+
+    // 헤더 클릭 이벤트
+    headers.forEach(th => {
+        th.addEventListener('click', function() {
+            const col = this.getAttribute('data-col');
+            let nextDir = 'desc';
+            if (currentSortCol === col) {
+                nextDir = (currentSortDir === 'desc') ? 'asc' : 'desc';
+            }
+            sortTable(col, nextDir);
+        });
+    });
+
+    // 프리셋 버튼 클릭 이벤트
+    presetBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const col = this.getAttribute('data-col');
+            sortTable(col, 'desc');
+        });
+    });
+
+    // 초기 상태 타율 내림차순 정렬 실행
+    sortTable('savg', 'desc');
+});
+</script>
 {% endblock %}
