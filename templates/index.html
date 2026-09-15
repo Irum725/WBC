@@ -137,22 +137,22 @@
                                     </tr>
                                     {% endfor %}
                                 {% else %}
+                                    <tr class="winner-row">
+                                        <td class="td-team"><span class="badge badge-believers me-1">Believers 🔥</span> <span class="order-chip text-white-50">초 (선공)</span> <span class="winner-mark ms-1">👑</span></td>
+                                        <td class="td-inn">0</td><td class="td-inn">0</td><td class="td-inn">0</td>
+                                        <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">2</td>
+                                        <td class="td-inn active-match-inn scoring-cell">3</td><td class="td-inn active-match-inn scoring-cell">5</td><td class="td-inn active-match-inn">0</td>
+                                        <td class="td-stat td-r winner-r">{{ b_score }}</td>
+                                        <td class="td-stat td-h">{{ latest_team_stats.get('Believers', {}).get('thits', 15) }}</td>
+                                        <td class="td-stat td-e">0</td>
+                                    </tr>
                                     <tr>
-                                        <td class="td-team"><span class="badge badge-world me-1">World ⚡</span> <span class="order-chip text-white-50">초 (선공)</span></td>
+                                        <td class="td-team"><span class="badge badge-world me-1">World ⚡</span> <span class="order-chip text-white-50">말 (후공)</span></td>
                                         <td class="td-inn">0</td><td class="td-inn">0</td><td class="td-inn">0</td>
                                         <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">1</td>
                                         <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td>
                                         <td class="td-stat td-r">{{ w_score }}</td>
                                         <td class="td-stat td-h">{{ latest_team_stats.get('World', {}).get('thits', 7) }}</td>
-                                        <td class="td-stat td-e">0</td>
-                                    </tr>
-                                    <tr class="winner-row">
-                                        <td class="td-team"><span class="badge badge-believers me-1">Believers 🔥</span> <span class="order-chip text-white-50">말 (후공)</span> <span class="winner-mark ms-1">👑</span></td>
-                                        <td class="td-inn">0</td><td class="td-inn">0</td><td class="td-inn">0</td>
-                                        <td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn">0</td><td class="td-inn active-match-inn scoring-cell">2</td>
-                                        <td class="td-inn active-match-inn scoring-cell">3</td><td class="td-inn active-match-inn scoring-cell">5</td><td class="td-inn active-match-inn">X</td>
-                                        <td class="td-stat td-r winner-r">{{ b_score }}</td>
-                                        <td class="td-stat td-h">{{ latest_team_stats.get('Believers', {}).get('thits', 15) }}</td>
                                         <td class="td-stat td-e">0</td>
                                     </tr>
                                 {% endif %}
@@ -162,7 +162,7 @@
                         <div class="scoreboard-note-bar">
                             <i class="fa-solid fa-circle-info text-info"></i>
                             <span>
-                                <strong>안내:</strong> 스크린야구 6이닝 매치 규정으로 <strong>4회~9회(실제 1~6회)</strong>가 진행되었으며, 초(World)/말(Believers) 공격 순서가 반영되었습니다.
+                                <strong>안내:</strong> 스크린야구 6이닝 매치 규정으로 <strong>4회~9회(실제 1~6회)</strong>가 진행되었으며, Believers(초공격 선공)와 World(말공격 후공) 모두 9회까지 정규 공격을 완료하였습니다.
                             </span>
                         </div>
                     </div>
