@@ -937,6 +937,7 @@ def api_analytics_player(pid):
             'game_number': r['game_number'],
             'game_date': r['game_date'],
             'label': label,
+            'team': r['team'],
             'ab': game_ab,
             'hits': game_hits,
             'singles': r['singles'] or 0,
