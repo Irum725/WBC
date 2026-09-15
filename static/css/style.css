@@ -133,3 +133,220 @@ body {
     font-family: 'Consolas', 'Courier New', monospace;
     font-weight: 700;
 }
+
+/* ─────────────────────────────────────────────
+   시안 A: 스타디움 라이브 매치 센터 전용 스타일
+───────────────────────────────────────────── */
+/* 1. 스타디움 히어로 헤더 */
+.hero-stadium {
+    background: radial-gradient(circle at 50% 0%, #1e3c72 0%, #152b52 50%, #0c1a33 100%);
+    color: #ffffff;
+    border-radius: 16px;
+    padding: 24px 24px 20px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(12, 26, 51, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+.hero-stadium::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* 2. 상단 시즌 지표 배지 바 */
+.hero-stat-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+.hero-stat-pill {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+.hero-stat-pill:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 215, 0, 0.4);
+    transform: translateY(-2px);
+}
+.hero-stat-val {
+    font-size: 1.4rem;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+.hero-stat-lbl {
+    font-size: 0.72rem;
+    color: #b0c4de;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* 3. 야간 전광판(Scoreboard) 카드 */
+.scoreboard-panel {
+    background: linear-gradient(145deg, #111a2e, #1a2744);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    color: white;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+.scoreboard-header {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.scoreboard-body {
+    padding: 24px 20px;
+}
+.score-box {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px 12px;
+    text-align: center;
+    position: relative;
+    transition: all 0.25s ease;
+}
+.score-box.winner {
+    border-color: rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    background: linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
+}
+.score-digit {
+    font-size: 3.6rem;
+    font-weight: 900;
+    line-height: 1;
+    font-family: 'Consolas', monospace;
+    letter-spacing: -1px;
+}
+.score-team-badge {
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+.winner-crown {
+    position: absolute;
+    top: -10px;
+    right: -6px;
+    background: #ffc107;
+    color: #111;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 2px 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* 4. 오늘의 MVP 하이라이트 티커 바 */
+.mvp-ticker-bar {
+    background: linear-gradient(90deg, rgba(255, 87, 34, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+/* 5. 인터랙티브 4대 퀵 액션 카드 */
+.quick-action-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 18px 16px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+.quick-action-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ccc;
+    transition: width 0.2s ease;
+}
+.quick-action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.09);
+    border-color: #cbd5e1;
+}
+.quick-action-card:hover::before {
+    width: 6px;
+}
+.qa-blue::before { background: #1e88e5; }
+.qa-gold::before { background: #f59e0b; }
+.qa-purple::before { background: #8b5cf6; }
+.qa-emerald::before { background: #10b981; }
+
+.qa-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+.qa-blue .qa-icon-box { background: #eff6ff; color: #1e88e5; }
+.qa-gold .qa-icon-box { background: #fef3c7; color: #d97706; }
+.qa-purple .qa-icon-box { background: #f5f3ff; color: #7c3aed; }
+.qa-emerald .qa-icon-box { background: #ecfdf5; color: #059669; }
+
+/* 6. 시즌 리더보드 TOP 5 카드 */
+.top5-leader-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s ease;
+}
+.top5-leader-item:hover {
+    background-color: #f8fafc;
+}
+.top5-medal {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.medal-1 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.medal-2 { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.medal-3 { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+.medal-other { background: transparent; color: #94a3b8; font-size: 0.85rem; }
+

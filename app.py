@@ -220,10 +220,26 @@ def index():
         'SELECT * FROM games ORDER BY game_date DESC, id DESC LIMIT 1'
     ).fetchone()
     game_count = conn.execute('SELECT COUNT(*) FROM games').fetchone()[0]
+    total_players = conn.execute('SELECT COUNT(*) FROM players WHERE is_active = 1').fetchone()[0]
+
+    # 시즌 종합 통계
+    season_row = conn.execute('''
+        SELECT COALESCE(SUM(ab), 0) tab,
+               COALESCE(SUM(hits), 0) th,
+               COALESCE(SUM(hr), 0) thr,
+               COALESCE(SUM(rbi), 0) trbi
+        FROM batting_records
+    ''').fetchone()
+    season_hits = season_row['th']
+    season_hr = season_row['thr']
+    season_rbi = season_row['trbi']
+    season_avg = round(season_row['th'] / season_row['tab'], 3) if season_row['tab'] > 0 else 0.0
+
+    # TOP 5 선수 (p.id 포함)
     top5 = conn.execute('''
-        SELECT p.name, p.team,
+        SELECT p.id, p.name, p.team,
                COUNT(DISTINCT br.game_id) games,
-               SUM(br.ab) tab, SUM(br.hits) th, SUM(br.hr) thr,
+               SUM(br.ab) tab, SUM(br.hits) th, SUM(br.hr) thr, SUM(br.rbi) trbi,
                CASE WHEN SUM(br.ab)>0
                     THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3)
                     ELSE 0 END savg,
@@ -234,17 +250,34 @@ def index():
         GROUP BY p.id HAVING SUM(br.ab)>=1
         ORDER BY savg DESC, th DESC LIMIT 5
     ''').fetchall()
+
     latest_recs = []
+    latest_team_stats = {}
+    latest_awards = {}
     if latest:
+        gid = latest['id']
         latest_recs = conn.execute('''
             SELECT p.name,p.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.team, br.batting_order
-        ''', (latest['id'],)).fetchall()
+        ''', (gid,)).fetchall()
+
+        t_stats = conn.execute('''
+            SELECT team, SUM(ab) tab, SUM(hits) thits, SUM(hr) thr, SUM(rbi) trbi
+            FROM batting_records WHERE game_id = ?
+            GROUP BY team
+        ''', (gid,)).fetchall()
+        for row in t_stats:
+            latest_team_stats[row['team']] = dict(row)
+
+        latest_awards = calc_game_awards(gid)
+
     conn.close()
     return render_template('index.html',
-        latest=latest, game_count=game_count,
-        top5=top5, latest_recs=latest_recs, fmt_date=fmt_date)
+        latest=latest, game_count=game_count, total_players=total_players,
+        season_hits=season_hits, season_hr=season_hr, season_rbi=season_rbi, season_avg=season_avg,
+        top5=top5, latest_recs=latest_recs, latest_team_stats=latest_team_stats,
+        latest_awards=latest_awards, fmt_date=fmt_date)
 
 @app.route('/game/new')
 @admin_required
