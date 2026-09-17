@@ -22,3 +22,4 @@ structure2.txt
 verify_result.txt
 안수집사 회계장부.xlsx
 *.pdf
+!static/exports/*.pdf

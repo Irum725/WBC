@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>W.B.C 타율 & 타점 기반 팀 분배 추천표</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+        background: #0b1329;
+        color: #f8fafc;
+        padding: 30px;
+        width: 1200px;
+        margin: 0 auto;
+    }
+    .header {
+        text-align: center;
+        margin-bottom: 25px;
+        padding: 24px;
+        background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #0f172a 100%);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .header h1 {
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        color: #ffffff;
+        margin-bottom: 8px;
+    }
+    .header h1 span {
+        color: #facc15;
+    }
+    .header p {
+        font-size: 15px;
+        color: #94a3b8;
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 25px;
+    }
+    .summary-card {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+    }
+    .summary-card .lbl {
+        font-size: 13px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+    .summary-card .val {
+        font-size: 20px;
+        font-weight: 900;
+        color: #38bdf8;
+    }
+    .summary-card .val.gold {
+        color: #facc15;
+    }
+    .summary-card .diff {
+        font-size: 11px;
+        color: #10b981;
+        margin-top: 4px;
+        font-weight: 700;
+    }
+    .teams-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+    .team-panel {
+        background: #111e38;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .team-blue {
+        border: 1.5px solid #2563eb;
+    }
+    .team-red {
+        border: 1.5px solid #dc2626;
+    }
+    .team-header {
+        padding: 18px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .team-blue .team-header {
+        background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    }
+    .team-red .team-header {
+        background: linear-gradient(135deg, #881337, #b91c1c);
+    }
+    .team-title {
+        font-size: 20px;
+        font-weight: 900;
+        color: #ffffff;
+    }
+    .team-stat-badge {
+        background: rgba(0,0,0,0.35);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    .team-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+        font-size: 13.5px;
+    }
+    .team-table th {
+        background: rgba(15, 23, 42, 0.8);
+        color: #94a3b8;
+        padding: 10px 8px;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .team-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .order-badge {
+        background: rgba(255,255,255,0.1);
+        font-weight: 900;
+        padding: 3px 8px;
+        border-radius: 6px;
+        color: #e2e8f0;
+    }
+    .player-name {
+        font-weight: 900;
+        color: #ffffff;
+        text-align: left;
+        padding-left: 14px;
+    }
+    .stat-avg {
+        font-family: 'Consolas', monospace;
+        font-weight: 900;
+        color: #facc15;
+    }
+    .stat-rbi {
+        font-family: 'Consolas', monospace;
+        font-weight: 800;
+        color: #38bdf8;
+    }
+    .stat-hr {
+        font-family: 'Consolas', monospace;
+        font-weight: 800;
+        color: #f43f5e;
+    }
+    .role-desc {
+        text-align: left;
+        font-size: 12px;
+        color: #cbd5e1;
+    }
+    .prev-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 4px;
+        font-weight: normal;
+    }
+    .prev-b { background: #1e3a8a; color: #93c5fd; }
+    .prev-w { background: #475569; color: #cbd5e1; }
+    .team-footer {
+        padding: 14px 20px;
+        background: rgba(15, 23, 42, 0.9);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13.5px;
+        font-weight: 700;
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .highlight-banner {
+        background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(245, 158, 11, 0.15) 50%, rgba(30, 58, 138, 0.4) 100%);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        font-size: 14px;
+    }
+    .highlight-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .highlight-item strong {
+        color: #facc15;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>⚾ W.B.C <span>타율 & 타점 밸런스</span> 최적 팀 배정표</h1>
+    <p>1차전 공식 누적 기록(타율·타점·홈런·타석)을 반영한 7:7 황금 전력 분배 라인업</p>
+</div>
+
+<div class="summary-grid">
+    <div class="summary-card">
+        <div class="lbl">팀 합산 타율 격차</div>
+        <div class="val gold">0.387 vs 0.385</div>
+        <div class="diff">✓ 단 0.002 (2리 차이, 사실상 동률)</div>
+    </div>
+    <div class="summary-card">
+        <div class="lbl">선수 개인타율 평균</div>
+        <div class="val">0.452 vs 0.448</div>
+        <div class="diff">✓ 단 0.004 차이 (초접전)</div>
+    </div>
+    <div class="summary-card">
+        <div class="lbl">팀 총 타점 (RBI)</div>
+        <div class="val gold">6점 vs 5점</div>
+        <div class="diff">✓ 단 1점 차이 (11타점 완벽 분산)</div>
+    </div>
+    <div class="summary-card">
+        <div class="lbl">거포 & 슈퍼서브</div>
+        <div class="val">화력 대등 양분</div>
+        <div class="diff">✓ 박동진(5타점) vs 김석희(3)+임명길</div>
+    </div>
+</div>
+
+<div class="teams-container">
+    <!-- Blue Team -->
+    <div class="team-panel team-blue">
+        <div class="team-header">
+            <div class="team-title">🔵 블루 팀 (Blue Team)</div>
+            <div class="team-stat-badge">타율 .387 | 6타점 | 1홈런</div>
+        </div>
+        <table class="team-table">
+            <thead>
+                <tr>
+                    <th style="width:45px;">타순</th>
+                    <th style="width:105px; text-align:left; padding-left:14px;">선수명</th>
+                    <th style="width:55px;">타율</th>
+                    <th style="width:45px;">타수</th>
+                    <th style="width:45px;">안타</th>
+                    <th style="width:45px;">타점</th>
+                    <th>주요 역할 & 특징</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="order-badge">1</span></td>
+                    <td class="player-name">서관승 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">1.000</td><td>1</td><td>1</td><td class="stat-rbi">1</td>
+                    <td class="role-desc">100% 출루의 밥상 차리기 리드오프</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">2</span></td>
+                    <td class="player-name">임명길 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.800</td><td>5</td><td>4</td><td class="stat-rbi">1</td>
+                    <td class="role-desc">4안타 1홈런 폭격 테이블세터</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">3</span></td>
+                    <td class="player-name">김석희 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.500</td><td>6</td><td>3</td><td class="stat-rbi">3</td>
+                    <td class="role-desc">찬스에 강한 3타점 클러치 히터</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">4</span></td>
+                    <td class="player-name">김진혁 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.250</td><td>4</td><td>1</td><td class="stat-rbi">1</td>
+                    <td class="role-desc">득점권 해결 적시타 보유 4번</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">5</span></td>
+                    <td class="player-name">김응관 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.250</td><td>4</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">안정적인 중심-하위 연결고리</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">6</span></td>
+                    <td class="player-name">정재홍 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.200</td><td>5</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">적극적인 스윙으로 하위타선 돌파</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">7</span></td>
+                    <td class="player-name">김신광 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.167</td><td>6</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">최다 타석 경험의 끈질긴 출루</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="team-footer">
+            <span>7명 합계: 31타수 12안타</span>
+            <span style="color:#60a5fa;">팀 타율 .387 | 6 타점 | 1 홈런</span>
+        </div>
+    </div>
+
+    <!-- Red Team -->
+    <div class="team-panel team-red">
+        <div class="team-header">
+            <div class="team-title">🔴 레드 팀 (Red Team)</div>
+            <div class="team-stat-badge">타율 .385 | 5타점 | 3홈런</div>
+        </div>
+        <table class="team-table">
+            <thead>
+                <tr>
+                    <th style="width:45px;">타순</th>
+                    <th style="width:105px; text-align:left; padding-left:14px;">선수명</th>
+                    <th style="width:55px;">타율</th>
+                    <th style="width:45px;">타수</th>
+                    <th style="width:45px;">안타</th>
+                    <th style="width:45px;">타점</th>
+                    <th>주요 역할 & 특징</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="order-badge">1</span></td>
+                    <td class="player-name">이종욱 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">1.000</td><td>1</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">1안타 알짜 출루형 1번 타자</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">2</span></td>
+                    <td class="player-name">이주호 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.750</td><td>4</td><td>3</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">3안타 출루머신 (World 최고 에이스)</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">3</span></td>
+                    <td class="player-name">박동진 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.600</td><td>5</td><td>3</td><td class="stat-rbi" style="color:#f43f5e; font-size:15px;">5</td>
+                    <td class="role-desc">동호회 최강 슬러거 (3홈런 5타점 MVP)</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">4</span></td>
+                    <td class="player-name">이성수 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.333</td><td>3</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">3할 타율의 든든한 클러치 백업</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">5</span></td>
+                    <td class="player-name">황주현 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.250</td><td>4</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">중심 뒤를 받치는 안정된 정타 생산</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">6</span></td>
+                    <td class="player-name">이승원 <span class="prev-tag prev-b">B</span></td>
+                    <td class="stat-avg">0.200</td><td>5</td><td>1</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">끈질긴 승부로 볼넷 및 찬스 유발</td>
+                </tr>
+                <tr>
+                    <td><span class="order-badge">7</span></td>
+                    <td class="player-name">배석원 <span class="prev-tag prev-w">W</span></td>
+                    <td class="stat-avg">0.000</td><td>4</td><td>0</td><td class="stat-rbi">0</td>
+                    <td class="role-desc">팀 사기를 북돋우는 허슬 플레이어</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="team-footer">
+            <span>7명 합계: 26타수 10안타</span>
+            <span style="color:#f87171;">팀 타율 .385 | 5 타점 | 3 홈런</span>
+        </div>
+    </div>
+</div>
+
+<div class="highlight-banner">
+    <div class="highlight-item">
+        <span>⚖️ <strong>초박빙 승부 보장</strong>: 팀 타율 격차 0.002 / 타점 6점 vs 5점</span>
+    </div>
+    <div class="highlight-item">
+        <span>🏆 <strong>클러치 양분</strong>: 박동진(5타점) vs 김석희(3타점)+임명길(1홈런)</span>
+    </div>
+    <div class="highlight-item">
+        <span>🎯 <strong>대타/서브 공평 분산</strong>: 1타수 1안타 2인(서관승, 이종욱) 각 팀 1명씩 배정</span>
+    </div>
+</div>
+
+</body>
+</html>
