@@ -815,7 +815,7 @@ if (typeof html2canvas === 'undefined') {
                                                     <small class="capsule-team">({{ r.team }})</small>
                                                 </div>
                                                 <div class="d-flex align-items-center">
-                                                    <span class="capsule-stats">타율 {{ '%0.3f'|format(r.avg|float) if r.avg is string else '%0.3f'|format(r.avg) }}{% if r.hr > 0 %}, 홈런 {{ r.hr }}{% endif %}</span>
+                                                    <span class="capsule-stats">타율 {{ '%0.3f'|format(r.avg|float) if r.avg is string else '%0.3f'|format(r.avg) }}{% if r.hr and r.hr > 0 %}, 홈런 {{ r.hr }}{% endif %}{% if r.rbi and r.rbi > 0 %}, 타점 {{ r.rbi }}{% endif %}</span>
                                                     {% if r.is_mvp %}<span class="mvp-ribbon-seal">MVP</span>{% endif %}
                                                 </div>
                                             </div>
@@ -1325,7 +1325,10 @@ function renderGraphicCard(d) {
         ranks.forEach((r, idx) => {
             const is1st = (idx === 0);
             const mvpSeal = r.is_mvp ? '<span class="mvp-ribbon-seal">MVP</span>' : '';
-            const statStr = r.hr > 0 ? `타율 ${r.avg}, 홈런 ${r.hr}` : `타율 ${r.avg}`;
+            const statParts = [`타율 ${r.avg}`];
+            if (r.hr && r.hr > 0) statParts.push(`홈런 ${r.hr}`);
+            if (r.rbi && r.rbi > 0) statParts.push(`타점 ${r.rbi}`);
+            const statStr = statParts.join(', ');
             rankListElem.innerHTML += `
                 <div class="capsule-row ${is1st ? 'rank-1' : ''}">
                     <div class="d-flex align-items-center">

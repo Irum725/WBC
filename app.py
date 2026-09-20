@@ -760,6 +760,14 @@ def sns_generate():
     d = request.get_json() or {}
     return jsonify(generate_sns_payload(d))
 
+def format_rank_stat_line(r):
+    parts = [f"타율 {r.get('avg', '.000')}"]
+    if r.get('hr', 0) > 0:
+        parts.append(f"홈런 {r['hr']}")
+    if r.get('rbi', 0) > 0:
+        parts.append(f"타점 {r['rbi']}")
+    return ", ".join(parts)
+
 def generate_sns_payload(d=None):
     d = d or {}
     data_mode = d.get('data_mode', 'single') # 'single' (회차별) or 'season' (시즌종합)
@@ -941,14 +949,15 @@ def generate_sns_payload(d=None):
         ranks_prompt_lines = []
         for i, r in enumerate(top6):
             mvp_badge = " (시즌 MVP)" if r['is_mvp'] else ""
+            stat_summary = format_rank_stat_line(r)
             if i == 0:
-                ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+                ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
             else:
-                ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+                ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
         ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
-        lead_stats_str = f"{lead_team['wins']}W {lead_team['losses']}L {lead_team['ties']}D | R:{lead_team['runs']} H:{lead_team['hits']} HR:{lead_team['hr']} AVG:{lead_team['avg']}"
-        trail_stats_str = f"{trail_team['wins']}W {trail_team['losses']}L {trail_team['ties']}D | R:{trail_team['runs']} H:{trail_team['hits']} HR:{trail_team['hr']} AVG:{trail_team['avg']}"
+        lead_stats_str = f"{lead_team['wins']} {lead_team['losses']} {lead_team['ties']} {lead_team['runs']} {lead_team['hits']} {lead_team['hr']} {lead_team['avg']}"
+        trail_stats_str = f"{trail_team['wins']} {trail_team['losses']} {trail_team['ties']} {trail_team['runs']} {trail_team['hits']} {trail_team['hr']} {trail_team['avg']}"
 
         left_sec_title = "SEASON SUMMARY"
         center_sec_title = "SEASON LEADERS & MVP"
@@ -1424,10 +1433,11 @@ def generate_sns_payload(d=None):
     ranks_prompt_lines = []
     for i, r in enumerate(top6):
         mvp_badge = " (MVP)" if r['is_mvp'] else ""
+        stat_summary = format_rank_stat_line(r)
         if i == 0:
-            ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+            ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
         else:
-            ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+            ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
     ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
     left_sec_title = "MATCH RESULTS"
@@ -1447,9 +1457,9 @@ def generate_sns_payload(d=None):
 - Bright stadium floodlights illuminating the scene from upper corners with volumetric light rays
 - Date badge/ribbon: "{dstr}"
 - Subtitle line: "{winner_name} WIN! {winner_score}:{loser_score} 승리"
-- Mini baseball scoreboard at the bottom showing columns: team name, 그리고 이닝 {innings_header_str} R H E, with two team rows (winner on top in highlighted gold color, loser below):
-  - {winner_name}: {winner_inn_str} | R:{winner_score} H:{winner_h} E:{winner_e}
-  - {loser_name}: {loser_inn_str} | R:{loser_score} H:{loser_h} E:{loser_e}
+- Mini baseball scoreboard at the bottom showing columns: TEAM, {innings_header_str}, R, H, E, with two team rows (winner on top in highlighted gold color, loser below):
+  - {winner_name}: {winner_inn_str} {winner_score} {winner_h} {winner_e}
+  - {loser_name}: {loser_inn_str} {loser_score} {loser_h} {loser_e}
 
 **SECTION 2 (CENTER) — '{center_sec_title}':**
 - Top header line: '{center_sec_title}'
@@ -1489,14 +1499,14 @@ def generate_sns_payload(d=None):
 - 교차된 목재 야구 배트와 중앙 야구공 엠블럼, 상단 스타디움 조명 빛줄기
 - 날짜 리본 배지: "{dstr}"
 - 승리 부제: "{winner_name} WIN! {winner_score}:{loser_score} 승리"
-- 하단 미니 LED 전광판 스코어보드 (팀명, {innings_header_str}, R, H, E)
-  - {winner_name}: {winner_score}점 (승리팀 골드 하이라이트)
-  - {loser_name}: {loser_score}점
+- 하단 미니 LED 전광판 스코어보드 (팀명, {innings_header_str}, R, H, E):
+  - {winner_name}: {winner_inn_str} {winner_score} {winner_h} {winner_e} (승리팀 골드 하이라이트)
+  - {loser_name}: {loser_inn_str} {loser_score} {loser_h} {loser_e}
 
 2. 중앙 섹션 [{center_sec_title}]:
 - 상단 헤더: '{center_sec_title}'
 - 3단 시상대(포디움)와 금/은/동 메달 (1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name})
-- 1위~6위 흰색 캡슐형 순위 리스트 (MVP 선수에 황금 실링 배지 부착)
+- 1위~6위 흰색 캡슐형 타율 순위 리스트 (타율, 홈런, 타점 기록 표기, MVP 선수에 황금 실링 배지 부착)
 - 하단 👑 경기 MVP 서머리 박스: "경기 MVP : {mvp_name} ({mvp_info['team']})" / "{mvp_stats_line}"
 
 3. 우측 섹션 [{right_sec_title}]:
