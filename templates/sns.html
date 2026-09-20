@@ -969,7 +969,7 @@ if (typeof html2canvas === 'undefined') {
                                         <i class="fa-solid fa-copy me-1"></i>영문 프롬프트 복사
                                     </button>
                                 </div>
-                                <textarea class="form-control font-monospace bg-white" id="aiPromptText" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;"></textarea>
+                                <textarea class="form-control font-monospace bg-white" id="aiPromptText" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;">{{ (initial_sns_data.ai_prompt if initial_sns_data else '') }}</textarea>
                             </div>
 
                             <!-- 한국어 프롬프트 -->
@@ -980,7 +980,7 @@ if (typeof html2canvas === 'undefined') {
                                         <i class="fa-solid fa-copy me-1"></i>한국어 프롬프트 복사
                                     </button>
                                 </div>
-                                <textarea class="form-control font-monospace bg-white" id="aiPromptTextKo" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;"></textarea>
+                                <textarea class="form-control font-monospace bg-white" id="aiPromptTextKo" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;">{{ (initial_sns_data.ai_prompt_ko if initial_sns_data else '') }}</textarea>
                             </div>
                         </div>
 
@@ -1002,7 +1002,7 @@ if (typeof html2canvas === 'undefined') {
 
                     <!-- Tab 3: Long Kakao Message -->
                     <div class="tab-pane fade" id="longContent">
-                        <textarea class="form-control font-monospace mb-3" id="longText" rows="20" readonly style="font-size: 0.9rem; line-height: 1.5;"></textarea>
+                        <textarea class="form-control font-monospace mb-3" id="longText" rows="20" readonly style="font-size: 0.9rem; line-height: 1.5;">{{ (initial_sns_data.long if initial_sns_data else '') }}</textarea>
                         <button class="btn btn-warning w-100 fw-bold py-2" onclick="copyText('longText')">
                             <i class="fa-solid fa-copy me-1"></i>카카오톡 메시지 전체 복사
                         </button>
@@ -1010,7 +1010,7 @@ if (typeof html2canvas === 'undefined') {
 
                     <!-- Tab 4: Short Message -->
                     <div class="tab-pane fade" id="shortContent">
-                        <textarea class="form-control font-monospace mb-3" id="shortText" rows="14" readonly style="font-size: 0.95rem; line-height: 1.5;"></textarea>
+                        <textarea class="form-control font-monospace mb-3" id="shortText" rows="14" readonly style="font-size: 0.95rem; line-height: 1.5;">{{ (initial_sns_data.short if initial_sns_data else '') }}</textarea>
                         <button class="btn btn-info text-white w-100 fw-bold py-2" onclick="copyText('shortText')">
                             <i class="fa-solid fa-copy me-1"></i>요약 메시지 전체 복사
                         </button>
@@ -1024,7 +1024,7 @@ if (typeof html2canvas === 'undefined') {
 
 {% block scripts %}
 <script>
-let currentGraphicData = null;
+let currentGraphicData = {{ (initial_sns_data.graphic_data if initial_sns_data else None)|tojson }};
 let currentMode = 'single'; // 'single' or 'season'
 let promoInputDebounce = null;
 const PROMO_STORAGE_KEY = 'wbc_sns_custom_promo_v2';
@@ -1527,6 +1527,9 @@ function copyGraphicCard() {
 document.addEventListener('DOMContentLoaded', () => {
     loadPromoSettings();
     renderMvpCandidates(gameMvpCands);
+    if (currentGraphicData) {
+        renderGraphicCard(currentGraphicData);
+    }
     generateSns();
 });
 </script>

@@ -741,15 +741,21 @@ def sns_page(gid=None):
     season_mvp_cands = sorted(season_cands, key=lambda x: (x['mvp_pts'], x['avg'], x['hits']), reverse=True)[:5]
 
     conn.close()
+    initial_sns_data = generate_sns_payload({'data_mode': 'single', 'game_id': gid})
     return render_template('sns.html',
         games=games, sel=sel, records=recs,
         mvp_cands=mvp_cands, season_mvp_cands=season_mvp_cands,
         hr_list=hr_list, rbi_list=rbi_list,
-        awards=awards, gid=gid, fmt_date=fmt_date)
+        awards=awards, gid=gid, fmt_date=fmt_date,
+        initial_sns_data=initial_sns_data)
 
 @app.route('/api/sns/generate', methods=['POST'])
 def sns_generate():
     d = request.get_json() or {}
+    return jsonify(generate_sns_payload(d))
+
+def generate_sns_payload(d=None):
+    d = d or {}
     data_mode = d.get('data_mode', 'single') # 'single' (회차별) or 'season' (시즌종합)
     gid = d.get('game_id')
     mvp = d.get('mvp', '').strip()
@@ -1108,13 +1114,14 @@ def sns_generate():
             }
         }
 
-        return jsonify({
+        conn.close()
+        return {
             'long': long_msg,
             'short': short_msg,
             'ai_prompt': ai_prompt,
             'ai_prompt_ko': ai_prompt_ko,
             'graphic_data': graphic_data
-        })
+        }
 
     # ─────────────────────────────────────────────
     # [모드 B] 회차별 단일 경기 모드 (기본)
@@ -1541,7 +1548,8 @@ def sns_generate():
         }
     }
 
-    return jsonify({
+    conn.close()
+    return {
         'long': long_msg,
         'short': short_msg,
         'ai_prompt': ai_prompt,
@@ -1549,7 +1557,7 @@ def sns_generate():
         'graphic_data': graphic_data,
         'mvp_cands': sorted_hitters[:5] if data_mode == 'single' else sorted_season[:5],
         'awards': awards if data_mode == 'single' else {}
-    })
+    }
 
 @app.route('/players')
 @admin_required
@@ -2147,4 +2155,4 @@ if __name__ == '__main__':
     print(' * Mobile URL : http://[YOUR-PC-IP]:5000')
     print(' * Stop server: Press Ctrl+C')
     print('='*52 + '\n')
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=True, use_reloader=True, host='0.0.0.0', port=5000)
