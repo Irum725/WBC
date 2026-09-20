@@ -2,8 +2,13 @@
 {% block title %}SNS 경기 결과 생성 및 AI 포스터 - W.B.C{% endblock %}
 
 {% block extra_head %}
-<!-- html2canvas for High-Res Poster Image Export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- html2canvas for High-Res Poster Image Export (Local bundled with CDN fallback) -->
+<script src="{{ url_for('static', filename='js/html2canvas.min.js') }}"></script>
+<script>
+if (typeof html2canvas === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>');
+}
+</script>
 <style>
 /* ─────────────────────────────────────────────
    4:3 브로드캐스트 스타디움 포스터 그래픽 스타일
@@ -239,35 +244,59 @@
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    gap: 3px;
-    height: 48px;
+    gap: 4px;
+    height: 52px;
 }
 .podium-col {
     background: linear-gradient(to top, #94a3b8, #f8fafc);
     color: #0f172a;
     font-weight: 900;
-    border-radius: 3px 3px 0 0;
+    border-radius: 4px 4px 0 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding-bottom: 3px;
-    font-size: 12px;
+    align-items: center;
+    padding: 2px 2px 3px 2px;
+    font-size: 11px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+.podium-pname {
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.podium-rank-tag {
+    font-size: 11.5px;
+    font-weight: 900;
+    line-height: 1.1;
 }
 .p-col-1 {
-    width: 80px;
-    height: 46px;
+    width: 82px;
+    height: 50px;
     background: linear-gradient(to top, #fbbf24, #fffbeb);
     border: 1px solid #fde047;
 }
 .p-col-2 {
-    width: 68px;
-    height: 36px;
+    width: 70px;
+    height: 40px;
 }
 .p-col-3 {
-    width: 68px;
-    height: 28px;
+    width: 70px;
+    height: 32px;
     background: linear-gradient(to top, #f97316, #fff7ed);
+}
+
+.capsule-team {
+    font-size: 10.5px;
+    color: #64748b;
+    margin-left: 4px;
+    font-weight: 700;
 }
 
 /* 1위~6위 캡슐 리스트 */
@@ -503,7 +532,7 @@
                 <!-- Single Game Dropdown -->
                 <div class="mb-3" id="gameSelectWrapper">
                     <label class="form-label fw-bold small">대상 경기 선택</label>
-                    <select class="form-select" id="gameSelect" onchange="location.href='/sns/' + this.value">
+                    <select class="form-select" id="gameSelect" onchange="switchGame(this.value)">
                         {% for g in games %}
                         <option value="{{ g.id }}" {% if sel and sel.id == g.id %}selected{% endif %}>
                             {{ fmt_date(g.game_date) }} (제{{ g.game_number or '?' }}회) - World {{ g.world_score or 0 }} : Believers {{ g.believers_score or 0 }}
@@ -595,48 +624,56 @@
             <div class="card-body">
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">선수 모집 배너 타이틀</label>
-                    <input type="text" class="form-control form-control-sm" id="recruitmentTitle" value="선수 모집중" placeholder="예: 선수 모집중" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="recruitmentTitle" value="선수 모집중" placeholder="예: 선수 모집중" oninput="onPromoInput()">
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">모집 대상</label>
-                    <input type="text" class="form-control form-control-sm" id="targetAudience" value="세계로교회 남전도회 회원" placeholder="예: 세계로교회 남전도회 회원 등" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="targetAudience" value="세계로교회 남전도회 회원" placeholder="예: 세계로교회 남전도회 회원 등" oninput="onPromoInput()">
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">모집 세부 안내 문구 (줄바꿈 구분)</label>
-                    <textarea class="form-control form-control-sm" id="recruitmentBullets" rows="4" oninput="generateSns()" placeholder="항목별 줄바꿈">운동 좋아하거나 못해도 환영&#10;즐거운 교제로 함께해요&#10;육아 아빠 언제든 환영&#10;회비 : 경기참석시 1만원</textarea>
+                    <textarea class="form-control form-control-sm" id="recruitmentBullets" rows="4" oninput="onPromoInput()" placeholder="항목별 줄바꿈">운동 좋아하거나 못해도 환영&#10;즐거운 교제로 함께해요&#10;육아 아빠 언제든 환영&#10;회비 : 경기참석시 1만원</textarea>
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">다음 모임 일정 안내</label>
-                    <input type="text" class="form-control form-control-sm" id="nextMeetup" value="- 매월 2째주 주일 17시 정기모임 (시즌경기)" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="nextMeetup" value="- 매월 2째주 주일 17시 정기모임 (시즌경기)" oninput="onPromoInput()">
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1 text-warning-emphasis">강조/주의 알림 (노란 박스)</label>
-                    <input type="text" class="form-control form-control-sm" id="cautionBox" value="※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="cautionBox" value="※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!" oninput="onPromoInput()">
                 </div>
 
                 <div class="row g-2 mb-2">
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">순위/선수기록 링크</label>
-                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="wbcclub.pythonanywhere.com" placeholder="예: wbcclub.pythonanywhere.com" oninput="generateSns()">
+                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="wbcclub.pythonanywhere.com" placeholder="예: wbcclub.pythonanywhere.com" oninput="onPromoInput()">
                     </div>
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">네이버 밴드</label>
-                        <input type="text" class="form-control form-control-sm" id="bandUrl" value="band.us/@wbc" oninput="generateSns()">
+                        <input type="text" class="form-control form-control-sm" id="bandUrl" value="band.us/@wbc" oninput="onPromoInput()">
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label small fw-bold mb-1">문의처</label>
-                    <input type="text" class="form-control form-control-sm" id="contactInfo" value="이주호집사 010-3485-2419" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="contactInfo" value="이주호집사 010-3485-2419" oninput="onPromoInput()">
                 </div>
 
-                <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="generateSns()">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>메시지 & 4:3 그래픽 카드 실시간 갱신
-                </button>
+                <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-success flex-grow-1 py-2 fw-bold" onclick="onGenerateAndSave()">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>실시간 갱신 & 브라우저 저장
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary py-2" onclick="resetPromoSettings()" title="기본값으로 복원">
+                        <i class="fa-solid fa-arrow-rotate-left me-1"></i>초기화
+                    </button>
+                </div>
+                <div id="promoSaveAlert" class="alert alert-success py-1 px-2 small mb-0 d-none text-center">
+                    <i class="fa-solid fa-circle-check me-1"></i>설정 문구가 브라우저에 저장 및 포스터에 반영되었습니다!
+                </div>
             </div>
         </div>
     </div>
@@ -649,6 +686,11 @@
                     <li class="nav-item">
                         <button class="nav-link active fw-bold" id="poster-tab" data-bs-toggle="tab" data-bs-target="#posterContent">
                             <i class="fa-solid fa-image text-danger me-1"></i>스포츠 그래픽 카드 (4:3)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="rankings-tab" data-bs-toggle="tab" data-bs-target="#rankingsContent">
+                            <i class="fa-solid fa-ranking-star text-success me-1"></i>경기 순위표
                         </button>
                     </li>
                     <li class="nav-item">
@@ -678,10 +720,13 @@
                                 <span>레퍼런스 이미지 디자인이 실시간 렌더링됩니다.</span>
                             </div>
                             <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-info fw-medium" onclick="openGraphicCardInNewTab()" title="새 창에서 원본 크기로 보기">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>새 창으로 열기
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary fw-medium" onclick="copyGraphicCard()">
                                     <i class="fa-solid fa-copy me-1"></i>이미지 복사
                                 </button>
-                                <button type="button" class="btn btn-sm btn-danger fw-bold" onclick="downloadGraphicCard()">
+                                <button type="button" class="btn btn-sm btn-danger fw-bold" id="btnDownloadPng" onclick="downloadGraphicCard()">
                                     <i class="fa-solid fa-download me-1"></i>4:3 고해상도 PNG 다운로드
                                 </button>
                             </div>
@@ -734,7 +779,7 @@
 
                                     <!-- 2. CENTER SECTION -->
                                     <div class="col-center-sec">
-                                        <div class="sec-header-line">CENTER SECTION</div>
+                                        <div class="sec-header-line" id="cardCenterSecHeader">경기 순위표 (TOP RANKINGS)</div>
 
                                         <!-- Podium with Medals -->
                                         <div class="podium-outer-wrap">
@@ -744,15 +789,36 @@
                                                 <span>🥉</span>
                                             </div>
                                             <div class="podium-stairs-svg">
-                                                <div class="podium-col p-col-2">2위</div>
-                                                <div class="podium-col p-col-1">1</div>
-                                                <div class="podium-col p-col-3">3</div>
+                                                <div class="podium-col p-col-2">
+                                                    <span class="podium-pname" id="podium2Name">{{ mvp_cands[1].name if mvp_cands|length > 1 else '—' }}</span>
+                                                    <span class="podium-rank-tag">2위</span>
+                                                </div>
+                                                <div class="podium-col p-col-1">
+                                                    <span class="podium-pname" id="podium1Name">{{ mvp_cands[0].name if mvp_cands else '—' }}</span>
+                                                    <span class="podium-rank-tag">1</span>
+                                                </div>
+                                                <div class="podium-col p-col-3">
+                                                    <span class="podium-pname" id="podium3Name">{{ mvp_cands[2].name if mvp_cands|length > 2 else '—' }}</span>
+                                                    <span class="podium-rank-tag">3</span>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <!-- Top 6 Ranks (Capsule rows) -->
                                         <div class="rank-capsule-list" id="cardRankList">
-                                            <!-- Dynamic rank capsules -->
+                                            {% for r in (mvp_cands or [])[:6] %}
+                                            <div class="capsule-row {% if loop.first %}rank-1{% endif %}">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="capsule-badge">{{ loop.index }}위</span>
+                                                    <span class="capsule-name">{{ r.name }}</span>
+                                                    <small class="capsule-team">({{ r.team }})</small>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="capsule-stats">타율 {{ '%0.3f'|format(r.avg) }}{% if r.hr > 0 %}, 홈런 {{ r.hr }}{% endif %}</span>
+                                                    {% if loop.first %}<span class="mvp-ribbon-seal">MVP</span>{% endif %}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
                                         </div>
 
                                         <!-- MVP Summary Banner -->
@@ -761,8 +827,14 @@
                                                 👑<br>MVP
                                             </div>
                                             <div class="mvp-info-text">
-                                                <div id="cardMvpName">경기 MVP : 박동진 (Believers)</div>
-                                                <div id="cardMvpStats" class="text-secondary small">- 26.7점 / 5타수 3안타 5타점 3홈런</div>
+                                                <div id="cardMvpName">경기 MVP : {{ mvp_cands[0].name if mvp_cands else '—' }}</div>
+                                                <div id="cardMvpStats" class="text-secondary small">
+                                                    {% if mvp_cands %}
+                                                    - {{ mvp_cands[0].mvp_pts }}점 / {{ mvp_cands[0].ab }}타수 {{ mvp_cands[0].hits }}안타 {{ mvp_cands[0].rbi }}타점
+                                                    {% else %}
+                                                    - 기록 대기중
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -776,7 +848,7 @@
                                         </div>
 
                                         <ul class="right-bullet-list" id="cardBullets">
-                                            <li>- 대상 : 세계로교회 남전도회 회원</li>
+                                            <li>- 대상 : <strong>세계로교회 남전도회 회원</strong></li>
                                             <li>- 운동 좋아하거나 못해도 환영</li>
                                             <li>- 즐거운 교제로 함께해요</li>
                                             <li>- 육아 아빠 언제든 환영</li>
@@ -794,7 +866,7 @@
                                         ※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!
                                     </div>
                                     <p class="footer-link-txt">
-                                        - 순위/기록: <span id="cardApplyLink" class="text-info">wbcclub.pythonanywhere.com</span>
+                                        - 순위/선수기록: <span id="cardApplyLink" class="text-info">wbcclub.pythonanywhere.com</span>
                                     </p>
                                     <div class="footer-contact-txt">
                                         <span>- 밴드 : <span id="cardBandLink">band.us/@wbc</span></span>
@@ -802,6 +874,65 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Detailed Standings / 경기 순위표 -->
+                    <div class="tab-pane fade" id="rankingsContent">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark" id="rankingsTabTitle"><i class="fa-solid fa-ranking-star text-success me-1"></i>경기 타자 공식 순위표</h6>
+                                <small class="text-muted" id="rankingsTabSubtitle">타율 및 MVP 종합 활약도 기준 전체 출전 선수 순위</small>
+                            </div>
+                            <span class="badge bg-success-subtle text-success fw-bold px-2 py-1">실시간 집계</span>
+                        </div>
+                        <div class="table-responsive border rounded bg-white shadow-sm">
+                            <table class="table table-hover table-striped align-middle text-center mb-0" style="font-size: 0.88rem;">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 60px;">순위</th>
+                                        <th style="width: 85px;">팀</th>
+                                        <th style="width: 105px;">선수명</th>
+                                        <th style="width: 75px;" class="bg-primary text-white">타율</th>
+                                        <th style="width: 55px;">타수</th>
+                                        <th style="width: 55px;">안타</th>
+                                        <th style="width: 60px;" class="bg-warning text-dark">타점</th>
+                                        <th style="width: 60px;" class="bg-danger text-white">홈런</th>
+                                        <th style="width: 55px;">삼진</th>
+                                        <th style="width: 90px;" class="bg-danger-subtle text-danger fw-bold">MVP점수</th>
+                                        <th>시상/비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingsTabBody">
+                                    {% for r in (records or []) %}
+                                    <tr class="{% if loop.first %}table-warning fw-bold{% endif %}">
+                                        <td class="fw-bold">
+                                            {% if loop.index == 1 %}🥇 1위
+                                            {% elif loop.index == 2 %}🥈 2위
+                                            {% elif loop.index == 3 %}🥉 3위
+                                            {% else %}{{ loop.index }}위{% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ 'badge-world' if r.team == 'World' else 'badge-believers' }}">{{ r.team }}</span>
+                                        </td>
+                                        <td class="fw-bold">{{ r.name }}</td>
+                                        <td class="fw-bold text-primary">{{ '%0.3f'|format(r.avg) if r.ab > 0 else '.000' }}</td>
+                                        <td>{{ r.ab }}</td>
+                                        <td>{{ r.hits }}</td>
+                                        <td class="fw-bold text-warning-emphasis">{{ r.rbi }}</td>
+                                        <td class="{% if r.hr > 0 %}fw-bold text-danger{% endif %}">{{ r.hr }}</td>
+                                        <td>{{ r.k or 0 }}</td>
+                                        <td class="text-danger fw-bold">{{ r.mvp_pts }}점</td>
+                                        <td>
+                                            {% if loop.first %}<span class="badge bg-danger-subtle text-danger fw-bold">🏅 경기 MVP</span>{% endif %}
+                                            {% if awards and awards.mip and awards.mip.name == r.name %}<span class="badge bg-success-subtle text-success fw-bold">✨ MIP</span>{% endif %}
+                                            {% if awards and awards.unsung and awards.unsung.name == r.name %}<span class="badge bg-info-subtle text-info fw-bold">🛡️ 언성</span>{% endif %}
+                                            {% if awards and awards.hustle and awards.hustle.name == r.name %}<span class="badge bg-danger text-white fw-bold">🔥 허슬</span>{% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -852,10 +983,94 @@
 <script>
 let currentGraphicData = null;
 let currentMode = 'single'; // 'single' or 'season'
+let promoInputDebounce = null;
+const PROMO_STORAGE_KEY = 'wbc_sns_custom_promo_v2';
 
 // Preloaded candidates from backend
-const gameMvpCands = {{ (mvp_cands or [])|tojson }};
-const seasonMvpCands = {{ (season_mvp_cands or [])|tojson }};
+let gameMvpCands = {{ (mvp_cands or [])|tojson }};
+let seasonMvpCands = {{ (season_mvp_cands or [])|tojson }};
+
+function savePromoSettings(showNotice = false) {
+    const config = {
+        recruitmentTitle: document.getElementById('recruitmentTitle')?.value || '',
+        targetAudience: document.getElementById('targetAudience')?.value || '',
+        recruitmentBullets: document.getElementById('recruitmentBullets')?.value || '',
+        nextMeetup: document.getElementById('nextMeetup')?.value || '',
+        cautionBox: document.getElementById('cautionBox')?.value || '',
+        applyUrl: document.getElementById('applyUrl')?.value || '',
+        bandUrl: document.getElementById('bandUrl')?.value || '',
+        contactInfo: document.getElementById('contactInfo')?.value || ''
+    };
+    try {
+        localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify(config));
+        if (showNotice) {
+            const al = document.getElementById('promoSaveAlert');
+            if (al) {
+                al.classList.remove('d-none');
+                setTimeout(() => { al.classList.add('d-none'); }, 3000);
+            }
+        }
+    } catch (e) {
+        console.warn('localStorage save error:', e);
+    }
+}
+
+function loadPromoSettings() {
+    try {
+        const saved = localStorage.getItem(PROMO_STORAGE_KEY);
+        if (saved) {
+            const config = JSON.parse(saved);
+            if (config.recruitmentTitle !== undefined && document.getElementById('recruitmentTitle')) document.getElementById('recruitmentTitle').value = config.recruitmentTitle;
+            if (config.targetAudience !== undefined && document.getElementById('targetAudience')) document.getElementById('targetAudience').value = config.targetAudience;
+            if (config.recruitmentBullets !== undefined && document.getElementById('recruitmentBullets')) document.getElementById('recruitmentBullets').value = config.recruitmentBullets;
+            if (config.nextMeetup !== undefined && document.getElementById('nextMeetup')) document.getElementById('nextMeetup').value = config.nextMeetup;
+            if (config.cautionBox !== undefined && document.getElementById('cautionBox')) document.getElementById('cautionBox').value = config.cautionBox;
+            if (config.applyUrl !== undefined && document.getElementById('applyUrl')) document.getElementById('applyUrl').value = config.applyUrl;
+            if (config.bandUrl !== undefined && document.getElementById('bandUrl')) document.getElementById('bandUrl').value = config.bandUrl;
+            if (config.contactInfo !== undefined && document.getElementById('contactInfo')) document.getElementById('contactInfo').value = config.contactInfo;
+            return true;
+        }
+    } catch (e) {
+        console.warn('localStorage load error:', e);
+    }
+    return false;
+}
+
+function resetPromoSettings() {
+    if (!confirm('홍보/모집 문구를 레퍼런스 초기 기본값으로 되돌리시겠습니까?')) return;
+    try { localStorage.removeItem(PROMO_STORAGE_KEY); } catch (e) {}
+    if (document.getElementById('recruitmentTitle')) document.getElementById('recruitmentTitle').value = '선수 모집중';
+    if (document.getElementById('targetAudience')) document.getElementById('targetAudience').value = '세계로교회 남전도회 회원';
+    if (document.getElementById('recruitmentBullets')) document.getElementById('recruitmentBullets').value = '운동 좋아하거나 못해도 환영\n즐거운 교제로 함께해요\n육아 아빠 언제든 환영\n회비 : 경기참석시 1만원';
+    if (document.getElementById('nextMeetup')) document.getElementById('nextMeetup').value = '- 매월 2째주 주일 17시 정기모임 (시즌경기)';
+    if (document.getElementById('cautionBox')) document.getElementById('cautionBox').value = '※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!';
+    if (document.getElementById('applyUrl')) document.getElementById('applyUrl').value = 'wbcclub.pythonanywhere.com';
+    if (document.getElementById('bandUrl')) document.getElementById('bandUrl').value = 'band.us/@wbc';
+    if (document.getElementById('contactInfo')) document.getElementById('contactInfo').value = '이주호집사 010-3485-2419';
+    generateSns();
+    const al = document.getElementById('promoSaveAlert');
+    if (al) {
+        al.innerText = '초기 기본값으로 복원되었습니다.';
+        al.classList.remove('d-none');
+        setTimeout(() => { 
+            al.classList.add('d-none'); 
+            al.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>설정 문구가 브라우저에 저장 및 포스터에 반영되었습니다!';
+        }, 3000);
+    }
+}
+
+function onPromoInput() {
+    savePromoSettings(false);
+    clearTimeout(promoInputDebounce);
+    promoInputDebounce = setTimeout(() => {
+        generateSns();
+    }, 250);
+}
+
+function onGenerateAndSave() {
+    savePromoSettings(true);
+    generateSns();
+}
 
 function renderMvpCandidates(cands) {
     const wrapper = document.getElementById('mvpCandidatesWrapper');
@@ -912,6 +1127,13 @@ function switchDataMode(mode) {
     generateSns();
 }
 
+function switchGame(gid) {
+    if (history.pushState) {
+        history.pushState(null, '', '/sns/' + gid);
+    }
+    generateSns();
+}
+
 function generateSns() {
     const gid = document.getElementById('gameSelect') ? document.getElementById('gameSelect').value : '';
     const selectedMvp = document.querySelector('input[name="mvpRadio"]:checked');
@@ -959,6 +1181,9 @@ function generateSns() {
         if (data.ai_prompt) {
             document.getElementById('aiPromptText').value = data.ai_prompt;
         }
+        if (data.mvp_cands && currentMode === 'single') {
+            gameMvpCands = data.mvp_cands;
+        }
         if (data.graphic_data) {
             currentGraphicData = data.graphic_data;
             renderGraphicCard(data.graphic_data);
@@ -970,7 +1195,7 @@ function generateSns() {
 function renderGraphicCard(d) {
     if (!d) return;
 
-    // Title & Date
+    // 1. LEFT SECTION: Title & Date & Win Subtitle
     if (d.data_mode === 'season') {
         document.getElementById('cardTitle').innerHTML = `2026<br><span class="gold-wbc">W.B.C.</span>시즌결과`;
     } else {
@@ -979,7 +1204,7 @@ function renderGraphicCard(d) {
     document.getElementById('cardDate').innerText = d.game_date;
     document.getElementById('cardWinSubtitle').innerText = d.win_subtitle || `${d.winner_name} WIN! ${d.winner_score}:${d.loser_score} 승리`;
 
-    // Scoreboard Header & Body
+    // Mini Scoreboard Header & Body
     const headerRow = document.getElementById('cardSbHeader');
     const sbBody = document.getElementById('cardSbBody');
     sbBody.innerHTML = '';
@@ -1006,7 +1231,7 @@ function renderGraphicCard(d) {
         lHtml += `</tr>`;
         sbBody.innerHTML += lHtml;
     } else {
-        headerRow.innerHTML = '<th style="text-align: left; padding-left: 2px;"></th>';
+        headerRow.innerHTML = '<th style="text-align: left; padding-left: 2px;">TEAM</th>';
         (d.innings || []).forEach(inn => {
             headerRow.innerHTML += `<th>${inn}</th>`;
         });
@@ -1029,27 +1254,43 @@ function renderGraphicCard(d) {
         sbBody.innerHTML += lHtml;
     }
 
-    // Rank List (1위 ~ 6위) - 캡슐 스타일
+    // 2. CENTER SECTION: Header, Podium, Top 6 Ranks & MVP
+    const centerHeader = document.getElementById('cardCenterSecHeader');
+    if (centerHeader) {
+        centerHeader.innerText = d.data_mode === 'season' ? '시즌 순위표 (TOP RANKINGS)' : '경기 순위표 (TOP RANKINGS)';
+    }
+
     const ranks = d.top_ranks || [];
+    const p1 = ranks[0] ? ranks[0].name : '—';
+    const p2 = ranks[1] ? ranks[1].name : '—';
+    const p3 = ranks[2] ? ranks[2].name : '—';
+    if (document.getElementById('podium1Name')) document.getElementById('podium1Name').innerText = p1;
+    if (document.getElementById('podium2Name')) document.getElementById('podium2Name').innerText = p2;
+    if (document.getElementById('podium3Name')) document.getElementById('podium3Name').innerText = p3;
+
+    // 1위 ~ 6위 캡슐 바 렌더링
     const rankListElem = document.getElementById('cardRankList');
-    rankListElem.innerHTML = '';
-    ranks.forEach((r, idx) => {
-        const is1st = (idx === 0);
-        const mvpSeal = r.is_mvp ? '<span class="mvp-ribbon-seal">MVP</span>' : '';
-        const statStr = r.hr > 0 ? `타율 ${r.avg}, 홈런 ${r.hr}` : `타율 ${r.avg}`;
-        rankListElem.innerHTML += `
-            <div class="capsule-row ${is1st ? 'rank-1' : ''}">
-                <div class="d-flex align-items-center">
-                    <span class="capsule-badge">${r.rank}위</span>
-                    <span class="capsule-name">${r.name}</span>
+    if (rankListElem) {
+        rankListElem.innerHTML = '';
+        ranks.forEach((r, idx) => {
+            const is1st = (idx === 0);
+            const mvpSeal = r.is_mvp ? '<span class="mvp-ribbon-seal">MVP</span>' : '';
+            const statStr = r.hr > 0 ? `타율 ${r.avg}, 홈런 ${r.hr}` : `타율 ${r.avg}`;
+            rankListElem.innerHTML += `
+                <div class="capsule-row ${is1st ? 'rank-1' : ''}">
+                    <div class="d-flex align-items-center">
+                        <span class="capsule-badge">${r.rank}위</span>
+                        <span class="capsule-name">${r.name}</span>
+                        <small class="capsule-team">(${r.team})</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="capsule-stats">${statStr}</span>
+                        ${mvpSeal}
+                    </div>
                 </div>
-                <div class="d-flex align-items-center">
-                    <span class="capsule-stats">${statStr}</span>
-                    ${mvpSeal}
-                </div>
-            </div>
-        `;
-    });
+            `;
+        });
+    }
 
     // MVP Summary Box
     if (d.mvp) {
@@ -1060,38 +1301,94 @@ function renderGraphicCard(d) {
         document.getElementById('cardMvpStats').innerText = `- ${d.mvp.stats_line || ''}`;
     }
 
-    // Promo Section
+    // 3. RIGHT SECTION: Promo
     const p = d.promo || {};
     document.getElementById('cardRecruitHeader').innerText = p.recruitment_title || '선수 모집중';
     
     const bulletsElem = document.getElementById('cardBullets');
-    bulletsElem.innerHTML = '';
-    bulletsElem.innerHTML += `<li>- 대상 : <strong>${p.target_audience || '세계로교회 남전도회 회원'}</strong></li>`;
-    (p.bullets || []).forEach(b => {
-        bulletsElem.innerHTML += `<li>- ${b}</li>`;
-    });
+    if (bulletsElem) {
+        bulletsElem.innerHTML = '';
+        bulletsElem.innerHTML += `<li>- 대상 : <strong>${p.target_audience || '세계로교회 남전도회 회원'}</strong></li>`;
+        (p.bullets || []).forEach(b => {
+            bulletsElem.innerHTML += `<li>- ${b}</li>`;
+        });
+    }
 
-    // Footer
+    // 4. BOTTOM FOOTER
     document.getElementById('cardNextMeetup').innerText = p.next_meetup || '- 매월 2째주 주일 17시 정기모임 (시즌경기)';
     document.getElementById('cardCautionText').innerText = p.caution_box || '※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!';
     document.getElementById('cardApplyLink').innerText = p.apply_url || 'wbcclub.pythonanywhere.com';
     document.getElementById('cardBandLink').innerText = p.band_url || 'band.us/@wbc';
     document.getElementById('cardContactText').innerText = p.contact_info || '이주호집사 010-3485-2419';
+
+    // 5. 경기 공식 순위표 탭 (Detailed Standings Tab) 동기화
+    const rankingsBody = document.getElementById('rankingsTabBody');
+    if (rankingsBody && d.ranking_table) {
+        rankingsBody.innerHTML = '';
+        const titleElem = document.getElementById('rankingsTabTitle');
+        const subElem = document.getElementById('rankingsTabSubtitle');
+        if (titleElem) {
+            titleElem.innerHTML = d.data_mode === 'season' 
+                ? '<i class="fa-solid fa-ranking-star text-success me-1"></i>2026 시즌 종합 공식 순위표'
+                : `<i class="fa-solid fa-ranking-star text-success me-1"></i>제${d.game_number || 1}회 경기 타자 공식 순위표`;
+        }
+        if (subElem) {
+            subElem.innerText = d.data_mode === 'season'
+                ? `전체 ${d.ranking_table.length}명 선수 시즌 누적 타격 성적 및 MVP 포인트 종합 순위`
+                : `${d.game_date} 경기 출전 선수 타격 성적 및 활약도 종합 순위`;
+        }
+
+        d.ranking_table.forEach((r, idx) => {
+            const medal = idx === 0 ? '🥇 1위' : (idx === 1 ? '🥈 2위' : (idx === 2 ? '🥉 3위' : `${r.rank}위`));
+            const teamBadge = r.team === 'Believers' 
+                ? '<span class="badge badge-believers">Believers</span>' 
+                : '<span class="badge badge-world">World</span>';
+            const awardBadge = r.special_award ? `<span class="badge bg-danger-subtle text-danger fw-bold ms-1">${r.special_award}</span>` : '';
+            const rowClass = idx === 0 ? 'table-warning fw-bold' : '';
+            rankingsBody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="fw-bold">${medal}</td>
+                    <td>${teamBadge}</td>
+                    <td class="fw-bold">${r.name}</td>
+                    <td class="fw-bold text-primary">${r.avg}</td>
+                    <td>${r.ab}</td>
+                    <td>${r.hits}</td>
+                    <td class="fw-bold text-warning-emphasis">${r.rbi}</td>
+                    <td class="${r.hr > 0 ? 'fw-bold text-danger' : ''}">${r.hr}</td>
+                    <td>${r.k || 0}</td>
+                    <td class="text-danger fw-bold">${r.mvp_pts}점</td>
+                    <td>${awardBadge}</td>
+                </tr>
+            `;
+        });
+    }
 }
 
 function downloadGraphicCard() {
     const card = document.getElementById('broadcastGraphicCard');
-    if (!card || typeof html2canvas === 'undefined') {
-        alert('이미지 생성 모듈을 불러오는 중입니다.');
+    if (!card) return;
+
+    if (typeof html2canvas === 'undefined') {
+        alert('이미지 생성 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
+    }
+
+    const btn = document.getElementById('btnDownloadPng');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>이미지 변환 중...';
     }
 
     html2canvas(card, {
         scale: 2, // 960x720 -> 1920x1440 초고해상도 4:3 출력
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#020617',
-        width: 960,
-        height: 720
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+        logging: false
     }).then(canvas => {
         const link = document.createElement('a');
         const filename = currentMode === 'season' 
@@ -1099,10 +1396,48 @@ function downloadGraphicCard() {
             : `WBC_제${currentGraphicData ? (currentGraphicData.game_number || 1) : 1}회_경기결과_4x3포스터.png`;
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+    }).catch(err => {
+        console.error('html2canvas error:', err);
+        alert('이미지 변환 중 오류가 발생했습니다: ' + err);
+    }).finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+}
+
+function openGraphicCardInNewTab() {
+    const card = document.getElementById('broadcastGraphicCard');
+    if (!card || typeof html2canvas === 'undefined') {
+        alert('이미지 생성 모듈을 불러오는 중입니다.');
+        return;
+    }
+
+    html2canvas(card, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#020617',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+        logging: false
+    }).then(canvas => {
+        const dataUrl = canvas.toDataURL('image/png');
+        const w = window.open('');
+        if (w) {
+            w.document.write(`<html><head><title>WBC 4:3 방송 포스터</title><style>body{margin:0;background:#020617;display:flex;justify-content:center;align-items:center;min-height:100vh;}img{max-width:100%;height:auto;box-shadow:0 0 30px rgba(0,0,0,0.8);}</style></head><body><img src="${dataUrl}"/></body></html>`);
+            w.document.close();
+        } else {
+            alert('팝업 차단이 감지되었습니다. 팝업 허용 후 다시 시도해주세요.');
+        }
     }).catch(err => {
         console.error(err);
-        alert('이미지 저장 중 오류가 발생했습니다: ' + err);
+        alert('이미지 생성 중 오류가 발생했습니다: ' + err);
     });
 }
 
@@ -1113,9 +1448,12 @@ function copyGraphicCard() {
     html2canvas(card, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#020617',
-        width: 960,
-        height: 720
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+        logging: false
     }).then(canvas => {
         canvas.toBlob(blob => {
             if (navigator.clipboard && navigator.clipboard.write) {
@@ -1135,6 +1473,7 @@ function copyGraphicCard() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadPromoSettings();
     renderMvpCandidates(gameMvpCands);
     generateSns();
 });

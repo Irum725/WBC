@@ -178,6 +178,17 @@ def fmt_date(d):
     except:
         return str(d)
 
+def fmt_badge_date(d):
+    try:
+        import re
+        m = re.search(r'(\d{4})[^\d]+(\d{1,2})[^\d]+(\d{1,2})', str(d))
+        if m:
+            return f"{m.group(1)}. {int(m.group(2))}. {int(m.group(3))}"
+        dt = datetime.strptime(str(d),'%Y-%m-%d')
+        return f"{dt.year}. {dt.month}. {dt.day}"
+    except:
+        return str(d)
+
 # ─────────────────────────────────────────────
 # 운영진 인증 라우트
 # ─────────────────────────────────────────────
@@ -887,6 +898,23 @@ def sns_generate():
                 'is_mvp': (r['name'] == mvp_name)
             })
 
+        ranking_table = []
+        for i, r in enumerate(sorted_season):
+            ranking_table.append({
+                'rank': i + 1,
+                'name': r['name'],
+                'team': r['team'],
+                'avg': f"{r['avg']:.3f}" if r['ab'] > 0 else ".000",
+                'hr': r['hr'],
+                'rbi': r['rbi'],
+                'hits': r['hits'],
+                'ab': r['ab'],
+                'k': r.get('k', 0),
+                'mvp_pts': r['mvp_pts'],
+                'is_mvp': (r['name'] == mvp_name),
+                'special_award': "👑 시즌 MVP" if (r['name'] == mvp_name) else ""
+            })
+
         dstr = f"2026 시즌 누적 결산 (총 {total_games_count}경기)"
         gnum = "시즌종합"
 
@@ -1022,6 +1050,7 @@ def sns_generate():
             'loser_h': trail_team['hits'],
             'loser_e': 0,
             'top_ranks': top6,
+            'ranking_table': ranking_table,
             'mvp': mvp_info,
             'promo': {
                 'recruitment_title': recruitment_title,
@@ -1368,11 +1397,33 @@ def sns_generate():
 - Decorative elements : baseball icons (ball, bats, gloves), medals, crowns, MVP seal, lightning/flash effects
 - Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
 
+    ranking_table = []
+    for i, r in enumerate(sorted_hitters):
+        special_tag = ""
+        if r['name'] == mvp_name: special_tag = "🏅 경기 MVP"
+        elif mip_name and r['name'] == mip_name: special_tag = "✨ MIP"
+        elif unsung_name and r['name'] == unsung_name: special_tag = "🛡️ 언성"
+        elif hustle_name and r['name'] == hustle_name: special_tag = "🔥 허슬"
+        ranking_table.append({
+            'rank': i + 1,
+            'name': r['name'],
+            'team': r['team'],
+            'avg': f"{r['avg']:.3f}" if r['ab'] > 0 else ".000",
+            'hr': r['hr'],
+            'rbi': r['rbi'],
+            'hits': r['hits'],
+            'ab': r['ab'],
+            'k': r.get('k', 0),
+            'mvp_pts': r['mvp_pts'],
+            'is_mvp': (r['name'] == mvp_name),
+            'special_award': special_tag
+        })
+
     graphic_data = {
         'data_mode': 'single',
         'game_title': f"제{gnum}회 W.B.C. 경기결과",
         'game_number': gnum,
-        'game_date': dstr,
+        'game_date': fmt_badge_date(game['game_date']),
         'winner_name': winner_name,
         'loser_name': loser_name,
         'winner_score': winner_score,
@@ -1387,6 +1438,7 @@ def sns_generate():
         'winner_scores': winner_scores,
         'loser_scores': loser_scores,
         'top_ranks': top6,
+        'ranking_table': ranking_table,
         'mvp': mvp_info,
         'promo': {
             'recruitment_title': recruitment_title,
@@ -1404,7 +1456,9 @@ def sns_generate():
         'long': long_msg,
         'short': short_msg,
         'ai_prompt': ai_prompt,
-        'graphic_data': graphic_data
+        'graphic_data': graphic_data,
+        'mvp_cands': sorted_hitters[:5] if data_mode == 'single' else sorted_season[:5],
+        'awards': awards if data_mode == 'single' else {}
     })
 
 @app.route('/players')
