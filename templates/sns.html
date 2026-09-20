@@ -349,21 +349,42 @@
 <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1"><i class="fa-solid fa-share-nodes text-success me-2"></i>SNS 경기 결과 & 포스터 그래픽 자동 생성기</h4>
-        <p class="text-muted small mb-0">경기 기록을 기반으로 카톡 공지, 인스타 요약, AI 이미지 생성 프롬프트 및 실시간 스포츠 방송 포스터를 자동 생성합니다.</p>
+        <p class="text-muted small mb-0">경기별 결과 또는 시즌 누적 종합 분석 데이터를 기반으로 실시간 스포츠 방송 포스터 및 AI 이미지 생성 프롬프트를 자동 생성합니다.</p>
     </div>
 </div>
 
 <div class="row g-4">
     <!-- Left: Settings and Custom Input Column -->
     <div class="col-lg-5">
+        <!-- 0. Data Mode Selector Card -->
+        <div class="card shadow-sm border-0 mb-3 bg-light">
+            <div class="card-body p-3">
+                <label class="form-label fw-bold small text-primary mb-2 d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-sliders"></i>데이터 생성 모드 선택
+                </label>
+                <div class="btn-group w-100 shadow-sm" role="group">
+                    <input type="radio" class="btn-check" name="dataMode" id="modeSingle" value="single" checked onchange="switchDataMode('single')">
+                    <label class="btn btn-outline-primary fw-bold py-2" for="modeSingle">
+                        <i class="fa-solid fa-baseball-bat-ball me-1"></i>회차별 경기 결과
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="dataMode" id="modeSeason" value="season" onchange="switchDataMode('season')">
+                    <label class="btn btn-outline-primary fw-bold py-2" for="modeSeason">
+                        <i class="fa-solid fa-chart-pie me-1"></i>시즌 종합 분석 데이터
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <!-- 1. Game & Awards Selection Card -->
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0"><i class="fa-solid fa-sliders me-2"></i>경기 및 시상자 선택</h6>
+                <h6 class="fw-bold mb-0" id="selectionCardTitle"><i class="fa-solid fa-calendar-check me-2"></i>경기 및 시상자 설정</h6>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">대상 경기</label>
+                <!-- Single Game Dropdown -->
+                <div class="mb-3" id="gameSelectWrapper">
+                    <label class="form-label fw-bold small">대상 경기 선택</label>
                     <select class="form-select" id="gameSelect" onchange="location.href='/sns/' + this.value">
                         {% for g in games %}
                         <option value="{{ g.id }}" {% if sel and sel.id == g.id %}selected{% endif %}>
@@ -373,35 +394,28 @@
                     </select>
                 </div>
 
-                {% if sel %}
-                <div class="mb-3">
-                    <label class="form-label fw-bold small text-primary d-flex justify-content-between align-items-center">
-                        <span><i class="fa-solid fa-crown me-1 text-warning"></i>오늘의 MVP 추천/선택</span>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">가중치 종합점수제</span>
-                    </label>
-                    <div class="d-flex flex-column gap-2">
-                        {% for cand in mvp_cands %}
-                        <div class="form-check p-2 rounded border bg-light">
-                            <input class="form-check-input ms-0 me-2" type="radio" name="mvpRadio" id="mvp_{{ loop.index }}" value="{{ cand.name }}" {% if loop.first %}checked{% endif %} onchange="generateSns()">
-                            <label class="form-check-label d-flex justify-content-between align-items-center w-100 ps-2" for="mvp_{{ loop.index }}">
-                                <span>
-                                    {% if loop.first %}🥇 {% elif loop.index == 2 %}🥈 {% elif loop.index == 3 %}🥉 {% endif %}
-                                    <strong>{{ cand.name }}</strong> <small class="text-muted">({{ cand.team }})</small>
-                                </span>
-                                <span class="small d-flex align-items-center gap-1">
-                                    <span class="badge bg-danger text-white">🔥 {{ cand.mvp_pts }}점</span>
-                                    <strong class="text-warning-emphasis bg-warning-subtle px-1 rounded">{{ cand.rbi or 0 }}타점</strong>
-                                    <span class="text-muted">{{ cand.ab }}타수 {{ cand.hits }}안타</span>
-                                    {% if cand.hr > 0 %}<span class="text-danger fw-bold">({{ cand.hr }}HR)</span>{% endif %}
-                                </span>
-                            </label>
-                        </div>
-                        {% endfor %}
+                <!-- Season Mode Notice Badge -->
+                <div class="alert alert-info border small py-2 px-3 mb-3 d-none align-items-center gap-2" id="seasonModeNotice">
+                    <i class="fa-solid fa-trophy fs-5 text-warning"></i>
+                    <div>
+                        <strong>2026 시즌 누적 종합 모드</strong><br>
+                        시즌 전체 경기(총 {{ games|length }}경기)의 누적 전적 및 종합 랭킹 데이터를 기반으로 생성합니다.
                     </div>
                 </div>
 
-                <!-- Special Awards Selection -->
-                <div class="card border-0 bg-light p-2 mb-3 rounded">
+                <!-- MVP Candidate Selection List -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-primary d-flex justify-content-between align-items-center">
+                        <span id="mvpSectionLabel"><i class="fa-solid fa-crown me-1 text-warning"></i>오늘의 MVP 추천/선택</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">가중치 종합점수제</span>
+                    </label>
+                    <div class="d-flex flex-column gap-2" id="mvpCandidatesWrapper">
+                        <!-- Rendered dynamically by switchDataMode -->
+                    </div>
+                </div>
+
+                <!-- Special Awards Selection (Single Mode Only) -->
+                <div class="card border-0 bg-light p-2 mb-2 rounded" id="specialAwardsCard">
                     <div class="fw-bold small text-dark mb-2">
                         <i class="fa-solid fa-award text-warning me-1"></i>명예의 특별상 추천
                     </div>
@@ -451,11 +465,9 @@
                         </select>
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
 
-        {% if sel %}
         <!-- 2. Custom Promotional / Announcement Input Card -->
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -490,8 +502,8 @@
 
                 <div class="row g-2 mb-2">
                     <div class="col-6">
-                        <label class="form-label small fw-bold mb-1">신청/기록 링크</label>
-                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="https://github.com/Irum725/WBC" oninput="generateSns()">
+                        <label class="form-label small fw-bold mb-1">순위/선수기록 링크</label>
+                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="https://github.com/Irum725/WBC" placeholder="예: https://... 또는 /rankings" oninput="generateSns()">
                     </div>
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">네이버 밴드</label>
@@ -509,7 +521,6 @@
                 </button>
             </div>
         </div>
-        {% endif %}
     </div>
 
     <!-- Right: Message & Graphic Preview Output Column -->
@@ -544,9 +555,9 @@
                     <!-- Tab 1: Live Sports Graphic Poster Preview & Export -->
                     <div class="tab-pane fade show active" id="posterContent">
                         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                            <div class="small text-muted">
+                            <div class="small text-muted" id="posterModeBadge">
                                 <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                                브로드캐스트 포스터 그래픽이 실시간 렌더링됩니다.
+                                <span>브로드캐스트 포스터 그래픽이 실시간 렌더링됩니다.</span>
                             </div>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-secondary fw-medium" onclick="copyGraphicCard()">
@@ -584,7 +595,7 @@
                                         <!-- Mini Scoreboard -->
                                         <div class="mini-scoreboard">
                                             <div class="header-lbl">
-                                                <span>STADIUM SCOREBOARD</span>
+                                                <span id="cardSbHeaderLbl">STADIUM SCOREBOARD</span>
                                                 <span class="text-warning">OFFICIAL</span>
                                             </div>
                                             <table class="mini-sb-table">
@@ -666,7 +677,7 @@
                                     </div>
                                     <div class="contact-row">
                                         <div>
-                                            <span class="text-white">신청/기록 :</span> <a href="#" id="cardApplyLink" target="_blank">wbc.example.com</a>
+                                            <span class="text-white">순위/선수기록 :</span> <a href="#" id="cardApplyLink" target="_blank">wbc.example.com</a>
                                         </div>
                                         <div>
                                             <span class="text-white">밴드 :</span> <span id="cardBandLink" class="text-info">band.us/@wbc</span>
@@ -685,7 +696,7 @@
                             <i class="fa-solid fa-sparkles text-primary fs-5 mt-1"></i>
                             <div>
                                 <strong>AI 이미지 생성 프롬프트 자동 생성 완료!</strong><br>
-                                아래 영문 프롬프트는 <strong>DALL-E 3, Midjourney, ChatGPT Plus, Bing Image Creator</strong> 등에서 즉시 사용할 수 있도록 최적화된 프롬프트입니다. 경기 결과와 사용자 홍보 설정이 자동으로 채워져 있습니다.
+                                아래 영문 프롬프트는 <strong>DALL-E 3, Midjourney, ChatGPT Plus, Bing Image Creator</strong> 등에서 즉시 사용할 수 있도록 최적화된 프롬프트입니다. 회차별 경기 또는 시즌 종합 데이터와 홍보 설정이 자동으로 채워져 있습니다.
                             </div>
                         </div>
 
@@ -725,9 +736,69 @@
 {% block scripts %}
 <script>
 let currentGraphicData = null;
+let currentMode = 'single'; // 'single' or 'season'
+
+// Preloaded candidates from backend
+const gameMvpCands = {{ (mvp_cands or [])|tojson }};
+const seasonMvpCands = {{ (season_mvp_cands or [])|tojson }};
+
+function renderMvpCandidates(cands) {
+    const wrapper = document.getElementById('mvpCandidatesWrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = '';
+    
+    if (!cands || cands.length === 0) {
+        wrapper.innerHTML = '<div class="text-muted small p-2">등록된 선수가 없습니다.</div>';
+        return;
+    }
+
+    cands.forEach((cand, idx) => {
+        const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🎖️'));
+        wrapper.innerHTML += `
+            <div class="form-check p-2 rounded border bg-light">
+                <input class="form-check-input ms-0 me-2" type="radio" name="mvpRadio" id="mvp_${idx+1}" value="${cand.name}" ${idx === 0 ? 'checked' : ''} onchange="generateSns()">
+                <label class="form-check-label d-flex justify-content-between align-items-center w-100 ps-2" for="mvp_${idx+1}">
+                    <span>
+                        ${medal} <strong>${cand.name}</strong> <small class="text-muted">(${cand.team})</small>
+                    </span>
+                    <span class="small d-flex align-items-center gap-1">
+                        <span class="badge bg-danger text-white">🔥 ${cand.mvp_pts}점</span>
+                        <strong class="text-warning-emphasis bg-warning-subtle px-1 rounded">${cand.rbi || 0}타점</strong>
+                        <span class="text-muted">${cand.ab}타수 ${cand.hits}안타</span>
+                        ${cand.hr > 0 ? `<span class="text-danger fw-bold">(${cand.hr}HR)</span>` : ''}
+                    </span>
+                </label>
+            </div>
+        `;
+    });
+}
+
+function switchDataMode(mode) {
+    currentMode = mode;
+    const gameSelectWrapper = document.getElementById('gameSelectWrapper');
+    const seasonNotice = document.getElementById('seasonModeNotice');
+    const specialAwardsCard = document.getElementById('specialAwardsCard');
+    const mvpLabel = document.getElementById('mvpSectionLabel');
+
+    if (mode === 'season') {
+        if (gameSelectWrapper) gameSelectWrapper.classList.add('d-none');
+        if (seasonNotice) { seasonNotice.classList.remove('d-none'); seasonNotice.classList.add('d-flex'); }
+        if (specialAwardsCard) specialAwardsCard.classList.add('d-none');
+        if (mvpLabel) mvpLabel.innerHTML = '<i class="fa-solid fa-crown me-1 text-warning"></i>시즌 종합 MVP 추천/선택';
+        renderMvpCandidates(seasonMvpCands);
+    } else {
+        if (gameSelectWrapper) gameSelectWrapper.classList.remove('d-none');
+        if (seasonNotice) { seasonNotice.classList.add('d-none'); seasonNotice.classList.remove('d-flex'); }
+        if (specialAwardsCard) specialAwardsCard.classList.remove('d-none');
+        if (mvpLabel) mvpLabel.innerHTML = '<i class="fa-solid fa-crown me-1 text-warning"></i>오늘의 MVP 추천/선택';
+        renderMvpCandidates(gameMvpCands);
+    }
+
+    generateSns();
+}
 
 function generateSns() {
-    const gid = document.getElementById('gameSelect').value;
+    const gid = document.getElementById('gameSelect') ? document.getElementById('gameSelect').value : '';
     const selectedMvp = document.querySelector('input[name="mvpRadio"]:checked');
     const mvpVal = selectedMvp ? selectedMvp.value : '';
     const mipVal = document.getElementById('mipSelect') ? document.getElementById('mipSelect').value : '';
@@ -748,6 +819,7 @@ function generateSns() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+            data_mode: currentMode,
             game_id: gid,
             mvp: mvpVal,
             mip: mipVal,
@@ -784,37 +856,66 @@ function renderGraphicCard(d) {
     if (!d) return;
 
     // Title & Date
-    document.getElementById('cardTitle').innerHTML = `제${d.game_number || 1}회 <span class="gold-accent">W.B.C.</span><br>경기결과`;
+    if (d.data_mode === 'season') {
+        document.getElementById('cardTitle').innerHTML = `2026 <span class="gold-accent">W.B.C.</span><br>시즌 종합 결산`;
+    } else {
+        document.getElementById('cardTitle').innerHTML = `제${d.game_number || 1}회 <span class="gold-accent">W.B.C.</span><br>경기결과`;
+    }
     document.getElementById('cardDate').innerText = d.game_date;
-    document.getElementById('cardWinSubtitle').innerText = `${d.winner_name} WIN! ${d.winner_score}:${d.loser_score} 승리`;
+    document.getElementById('cardWinSubtitle').innerText = d.win_subtitle || `${d.winner_name} WIN! ${d.winner_score}:${d.loser_score} 승리`;
 
-    // Scoreboard Header
+    // Scoreboard Header & Body
+    const headerLbl = document.getElementById('cardSbHeaderLbl');
     const headerRow = document.getElementById('cardSbHeader');
-    headerRow.innerHTML = '<th style="text-align: left; padding-left: 6px;">TEAM</th>';
-    (d.innings || []).forEach(inn => {
-        headerRow.innerHTML += `<th>${inn}</th>`;
-    });
-    headerRow.innerHTML += '<th>R</th><th>H</th><th>E</th>';
-
-    // Scoreboard Body
     const sbBody = document.getElementById('cardSbBody');
     sbBody.innerHTML = '';
 
-    // Winner Row (Top)
-    let wHtml = `<tr class="winner-row"><td style="text-align: left; padding-left: 6px; font-weight: 900;">${d.winner_name} 👑</td>`;
-    (d.winner_scores || []).forEach(s => {
-        wHtml += `<td>${s}</td>`;
-    });
-    wHtml += `<td class="highlight-r">${d.winner_score}</td><td>${d.winner_h}</td><td>${d.winner_e}</td></tr>`;
-    sbBody.innerHTML += wHtml;
+    if (d.table_type === 'season') {
+        if (headerLbl) headerLbl.innerText = 'SEASON STANDINGS & STATS';
+        headerRow.innerHTML = '';
+        (d.table_headers || []).forEach((th, idx) => {
+            headerRow.innerHTML += `<th style="${idx === 0 ? 'text-align: left; padding-left: 6px;' : ''}">${th}</th>`;
+        });
 
-    // Loser Row (Bottom)
-    let lHtml = `<tr class="loser-row"><td style="text-align: left; padding-left: 6px; font-weight: 700;">${d.loser_name}</td>`;
-    (d.loser_scores || []).forEach(s => {
-        lHtml += `<td>${s}</td>`;
-    });
-    lHtml += `<td class="highlight-r">${d.loser_score}</td><td>${d.loser_h}</td><td>${d.loser_e}</td></tr>`;
-    sbBody.innerHTML += lHtml;
+        // Winner Row (Top)
+        let wHtml = `<tr class="winner-row"><td style="text-align: left; padding-left: 6px; font-weight: 900;">${d.winner_name} 👑</td>`;
+        (d.winner_scores || []).forEach(s => {
+            wHtml += `<td>${s}</td>`;
+        });
+        wHtml += `</tr>`;
+        sbBody.innerHTML += wHtml;
+
+        // Loser Row (Bottom)
+        let lHtml = `<tr class="loser-row"><td style="text-align: left; padding-left: 6px; font-weight: 700;">${d.loser_name}</td>`;
+        (d.loser_scores || []).forEach(s => {
+            lHtml += `<td>${s}</td>`;
+        });
+        lHtml += `</tr>`;
+        sbBody.innerHTML += lHtml;
+    } else {
+        if (headerLbl) headerLbl.innerText = 'STADIUM SCOREBOARD';
+        headerRow.innerHTML = '<th style="text-align: left; padding-left: 6px;">TEAM</th>';
+        (d.innings || []).forEach(inn => {
+            headerRow.innerHTML += `<th>${inn}</th>`;
+        });
+        headerRow.innerHTML += '<th>R</th><th>H</th><th>E</th>';
+
+        // Winner Row (Top)
+        let wHtml = `<tr class="winner-row"><td style="text-align: left; padding-left: 6px; font-weight: 900;">${d.winner_name} 👑</td>`;
+        (d.winner_scores || []).forEach(s => {
+            wHtml += `<td>${s}</td>`;
+        });
+        wHtml += `<td class="highlight-r">${d.winner_score}</td><td>${d.winner_h}</td><td>${d.winner_e}</td></tr>`;
+        sbBody.innerHTML += wHtml;
+
+        // Loser Row (Bottom)
+        let lHtml = `<tr class="loser-row"><td style="text-align: left; padding-left: 6px; font-weight: 700;">${d.loser_name}</td>`;
+        (d.loser_scores || []).forEach(s => {
+            lHtml += `<td>${s}</td>`;
+        });
+        lHtml += `<td class="highlight-r">${d.loser_score}</td><td>${d.loser_h}</td><td>${d.loser_e}</td></tr>`;
+        sbBody.innerHTML += lHtml;
+    }
 
     // Podium Names
     const ranks = d.top_ranks || [];
@@ -848,8 +949,9 @@ function renderGraphicCard(d) {
 
     // MVP Summary Box
     if (d.mvp) {
+        const mvpTitlePrefix = d.data_mode === 'season' ? '시즌 종합 MVP' : '경기 MVP';
         document.getElementById('cardMvpName').innerHTML = `
-            <i class="fa-solid fa-crown text-warning me-1"></i>경기 MVP : <strong>${d.mvp.name}</strong> (${d.mvp.team})
+            <i class="fa-solid fa-crown text-warning me-1"></i>${mvpTitlePrefix} : <strong>${d.mvp.name}</strong> (${d.mvp.team})
         `;
         document.getElementById('cardMvpStats').innerText = d.mvp.stats_line || '';
     }
@@ -888,8 +990,10 @@ function downloadGraphicCard() {
         backgroundColor: '#050b18'
     }).then(canvas => {
         const link = document.createElement('a');
-        const gnum = currentGraphicData ? (currentGraphicData.game_number || 1) : 1;
-        link.download = `WBC_제${gnum}회_경기결과_안내포스터.png`;
+        const filename = currentMode === 'season' 
+            ? 'WBC_2026시즌_종합결산_안내포스터.png' 
+            : `WBC_제${currentGraphicData ? (currentGraphicData.game_number || 1) : 1}회_경기결과_안내포스터.png`;
+        link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
     }).catch(err => {
@@ -925,9 +1029,8 @@ function copyGraphicCard() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    {% if sel %}
+    renderMvpCandidates(gameMvpCands);
     generateSns();
-    {% endif %}
 });
 </script>
 {% endblock %}

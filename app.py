@@ -707,20 +707,348 @@ def sns_page(gid=None):
         hr_list   = sorted([r for r in recs if r['hr'] > 0], key=lambda x: -x['hr'])
         rbi_list  = sorted([r for r in recs if r['rbi'] > 0], key=lambda x: -x['rbi'])
         awards    = calc_game_awards(gid)
+
+    # 시즌 종합 MVP 후보 계산 (시즌 종합 모드용)
+    season_cands_raw = conn.execute('''
+        SELECT p.name, p.team,
+               COUNT(DISTINCT br.game_id) games,
+               SUM(br.ab) ab, SUM(br.hits) hits,
+               SUM(br.singles) singles, SUM(br.doubles) doubles, SUM(br.triples) triples,
+               SUM(br.hr) hr, SUM(br.rbi) rbi, SUM(br.k) k, SUM(br.dp) dp,
+               CASE WHEN SUM(br.ab)>0 THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END avg
+        FROM players p
+        JOIN batting_records br ON br.player_id=p.id
+        WHERE p.is_active=1
+        GROUP BY p.id HAVING SUM(br.ab)>=1
+    ''').fetchall()
+
+    season_cands = []
+    for r in season_cands_raw:
+        rd = dict(r)
+        rd['mvp_pts'] = calc_mvp_points(rd)
+        season_cands.append(rd)
+    season_mvp_cands = sorted(season_cands, key=lambda x: (x['mvp_pts'], x['avg'], x['hits']), reverse=True)[:5]
+
     conn.close()
     return render_template('sns.html',
         games=games, sel=sel, records=recs,
-        mvp_cands=mvp_cands, hr_list=hr_list, rbi_list=rbi_list,
+        mvp_cands=mvp_cands, season_mvp_cands=season_mvp_cands,
+        hr_list=hr_list, rbi_list=rbi_list,
         awards=awards, gid=gid, fmt_date=fmt_date)
 
 @app.route('/api/sns/generate', methods=['POST'])
 def sns_generate():
-    d = request.get_json()
-    gid  = d.get('game_id')
-    mvp  = d.get('mvp','').strip()
+    d = request.get_json() or {}
+    data_mode = d.get('data_mode', 'single') # 'single' (회차별) or 'season' (시즌종합)
+    gid = d.get('game_id')
+    mvp = d.get('mvp', '').strip()
+
+    # 사용자 정의 홍보/광고/모집 및 일정 파라미터 공통
+    recruitment_title = d.get('recruitment_title', '').strip() or "선수 모집중"
+    target_audience = d.get('target_audience', '').strip() or "세계로교회 성도, 청·장년 누구나 (초보 환영)"
+
+    raw_bullets = d.get('recruitment_bullets')
+    if isinstance(raw_bullets, list):
+        bullets = [b.strip() for b in raw_bullets if b and b.strip()]
+    elif isinstance(raw_bullets, str):
+        bullets = [b.strip() for b in raw_bullets.split('\n') if b.strip()]
+    else:
+        bullets = []
+
+    if not bullets:
+        bullets = [
+            "운동 좋아하거나 못해도 환영",
+            "즐거운 교제로 함께해요",
+            "육아 아빠 언제든 환영",
+            "회비 : 정기참석시 1만원"
+        ]
+
+    next_meetup = d.get('next_meetup', '').strip() or "— 다음 2째주 주일 17시 정기모임 (시즌경기)"
+    caution_box = d.get('caution_box', '').strip() or "※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!"
+    apply_url = d.get('apply_url', '').strip() or "https://github.com/Irum725/WBC"
+    band_url = d.get('band_url', '').strip() or "band.us/@wbcbaseball"
+    contact_info = d.get('contact_info', '').strip() or "담당자: 총무 (010-XXXX-XXXX)"
+    bullets_prompt_text = "\n".join([f"  - {b}" for b in bullets])
+    bullets_msg_text = "\n".join([f"• {b}" for b in bullets])
+
     conn = get_db()
-    game = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
-    if not game: return jsonify({'err':'없음'}),404
+
+    # ─────────────────────────────────────────────
+    # [모드 A] 시즌 종합 분석 데이터 모드
+    # ─────────────────────────────────────────────
+    if data_mode == 'season':
+        all_games = conn.execute('SELECT * FROM games ORDER BY game_date ASC, id ASC').fetchall()
+        total_games_count = len(all_games)
+
+        # 팀 상대 전적 계산
+        w_wins = 0; b_wins = 0; ties = 0
+        w_runs = 0; b_runs = 0
+        for g in all_games:
+            ws = g['world_score'] if g['world_score'] is not None else 0
+            bs = g['believers_score'] if g['believers_score'] is not None else 0
+            w_runs += ws; b_runs += bs
+            if ws > bs: w_wins += 1
+            elif bs > ws: b_wins += 1
+            else: ties += 1
+
+        team_stats = conn.execute('''
+            SELECT team, SUM(ab) tab, SUM(hits) th, SUM(hr) thr, SUM(rbi) trbi
+            FROM batting_records GROUP BY team
+        ''').fetchall()
+        t_map = {row['team']: dict(row) for row in team_stats}
+
+        b_tab = t_map.get('Believers', {}).get('tab', 0)
+        b_th = t_map.get('Believers', {}).get('th', 0)
+        b_thr = t_map.get('Believers', {}).get('thr', 0)
+        b_avg_val = (b_th / b_tab) if b_tab > 0 else 0.0
+        b_avg = f"{b_avg_val:.3f}"
+
+        w_tab = t_map.get('World', {}).get('tab', 0)
+        w_th = t_map.get('World', {}).get('th', 0)
+        w_thr = t_map.get('World', {}).get('thr', 0)
+        w_avg_val = (w_th / w_tab) if w_tab > 0 else 0.0
+        w_avg = f"{w_avg_val:.3f}"
+
+        b_obj = {
+            'name': 'Believers', 'wins': b_wins, 'losses': w_wins, 'ties': ties,
+            'runs': b_runs, 'hits': b_th, 'hr': b_thr, 'avg': b_avg
+        }
+        w_obj = {
+            'name': 'World', 'wins': w_wins, 'losses': b_wins, 'ties': ties,
+            'runs': w_runs, 'hits': w_th, 'hr': w_thr, 'avg': w_avg
+        }
+
+        if b_wins > w_wins or (b_wins == w_wins and b_runs > w_runs):
+            lead_team = b_obj; trail_team = w_obj; is_tied = False
+        elif w_wins > b_wins or (b_wins == w_wins and w_runs > b_runs):
+            lead_team = w_obj; trail_team = b_obj; is_tied = False
+        else:
+            lead_team = b_obj; trail_team = w_obj; is_tied = True
+
+        win_subtitle = f"{lead_team['name']} LEADS! {lead_team['wins']}승 {lead_team['losses']}패 (득실 {lead_team['runs']}:{trail_team['runs']})" if not is_tied else f"시즌 전적 동률! {b_wins}승 {ties}무 {w_wins}패 (총 {b_runs}:{w_runs})"
+
+        # 선수 시즌 누적 기록 조회
+        season_players = conn.execute('''
+            SELECT p.id, p.name, p.team,
+                   COUNT(DISTINCT br.game_id) games,
+                   SUM(br.ab) ab, SUM(br.hits) hits,
+                   SUM(br.singles) singles, SUM(br.doubles) doubles, SUM(br.triples) triples,
+                   SUM(br.hr) hr, SUM(br.rbi) rbi, SUM(br.k) k, SUM(br.dp) dp,
+                   CASE WHEN SUM(br.ab)>0 THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END avg
+            FROM players p
+            JOIN batting_records br ON br.player_id=p.id
+            WHERE p.is_active=1
+            GROUP BY p.id HAVING SUM(br.ab)>=1
+        ''').fetchall()
+        conn.close()
+
+        season_recs = []
+        for r in season_players:
+            rd = dict(r)
+            rd['mvp_pts'] = calc_mvp_points(rd)
+            season_recs.append(rd)
+
+        sorted_season = sorted(season_recs, key=lambda x: (x['mvp_pts'], x['avg'], x['hits']), reverse=True)
+
+        mvp_row = None
+        if mvp:
+            for r in sorted_season:
+                if r['name'] == mvp:
+                    mvp_row = r; break
+        if not mvp_row and sorted_season:
+            mvp_row = sorted_season[0]
+
+        mvp_name = mvp_row['name'] if mvp_row else (mvp or '—')
+        mvp_stats_line = f"{mvp_row['mvp_pts']}점 / {mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점 {mvp_row['hr']}홈런" if mvp_row else "—"
+        mvp_info = {
+            'name': mvp_name,
+            'team': mvp_row['team'] if mvp_row else 'W.B.C',
+            'mvp_pts': mvp_row.get('mvp_pts', 0) if mvp_row else 0,
+            'ab': mvp_row.get('ab', 0) if mvp_row else 0,
+            'hits': mvp_row.get('hits', 0) if mvp_row else 0,
+            'rbi': mvp_row.get('rbi', 0) if mvp_row else 0,
+            'hr': mvp_row.get('hr', 0) if mvp_row else 0,
+            'avg': f"{mvp_row['avg']:.3f}" if (mvp_row and mvp_row.get('ab', 0) > 0) else ".000",
+            'stats_line': mvp_stats_line
+        }
+
+        top6 = []
+        for i, r in enumerate(sorted_season[:6]):
+            top6.append({
+                'rank': i + 1,
+                'name': r['name'],
+                'team': r['team'],
+                'avg': f"{r['avg']:.3f}" if r['ab'] > 0 else ".000",
+                'hr': r['hr'],
+                'rbi': r['rbi'],
+                'hits': r['hits'],
+                'ab': r['ab'],
+                'mvp_pts': r['mvp_pts'],
+                'is_mvp': (r['name'] == mvp_name)
+            })
+
+        dstr = f"2026 시즌 누적 결산 (총 {total_games_count}경기)"
+        gnum = "시즌종합"
+
+        ranks_prompt_lines = []
+        for i, r in enumerate(top6):
+            mvp_badge = " (시즌 MVP)" if r['is_mvp'] else ""
+            if i == 0:
+                ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+            else:
+                ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+        ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
+
+        lead_stats_str = f"{lead_team['wins']}W {lead_team['losses']}L {lead_team['ties']}D | R:{lead_team['runs']} H:{lead_team['hits']} HR:{lead_team['hr']} AVG:{lead_team['avg']}"
+        trail_stats_str = f"{trail_team['wins']}W {trail_team['losses']}L {trail_team['ties']}D | R:{trail_team['runs']} H:{trail_team['hits']} HR:{trail_team['hr']} AVG:{trail_team['avg']}"
+
+        ai_prompt = f"""Create a Korean baseball tournament results announcement graphic with a dramatic sports broadcast aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers.
+
+**LEFT SECTION:**
+- Bold large title "2026 W.B.C. 시즌 종합 결산" stacked in 3-4 lines with white and gold/cream colored 3D text
+- Crossed wooden baseball bats behind the title with a baseball in the center
+- Bright stadium floodlights illuminating the scene from upper corners
+- A date badge/ribbon: "{dstr}"
+- Subtitle line: "{win_subtitle}"
+- Mini baseball scoreboard at the bottom showing season standings table columns: TEAM, W, L, D, R, H, HR, AVG:
+  - {lead_team['name']}: {lead_stats_str}
+  - {trail_team['name']}: {trail_stats_str}
+
+**CENTER SECTION:**
+- 3-tier podium graphic at the top with gold/silver/bronze medals (1위, 2위, 3위) and "1", "2", "3" placeholders
+- Vertical rank list with rounded rectangle rows for each rank (1위 through 6위):
+{ranks_prompt_text}
+  - Alternating subtle row backgrounds for readability
+  - A gold "MVP" badge/seal attached to the MVP-ranked row
+- MVP summary block at bottom with a crown icon: "시즌 종합 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
+
+**RIGHT SECTION:**
+- A curved red ribbon/banner header with "{recruitment_title}" in bold white
+- Vertical bulleted list below in white clean text:
+  - 대상 : {target_audience}
+{bullets_prompt_text}
+- A red accent vertical bar/border separating it from center section
+
+**BOTTOM FOOTER (full width):**
+- Next meet-up announcement line: "{next_meetup}"
+- Yellow highlighted caution box with warning icon: "{caution_box}"
+- Application/contact info row (split):
+  - 순위/선수기록 : {apply_url}
+  - 밴드 : {band_url}    — 문의 : {contact_info}
+
+**STYLE REQUIREMENTS:**
+- Color palette : deep navy/midnight blue background, gold/cream highlights, white primary text, red accent banners, subtle spotlight glow effects
+- Typography : Korean sans-serif (Pretendard/Noto Sans KR style), heavy bold weights for titles, clear hierarchy
+- Mood : celebratory sports championship atmosphere with stadium lighting glow, light flares, and slight motion blur accents
+- Decorative elements : baseball icons (ball, bats, gloves), medals, crowns, MVP seal, lightning/flash effects
+- Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
+
+        medals = ['🥇','🥈','🥉','  4','  5', '  6']
+        top6_msg = ''
+        for i, r in enumerate(top6):
+            m = medals[i] if i < 3 else f'  {i+1}'
+            top6_msg += f"\n   {m} {r['name']} ({r['team']}) - {r['mvp_pts']}점 ({r['ab']}타수 {r['hits']}안타 {r['rbi']}타점, {r['hr']}홈런, 타율 {r['avg']})"
+
+        long_msg = f"""🏆 2026 W.B.C 시즌 종합 결산 리포트 🏆
+
+🌍 세계로교회 World Believers Club
+📅 {dstr}
+
+━━━━━━━━━━━━━━━━━━━━━
+⚡ 팀 누적 전적
+━━━━━━━━━━━━━━━━━━━━━
+
+🔥 Believers Team: {b_wins}승 {ties}무 {w_wins}패 (총 {b_runs}득점, {b_th}안타, {b_thr}홈런, 팀타율 {b_avg})
+⚡ World Team:     {w_wins}승 {ties}무 {b_wins}패 (총 {w_runs}득점, {w_th}안타, {w_thr}홈런, 팀타율 {w_avg})
+
+▶ {win_subtitle}
+
+━━━━━━━━━━━━━━━━━━━━━
+🎊 2026 시즌 영예의 시상 (Season Awards)
+━━━━━━━━━━━━━━━━━━━━━
+
+👑 시즌 종합 MVP: {mvp_name} ({mvp_info['team']})
+   [🔥 종합 {mvp_info['mvp_pts']}점 | {mvp_info['ab']}타수 {mvp_info['hits']}안타 {mvp_info['rbi']}타점 {mvp_info['hr']}홈런, 타율 {mvp_info['avg']}]
+
+📈 시즌 타자 순위 TOP 6 (종합 활약도순){top6_msg}
+
+━━━━━━━━━━━━━━━━━━━━━
+📢 {recruitment_title}
+- 대상: {target_audience}
+{bullets_msg_text}
+
+{next_meetup}
+{caution_box}
+
+⚾ 순위/선수기록: {apply_url}
+📱 밴드: {band_url} (문의: {contact_info})
+
+믿음으로 스윙하라, 세계로 나아가라! ⚾🙏
+#세계로교회 #WBC #시즌결산 #스크린야구"""
+
+        lead_player = top6[0] if top6 else None
+        lead_player_str = f"{lead_player['name']} [{lead_player['mvp_pts']}점] (타율 {lead_player['avg']})" if lead_player else "—"
+
+        short_msg = f"""🏆 2026 W.B.C 시즌 종합 결산 | {dstr}
+
+🔥 Believers ({b_wins}승 {w_wins}패 / {b_runs}득점)
+⚡ World     ({w_wins}승 {b_wins}패 / {w_runs}득점)
+
+👑 시즌 종합 MVP: {mvp_name} ({mvp_info['team']})
+🎯 시즌 최고 타자(1위): {lead_player_str}
+
+📢 {recruitment_title} : {target_audience}
+⚾ 순위/선수기록 : {apply_url}
+
+믿음으로 스윙하라! ⚾🙏"""
+
+        graphic_data = {
+            'data_mode': 'season',
+            'game_title': '2026 W.B.C. 시즌 종합 결산',
+            'game_number': '시즌종합',
+            'game_date': dstr,
+            'winner_name': lead_team['name'],
+            'loser_name': trail_team['name'],
+            'winner_score': lead_team['runs'],
+            'loser_score': trail_team['runs'],
+            'win_subtitle': win_subtitle,
+            'table_type': 'season',
+            'table_headers': ['TEAM', '경기', '승', '패', '무', '득점', '안타', 'HR', '팀타율'],
+            'winner_scores': [f"{total_games_count}G", f"{lead_team['wins']}W", f"{lead_team['losses']}L", f"{lead_team['ties']}D", f"{lead_team['runs']}", f"{lead_team['hits']}", f"{lead_team['hr']}", f"{lead_team['avg']}"],
+            'loser_scores': [f"{total_games_count}G", f"{trail_team['wins']}W", f"{trail_team['losses']}L", f"{trail_team['ties']}D", f"{trail_team['runs']}", f"{trail_team['hits']}", f"{trail_team['hr']}", f"{trail_team['avg']}"],
+            'winner_h': lead_team['hits'],
+            'winner_e': 0,
+            'loser_h': trail_team['hits'],
+            'loser_e': 0,
+            'top_ranks': top6,
+            'mvp': mvp_info,
+            'promo': {
+                'recruitment_title': recruitment_title,
+                'target_audience': target_audience,
+                'bullets': bullets,
+                'next_meetup': next_meetup,
+                'caution_box': caution_box,
+                'apply_url': apply_url,
+                'band_url': band_url,
+                'contact_info': contact_info
+            }
+        }
+
+        return jsonify({
+            'long': long_msg,
+            'short': short_msg,
+            'ai_prompt': ai_prompt,
+            'graphic_data': graphic_data
+        })
+
+    # ─────────────────────────────────────────────
+    # [모드 B] 회차별 단일 경기 모드 (기본)
+    # ─────────────────────────────────────────────
+    game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
+    if not game:
+        conn.close()
+        return jsonify({'err':'없음'}), 404
+
     recs = conn.execute('''
         SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
                br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp
@@ -746,20 +1074,20 @@ def sns_generate():
         hr=sum(r['hr'] for r in rs)
         rbi=sum(r['rbi'] for r in rs)
         return ab,h,hr,rbi,(round(h/ab,3) if ab>0 else 0)
-    
+
     team_stats_blocks = []
     for tname in distinct_teams:
         trs = [r for r in rec_list if r['team']==tname]
         tab, th, thr, trbi, tavg = ts(trs)
         team_stats_blocks.append(f"▶ {tname}\n  타수 {tab} | 안타 {th} | 타율 {tavg:.3f} | 홈런 {thr} | 타점 {trbi}")
-    
+
     team_stats_str = "\n\n".join(team_stats_blocks)
 
     sorted_hitters = sorted([r for r in rec_list if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)
     hr_lead = sorted([r for r in rec_list if r['hr'] > 0], key=lambda x: -x['hr'])
     rbi_lead = sorted([r for r in rec_list if r['rbi'] > 0], key=lambda x: -x['rbi'])
 
-    # MVP 및 특별 시상자 (MIP, 언성히어로, 허슬플레이어) 산정
+    # MVP 및 특별 시상자 산정
     awards = calc_game_awards(gid)
     mip_input    = d.get('mip', '').strip()
     unsung_input = d.get('unsung', '').strip()
@@ -785,7 +1113,7 @@ def sns_generate():
     else:
         mvp_name = mvp or '—'
 
-    # MIP (기량 발전상)
+    # MIP
     mip_row = get_row(mip_input) if mip_input else awards.get('mip')
     mip_name = mip_row['name'] if mip_row else ''
     mip_detail = ""
@@ -795,7 +1123,7 @@ def sns_generate():
         else:
             mip_detail = f" {mip_row['ab']}타수 {mip_row['hits']}안타 (타율 {mip_row['avg']:.3f}) 눈부신 기량 발전!"
 
-    # Unsung Hero (숨은 공로상)
+    # Unsung Hero
     unsung_row = get_row(unsung_input) if unsung_input else awards.get('unsung')
     unsung_name = unsung_row['name'] if unsung_row else ''
     unsung_detail = ""
@@ -805,7 +1133,7 @@ def sns_generate():
         else:
             unsung_detail = f" {unsung_row['batting_order']}번 타순 {unsung_row['ab']}타수 {unsung_row['hits']}안타 {unsung_row['rbi']}타점 팀 헌신!"
 
-    # Hustle Player (열정 투혼상)
+    # Hustle Player
     hustle_row = get_row(hustle_input) if hustle_input else awards.get('hustle')
     hustle_name = hustle_row['name'] if hustle_row else ''
     hustle_detail = ""
@@ -868,6 +1196,15 @@ def sns_generate():
 📈 활약 타자 TOP 5 (가중치 종합점수순){top5}
 
 ━━━━━━━━━━━━━━━━━━━━━
+📢 {recruitment_title}
+- 대상: {target_audience}
+{bullets_msg_text}
+
+{next_meetup}
+{caution_box}
+
+⚾ 순위/선수기록: {apply_url}
+📱 밴드: {band_url} (문의: {contact_info})
 
 믿음으로 스윙하라, 세계로 나아가라! ⚾🙏
 
@@ -891,13 +1228,13 @@ def sns_generate():
 🎯 경기 최고 활약(종합 1위): {lead_hitter_info}
 {rbi_line}{hr_line}
 
-오늘도 감사합니다 🙏 믿음으로 스윙하라! ⚾
+📢 {recruitment_title} : {target_audience}
+⚾ 순위/선수기록 : {apply_url}
 
+오늘도 감사합니다 🙏 믿음으로 스윙하라! ⚾
 #세계로교회 #WBC #스크린야구 #야빠"""
 
-    # ─────────────────────────────────────────────
-    # AI 이미지 프롬프트 & 스포츠 방송 그래픽 데이터 생성
-    # ─────────────────────────────────────────────
+    # 스코어보드 데이터
     sb = get_scoreboard_data(game)
     sb_teams = sb.get('teams', []) if sb else []
     winner_team_obj = None
@@ -969,33 +1306,6 @@ def sns_generate():
         'stats_line': mvp_stats_line
     }
 
-    # 사용자 정의 홍보/광고/모집 및 일정 파라미터
-    recruitment_title = d.get('recruitment_title', '').strip() or "선수 모집중"
-    target_audience = d.get('target_audience', '').strip() or "세계로교회 성도, 청·장년 누구나 (초보 환영)"
-
-    raw_bullets = d.get('recruitment_bullets')
-    if isinstance(raw_bullets, list):
-        bullets = [b.strip() for b in raw_bullets if b and b.strip()]
-    elif isinstance(raw_bullets, str):
-        bullets = [b.strip() for b in raw_bullets.split('\n') if b.strip()]
-    else:
-        bullets = []
-
-    if not bullets:
-        bullets = [
-            "운동 좋아하거나 못해도 환영",
-            "즐거운 교제로 함께해요",
-            "육아 아빠 언제든 환영",
-            "회비 : 정기참석시 1만원"
-        ]
-
-    next_meetup = d.get('next_meetup', '').strip() or "— 다음 2째주 주일 17시 정기모임 (시즌경기)"
-    caution_box = d.get('caution_box', '').strip() or "※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!"
-    apply_url = d.get('apply_url', '').strip() or "https://github.com/Irum725/WBC"
-    band_url = d.get('band_url', '').strip() or "band.us/@wbcbaseball"
-    contact_info = d.get('contact_info', '').strip() or "담당자: 총무 (010-XXXX-XXXX)"
-
-    # AI 프롬프트 구성
     innings_header_str = " ".join(str(inn) for inn in innings_list)
     winner_inn_str = " ".join(str(s) for s in winner_scores)
     loser_inn_str = " ".join(str(s) for s in loser_scores)
@@ -1008,8 +1318,6 @@ def sns_generate():
         else:
             ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
     ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
-
-    bullets_prompt_text = "\n".join([f"  - {b}" for b in bullets])
 
     ai_prompt = f"""Create a Korean baseball tournament results announcement graphic with a dramatic sports broadcast aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers.
 
@@ -1042,7 +1350,7 @@ def sns_generate():
 - Next meet-up announcement line: "{next_meetup}"
 - Yellow highlighted caution box with warning icon: "{caution_box}"
 - Application/contact info row (split):
-  - 신청/기록 : {apply_url}
+  - 순위/선수기록 : {apply_url}
   - 밴드 : {band_url}    — 문의 : {contact_info}
 
 **STYLE REQUIREMENTS:**
@@ -1053,6 +1361,7 @@ def sns_generate():
 - Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
 
     graphic_data = {
+        'data_mode': 'single',
         'game_title': f"제{gnum}회 W.B.C. 경기결과",
         'game_number': gnum,
         'game_date': dstr,
@@ -1060,6 +1369,8 @@ def sns_generate():
         'loser_name': loser_name,
         'winner_score': winner_score,
         'loser_score': loser_score,
+        'win_subtitle': f"{winner_name} WIN! {winner_score}:{loser_score} 승리",
+        'table_type': 'game',
         'winner_h': winner_h,
         'winner_e': winner_e,
         'loser_h': loser_h,
