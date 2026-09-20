@@ -895,7 +895,198 @@ def sns_generate():
 
 #세계로교회 #WBC #스크린야구 #야빠"""
 
-    return jsonify({'long': long_msg, 'short': short_msg})
+    # ─────────────────────────────────────────────
+    # AI 이미지 프롬프트 & 스포츠 방송 그래픽 데이터 생성
+    # ─────────────────────────────────────────────
+    sb = get_scoreboard_data(game)
+    sb_teams = sb.get('teams', []) if sb else []
+    winner_team_obj = None
+    loser_team_obj = None
+    if len(sb_teams) >= 2:
+        if sb_teams[0].get('is_winner'):
+            winner_team_obj = sb_teams[0]
+            loser_team_obj = sb_teams[1]
+        elif sb_teams[1].get('is_winner'):
+            winner_team_obj = sb_teams[1]
+            loser_team_obj = sb_teams[0]
+        else:
+            winner_team_obj = sb_teams[0]
+            loser_team_obj = sb_teams[1]
+    elif len(sb_teams) == 1:
+        winner_team_obj = sb_teams[0]
+        loser_team_obj = sb_teams[0]
+
+    start_inn = sb.get('start_inning', 1) if sb else 1
+    played_inns = sb.get('played_innings', sb.get('innings_count', 9) if sb else 9) if sb else 9
+    innings_list = list(range(start_inn, start_inn + played_inns))
+
+    def slice_scores(t_obj):
+        if not t_obj: return []
+        sc = t_obj.get('scores', [])
+        start_idx = max(0, start_inn - 1)
+        end_idx = start_idx + played_inns
+        sliced = sc[start_idx:end_idx]
+        while len(sliced) < len(innings_list):
+            sliced.append(0)
+        return sliced
+
+    winner_scores = slice_scores(winner_team_obj)
+    loser_scores = slice_scores(loser_team_obj)
+    winner_name = winner_team_obj['name'] if winner_team_obj else 'Believers'
+    loser_name = loser_team_obj['name'] if loser_team_obj else 'World'
+    winner_score = winner_team_obj.get('r', 0) if winner_team_obj else 0
+    loser_score = loser_team_obj.get('r', 0) if loser_team_obj else 0
+    winner_h = winner_team_obj.get('h', 0) if winner_team_obj else 0
+    loser_h = loser_team_obj.get('h', 0) if loser_team_obj else 0
+    winner_e = winner_team_obj.get('e', 0) if winner_team_obj else 0
+    loser_e = loser_team_obj.get('e', 0) if loser_team_obj else 0
+
+    top6 = []
+    for i, r in enumerate(sorted_hitters[:6]):
+        top6.append({
+            'rank': i + 1,
+            'name': r['name'],
+            'team': r['team'],
+            'avg': f"{r['avg']:.3f}" if r['ab'] > 0 else ".000",
+            'hr': r['hr'],
+            'rbi': r['rbi'],
+            'hits': r['hits'],
+            'ab': r['ab'],
+            'mvp_pts': r['mvp_pts'],
+            'is_mvp': (r['name'] == mvp_name)
+        })
+
+    mvp_stats_line = f"{mvp_row['mvp_pts']}점 / {mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점 {mvp_row['hr']}홈런" if mvp_row else "—"
+    mvp_info = {
+        'name': mvp_name,
+        'team': mvp_row['team'] if mvp_row else 'W.B.C',
+        'mvp_pts': mvp_row.get('mvp_pts', 0) if mvp_row else 0,
+        'ab': mvp_row.get('ab', 0) if mvp_row else 0,
+        'hits': mvp_row.get('hits', 0) if mvp_row else 0,
+        'rbi': mvp_row.get('rbi', 0) if mvp_row else 0,
+        'hr': mvp_row.get('hr', 0) if mvp_row else 0,
+        'avg': f"{mvp_row['avg']:.3f}" if (mvp_row and mvp_row.get('ab', 0) > 0) else ".000",
+        'stats_line': mvp_stats_line
+    }
+
+    # 사용자 정의 홍보/광고/모집 및 일정 파라미터
+    recruitment_title = d.get('recruitment_title', '').strip() or "선수 모집중"
+    target_audience = d.get('target_audience', '').strip() or "세계로교회 성도, 청·장년 누구나 (초보 환영)"
+
+    raw_bullets = d.get('recruitment_bullets')
+    if isinstance(raw_bullets, list):
+        bullets = [b.strip() for b in raw_bullets if b and b.strip()]
+    elif isinstance(raw_bullets, str):
+        bullets = [b.strip() for b in raw_bullets.split('\n') if b.strip()]
+    else:
+        bullets = []
+
+    if not bullets:
+        bullets = [
+            "운동 좋아하거나 못해도 환영",
+            "즐거운 교제로 함께해요",
+            "육아 아빠 언제든 환영",
+            "회비 : 정기참석시 1만원"
+        ]
+
+    next_meetup = d.get('next_meetup', '').strip() or "— 다음 2째주 주일 17시 정기모임 (시즌경기)"
+    caution_box = d.get('caution_box', '').strip() or "※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!"
+    apply_url = d.get('apply_url', '').strip() or "https://github.com/Irum725/WBC"
+    band_url = d.get('band_url', '').strip() or "band.us/@wbcbaseball"
+    contact_info = d.get('contact_info', '').strip() or "담당자: 총무 (010-XXXX-XXXX)"
+
+    # AI 프롬프트 구성
+    innings_header_str = " ".join(str(inn) for inn in innings_list)
+    winner_inn_str = " ".join(str(s) for s in winner_scores)
+    loser_inn_str = " ".join(str(s) for s in loser_scores)
+
+    ranks_prompt_lines = []
+    for i, r in enumerate(top6):
+        mvp_badge = " (MVP)" if r['is_mvp'] else ""
+        if i == 0:
+            ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+        else:
+            ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
+    ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
+
+    bullets_prompt_text = "\n".join([f"  - {b}" for b in bullets])
+
+    ai_prompt = f"""Create a Korean baseball tournament results announcement graphic with a dramatic sports broadcast aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers.
+
+**LEFT SECTION:**
+- Bold large title "제{gnum}회 W.B.C. 경기결과" stacked in 3-4 lines with white and gold/cream colored 3D text
+- Crossed wooden baseball bats behind the title with a baseball in the center
+- Bright stadium floodlights illuminating the scene from upper corners
+- A date badge/ribbon: "{dstr}"
+- Subtitle line: "{winner_name} WIN! {winner_score}:{loser_score} 승리"
+- Mini baseball scoreboard at the bottom showing columns: team name, 그리고 이닝 {innings_header_str} R H E, with two team rows (winner on top in highlighted color, loser below)
+  - {winner_name}: {winner_inn_str} | R:{winner_score} H:{winner_h} E:{winner_e}
+  - {loser_name}: {loser_inn_str} | R:{loser_score} H:{loser_h} E:{loser_e}
+
+**CENTER SECTION:**
+- 3-tier podium graphic at the top with gold/silver/bronze medals (1위, 2위, 3위) and "1", "2", "3" placeholders
+- Vertical rank list with rounded rectangle rows for each rank (1위 through 6위):
+{ranks_prompt_text}
+  - Alternating subtle row backgrounds for readability
+  - A gold "MVP" badge/seal attached to the MVP-ranked row
+- MVP summary block at bottom with a crown icon: "경기 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
+
+**RIGHT SECTION:**
+- A curved red ribbon/banner header with "{recruitment_title}" in bold white
+- Vertical bulleted list below in white clean text:
+  - 대상 : {target_audience}
+{bullets_prompt_text}
+- A red accent vertical bar/border separating it from center section
+
+**BOTTOM FOOTER (full width):**
+- Next meet-up announcement line: "{next_meetup}"
+- Yellow highlighted caution box with warning icon: "{caution_box}"
+- Application/contact info row (split):
+  - 신청/기록 : {apply_url}
+  - 밴드 : {band_url}    — 문의 : {contact_info}
+
+**STYLE REQUIREMENTS:**
+- Color palette : deep navy/midnight blue background, gold/cream highlights, white primary text, red accent banners, subtle spotlight glow effects
+- Typography : Korean sans-serif (Pretendard/Noto Sans KR style), heavy bold weights for titles, clear hierarchy
+- Mood : celebratory sports championship atmosphere with stadium lighting glow, light flares, and slight motion blur accents
+- Decorative elements : baseball icons (ball, bats, gloves), medals, crowns, MVP seal, lightning/flash effects
+- Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
+
+    graphic_data = {
+        'game_title': f"제{gnum}회 W.B.C. 경기결과",
+        'game_number': gnum,
+        'game_date': dstr,
+        'winner_name': winner_name,
+        'loser_name': loser_name,
+        'winner_score': winner_score,
+        'loser_score': loser_score,
+        'winner_h': winner_h,
+        'winner_e': winner_e,
+        'loser_h': loser_h,
+        'loser_e': loser_e,
+        'innings': innings_list,
+        'winner_scores': winner_scores,
+        'loser_scores': loser_scores,
+        'top_ranks': top6,
+        'mvp': mvp_info,
+        'promo': {
+            'recruitment_title': recruitment_title,
+            'target_audience': target_audience,
+            'bullets': bullets,
+            'next_meetup': next_meetup,
+            'caution_box': caution_box,
+            'apply_url': apply_url,
+            'band_url': band_url,
+            'contact_info': contact_info
+        }
+    }
+
+    return jsonify({
+        'long': long_msg,
+        'short': short_msg,
+        'ai_prompt': ai_prompt,
+        'graphic_data': graphic_data
+    })
 
 @app.route('/players')
 @admin_required
