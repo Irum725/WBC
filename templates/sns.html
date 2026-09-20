@@ -6,341 +6,459 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ─────────────────────────────────────────────
-   스포츠 브로드캐스트 포스터 그래픽 스타일
+   4:3 브로드캐스트 스타디움 포스터 그래픽 스타일
+   (레퍼런스 이미지 완벽 싱크로율)
    ───────────────────────────────────────────── */
+.poster-viewport-container {
+    background: #020617;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: auto;
+}
+
 #broadcastGraphicCard {
-    background: radial-gradient(circle at 50% 8%, #1e3a8a 0%, #0b142d 65%, #050b18 100%);
+    width: 960px;
+    height: 720px; /* 정확한 4:3 종횡비 */
+    min-width: 960px;
+    min-height: 720px;
+    max-width: 960px;
+    max-height: 720px;
+    aspect-ratio: 4 / 3;
+    background: radial-gradient(circle at 45% 20%, #1a3a80 0%, #0a1435 52%, #020617 100%);
     color: #ffffff;
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 8px;
+    padding: 18px 24px 16px 24px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 15px 45px rgba(0,0,0,0.7), inset 0 0 35px rgba(30, 58, 138, 0.35);
-    border: 2px solid rgba(251, 191, 36, 0.35);
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-    min-width: 860px;
-    margin: 0 auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 0 50px rgba(15, 35, 95, 0.4);
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.floodlight-l {
+
+/* 스타디움 조명 효과 */
+.stadium-light-l {
     position: absolute;
-    top: -40px;
-    left: -40px;
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(251, 191, 36, 0.12) 40%, transparent 70%);
+    top: 55px;
+    left: 15px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(147, 197, 253, 0.2) 40%, transparent 75%);
     pointer-events: none;
     z-index: 1;
 }
-.floodlight-r {
+.stadium-light-r {
     position: absolute;
-    top: -40px;
-    right: -40px;
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(239, 68, 68, 0.12) 40%, transparent 70%);
+    top: 55px;
+    left: 230px;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(147, 197, 253, 0.15) 40%, transparent 75%);
     pointer-events: none;
     z-index: 1;
 }
 
 /* 3단 분할 레이아웃 */
-.graphic-body {
-    display: flex;
+.graphic-grid-body {
+    display: grid;
+    grid-template-columns: 320px 320px 240px;
     gap: 16px;
     position: relative;
     z-index: 2;
-    margin-bottom: 16px;
-}
-.sec-left {
-    flex: 34;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid rgba(255, 255, 255, 0.15);
-    padding-right: 16px;
-}
-.sec-center {
-    flex: 38;
-    display: flex;
-    flex-direction: column;
-    border-right: 2px solid rgba(239, 68, 68, 0.6);
-    padding-right: 16px;
-}
-.sec-right {
-    flex: 28;
-    display: flex;
-    flex-direction: column;
+    flex: 1;
+    margin-bottom: 8px;
 }
 
-/* Left Section Styles */
-.title-box {
+/* 섹션 상단 헤더 라벨 바 */
+.sec-header-line {
     text-align: center;
-    margin-bottom: 10px;
-}
-.graphic-title {
-    font-size: 24px;
+    font-size: 15px;
     font-weight: 900;
-    line-height: 1.25;
-    color: #ffffff;
-    text-shadow: 0 3px 6px rgba(0,0,0,0.8), 0 0 18px rgba(250, 204, 21, 0.5);
-    letter-spacing: -0.5px;
-}
-.graphic-title .gold-accent {
-    color: #facc15;
-    display: inline-block;
-}
-.bat-deco {
-    font-size: 28px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
-    margin: 4px 0;
-}
-.date-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border: 1px solid #facc15;
-    color: #fef08a;
-    font-weight: 700;
-    font-size: 12px;
-    padding: 3px 12px;
-    border-radius: 14px;
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.25);
-    margin: 4px 0 8px 0;
-}
-.win-banner {
-    background: linear-gradient(90deg, rgba(234, 179, 8, 0.2) 0%, rgba(234, 179, 8, 0.05) 100%);
-    border-left: 4px solid #facc15;
-    padding: 6px 10px;
-    border-radius: 4px;
+    letter-spacing: 0.5px;
+    color: #f6d860;
+    padding-bottom: 6px;
     margin-bottom: 12px;
+    border-bottom: 1.5px solid rgba(246, 216, 96, 0.45);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
-.win-subtitle {
-    font-size: 16px;
-    font-weight: 900;
-    color: #fde047;
-    margin: 0;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+.sec-header-line.right-header {
+    color: #f87171;
+    border-bottom: 1.5px solid rgba(239, 68, 68, 0.65);
 }
 
-/* Mini Scoreboard */
-.mini-scoreboard {
-    background: #020617;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 8px;
-    margin-top: auto;
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
-}
-.mini-scoreboard .header-lbl {
-    font-size: 10px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin-bottom: 4px;
+/* ───── LEFT SECTION ───── */
+.col-left-sec {
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
+    position: relative;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    padding-right: 14px;
 }
-.mini-sb-table {
+.bat-and-title-wrap {
+    text-align: center;
+    position: relative;
+    margin-top: -4px;
+}
+/* 교차된 배트 & 야구공 */
+.cross-bats-bg {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 110px;
+    line-height: 1;
+    opacity: 0.35;
+    z-index: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.9));
+}
+.baseball-top-icon {
+    font-size: 38px;
+    display: inline-block;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
+    margin-bottom: -4px;
+    position: relative;
+    z-index: 3;
+}
+/* 3D 텍스트 타이틀 */
+.title-3d-text {
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1.08;
+    color: #ffffff;
+    text-shadow: 
+        -2px -2px 0 #0f172a,  
+         2px -2px 0 #0f172a,
+        -2px  2px 0 #0f172a,
+         2px  2px 0 #0f172a,
+         0 6px 14px rgba(0,0,0,0.9);
+    letter-spacing: -1.5px;
+    position: relative;
+    z-index: 3;
+}
+.title-3d-text .gold-wbc {
+    color: #fbbf24;
+    font-size: 48px;
+    display: block;
+    margin: 2px 0;
+    text-shadow: 
+        -2px -2px 0 #451a03,  
+         2px -2px 0 #451a03,
+        -2px  2px 0 #451a03,
+         2px  2px 0 #451a03,
+         0 6px 15px rgba(0,0,0,0.9);
+}
+
+/* 날짜 리본 배지 */
+.date-ribbon-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #0b152d, #030712);
+    border: 1.5px solid #facc15;
+    color: #fef08a;
+    font-weight: 900;
+    font-size: 15px;
+    padding: 3px 18px;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.7), 0 0 12px rgba(250, 204, 21, 0.3);
+    margin: 8px 0 6px 0;
+    position: relative;
+    z-index: 3;
+}
+
+/* 승리 부제 */
+.win-score-subtitle {
+    font-size: 17px;
+    font-weight: 900;
+    color: #facc15;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    margin: 2px 0 6px 0;
+}
+
+/* 미니 LED 전광판 */
+.mini-stadium-sb {
+    background: #000000;
+    border: 1.5px solid #334155;
+    border-radius: 4px;
+    padding: 6px 6px 4px 6px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
+}
+.mini-stadium-sb table {
     width: 100%;
     border-collapse: collapse;
     font-size: 11px;
     text-align: center;
 }
-.mini-sb-table th {
-    color: #94a3b8;
-    padding: 3px 2px;
-    border-bottom: 1px solid #1e293b;
-    font-weight: 600;
-}
-.mini-sb-table td {
-    padding: 4px 2px;
-    font-weight: 700;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-.mini-sb-table tr.winner-row {
-    background: rgba(250, 204, 21, 0.16);
-    color: #facc15;
-}
-.mini-sb-table tr.loser-row {
+.mini-stadium-sb th {
     color: #cbd5e1;
+    padding: 2px 1px;
+    font-size: 10px;
+    font-weight: 700;
 }
-.mini-sb-table .highlight-r {
-    color: #f87171;
-    font-weight: 900;
+.mini-stadium-sb td {
+    padding: 3px 1px;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.mini-stadium-sb tr.win-row td {
+    color: #fde047;
+}
+.mini-stadium-sb tr.lose-row td {
+    color: #ffffff;
 }
 
-/* Center Section Styles (Podium & Ranks) */
-.podium-wrap {
+/* ───── CENTER SECTION ───── */
+.col-center-sec {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 2px solid rgba(239, 68, 68, 0.7);
+    padding-right: 14px;
+}
+
+/* 3단 포디움 & 메달 */
+.podium-outer-wrap {
+    text-align: center;
+    margin-bottom: 6px;
+}
+.medals-hang-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    font-size: 20px;
+    margin-bottom: -4px;
+}
+.podium-stairs-svg {
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    gap: 6px;
-    height: 72px;
-    margin-bottom: 10px;
+    gap: 3px;
+    height: 48px;
 }
-.podium-step {
+.podium-col {
+    background: linear-gradient(to top, #94a3b8, #f8fafc);
+    color: #0f172a;
+    font-weight: 900;
+    border-radius: 3px 3px 0 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: flex-end;
-    border-radius: 6px 6px 0 0;
-    font-weight: 900;
-    width: 31%;
-    color: #ffffff;
+    padding-bottom: 3px;
+    font-size: 12px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-    padding-bottom: 4px;
-    font-size: 11px;
 }
-.podium-1 {
-    height: 68px;
-    background: linear-gradient(to top, #b45309, #eab308);
-    border: 1px solid #fef08a;
+.p-col-1 {
+    width: 80px;
+    height: 46px;
+    background: linear-gradient(to top, #fbbf24, #fffbeb);
+    border: 1px solid #fde047;
 }
-.podium-2 {
-    height: 50px;
-    background: linear-gradient(to top, #475569, #94a3b8);
-    border: 1px solid #cbd5e1;
+.p-col-2 {
+    width: 68px;
+    height: 36px;
 }
-.podium-3 {
-    height: 38px;
-    background: linear-gradient(to top, #78350f, #d97706);
-    border: 1px solid #fcd34d;
+.p-col-3 {
+    width: 68px;
+    height: 28px;
+    background: linear-gradient(to top, #f97316, #fff7ed);
 }
 
-/* Rank list */
-.rank-list {
+/* 1위~6위 캡슐 리스트 */
+.rank-capsule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4.5px;
+}
+.capsule-row {
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3.5px 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    font-size: 12.5px;
+    position: relative;
+}
+.capsule-badge {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 900;
+    font-size: 11.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    min-width: 26px;
+    text-align: center;
+}
+.capsule-row.rank-1 .capsule-badge {
+    background: #fbbf24;
+    color: #000000;
+}
+.capsule-name {
+    font-weight: 900;
+    color: #000000;
+    font-size: 13.5px;
+    margin-left: 8px;
+}
+.capsule-stats {
+    font-weight: 800;
+    color: #1e293b;
+    font-size: 12px;
+    margin-left: auto;
+}
+/* MVP 황금 실링 리본 배지 */
+.mvp-ribbon-seal {
+    background: radial-gradient(circle, #fde047 20%, #d97706 80%);
+    color: #000000;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 10px;
+    border: 1px solid #ffffff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    margin-left: 6px;
+}
+
+/* MVP 하단 서머리 박스 */
+.mvp-card-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1.5px solid #facc15;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-top: 6px;
+}
+.mvp-crown-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 900;
+    padding: 3px 6px;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 1.1;
+    border: 1px solid #fef08a;
+}
+.mvp-info-text {
+    font-size: 11.5px;
+    color: #ffffff;
+    line-height: 1.3;
+}
+.mvp-info-text strong {
+    color: #fef08a;
+    font-size: 12.5px;
+}
+
+/* ───── RIGHT SECTION ───── */
+.col-right-sec {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* 3D 클래식 레드 리본 배너 */
+.classic-3d-ribbon {
+    position: relative;
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #991b1b 100%);
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 900;
+    text-align: center;
+    padding: 8px 12px;
+    margin: 4px 6px 14px 6px;
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.5), inset 0 2px 3px rgba(255,255,255,0.4);
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+}
+.classic-3d-ribbon::before,
+.classic-3d-ribbon::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    border-style: solid;
+}
+.classic-3d-ribbon::before {
+    left: 0;
+    border-width: 6px 8px 0 0;
+    border-color: #7f1d1d transparent transparent transparent;
+}
+.classic-3d-ribbon::after {
+    right: 0;
+    border-width: 6px 0 0 8px;
+    border-color: #7f1d1d transparent transparent transparent;
+}
+
+/* 우측 불릿 리스트 */
+.right-bullet-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.right-bullet-list li {
+    font-size: 13.5px;
+    color: #ffffff;
+    line-height: 1.35;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.right-bullet-list li strong {
+    color: #fef08a;
+}
+
+/* ───── BOTTOM FOOTER (FULL WIDTH) ───── */
+.broadcast-bottom-footer {
+    border-top: 1.5px solid rgba(239, 68, 68, 0.7);
+    padding-top: 8px;
+    position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-bottom: 10px;
 }
-.rank-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 5px 8px;
-    border-radius: 6px;
-    font-size: 11.5px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-.rank-row.rank-1-highlight {
-    background: linear-gradient(90deg, rgba(234, 179, 8, 0.28) 0%, rgba(234, 179, 8, 0.12) 100%);
-    border: 1px solid rgba(250, 204, 21, 0.5);
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.15);
-}
-.mvp-seal {
-    background: #facc15;
-    color: #000;
-    font-size: 9px;
-    font-weight: 900;
-    padding: 1px 5px;
-    border-radius: 4px;
-    margin-left: 4px;
-}
-
-/* MVP Summary Block */
-.mvp-summary-box {
-    background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(15, 23, 42, 0.8) 100%);
-    border: 1.5px solid #facc15;
-    border-radius: 8px;
-    padding: 8px 10px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(250, 204, 21, 0.2);
-    margin-top: auto;
-}
-.mvp-summary-box .mvp-name-line {
-    font-size: 13px;
-    font-weight: 900;
-    color: #fef08a;
-    margin-bottom: 2px;
-}
-.mvp-summary-box .mvp-stats-line {
-    font-size: 11px;
-    color: #e2e8f0;
-    font-weight: 600;
-}
-
-/* Right Section Styles */
-.red-ribbon {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #991b1b 100%);
-    color: #ffffff;
-    font-weight: 900;
+.footer-meetup-txt {
     font-size: 15px;
-    text-align: center;
-    padding: 6px 12px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-weight: 900;
+    color: #ffffff;
+    margin: 0;
 }
-.promo-bullet-list {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 10px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.promo-bullet-list li {
-    font-size: 12px;
-    color: #f1f5f9;
-    line-height: 1.4;
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-}
-.promo-bullet-list li::before {
-    content: "•";
-    color: #f87171;
-    font-weight: bold;
-    font-size: 16px;
-    line-height: 1;
-}
-.target-audience-box {
-    background: rgba(255, 255, 255, 0.08);
-    border-left: 3px solid #ef4444;
-    padding: 6px 8px;
-    border-radius: 4px;
-    font-size: 11.5px;
-    margin-bottom: 10px;
-    color: #fef08a;
-}
-
-/* Bottom Footer (Full Width) */
-.graphic-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-    padding-top: 12px;
-    position: relative;
-    z-index: 2;
-}
-.next-meetup-line {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #93c5fd;
-    margin-bottom: 6px;
-}
-.caution-banner {
+.footer-caution-badge {
+    display: inline-block;
     background: rgba(250, 204, 21, 0.15);
-    border: 1px solid #facc15;
-    border-radius: 6px;
-    padding: 6px 10px;
+    border: 1.5px solid #facc15;
     color: #fef08a;
-    font-weight: 700;
     font-size: 12px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    align-self: flex-start;
 }
-.contact-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #94a3b8;
-    padding: 4px 2px 0 2px;
+.footer-link-txt {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
 }
-.contact-row a {
-    color: #38bdf8;
-    text-decoration: none;
+.footer-contact-txt {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    gap: 28px;
 }
 </style>
 {% endblock %}
@@ -349,7 +467,7 @@
 <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1"><i class="fa-solid fa-share-nodes text-success me-2"></i>SNS 경기 결과 & 포스터 그래픽 자동 생성기</h4>
-        <p class="text-muted small mb-0">경기별 결과 또는 시즌 누적 종합 분석 데이터를 기반으로 실시간 스포츠 방송 포스터 및 AI 이미지 생성 프롬프트를 자동 생성합니다.</p>
+        <p class="text-muted small mb-0">경기별 결과 또는 시즌 종합 분석 데이터를 기반으로 <strong>4:3 방송 포스터 그래픽</strong> 및 AI 프롬프트를 자동 생성합니다.</p>
     </div>
 </div>
 
@@ -399,7 +517,7 @@
                     <i class="fa-solid fa-trophy fs-5 text-warning"></i>
                     <div>
                         <strong>2026 시즌 누적 종합 모드</strong><br>
-                        시즌 전체 경기(총 {{ games|length }}경기)의 누적 전적 및 종합 랭킹 데이터를 기반으로 생성합니다.
+                        시즌 전체 경기(총 {{ games|length }}경기)의 누적 전적 및 종합 랭킹 데이터를 기반으로 4:3 포스터를 생성합니다.
                     </div>
                 </div>
 
@@ -410,7 +528,7 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle">가중치 종합점수제</span>
                     </label>
                     <div class="d-flex flex-column gap-2" id="mvpCandidatesWrapper">
-                        <!-- Rendered dynamically by switchDataMode -->
+                        <!-- Rendered dynamically -->
                     </div>
                 </div>
 
@@ -472,7 +590,7 @@
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h6 class="fw-bold mb-0"><i class="fa-solid fa-bullhorn text-danger me-2"></i>홍보/모집 & 공지 커스텀 설정</h6>
-                <span class="badge bg-danger-subtle text-danger">포스터/AI프롬프트 반영</span>
+                <span class="badge bg-danger-subtle text-danger">4:3 포스터/AI프롬프트 반영</span>
             </div>
             <div class="card-body">
                 <div class="mb-2">
@@ -482,42 +600,42 @@
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">모집 대상</label>
-                    <input type="text" class="form-control form-control-sm" id="targetAudience" value="세계로교회 성도, 청·장년 누구나 (초보 환영)" placeholder="예: 세계로교회 성도 등" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="targetAudience" value="세계로교회 남전도회 회원" placeholder="예: 세계로교회 남전도회 회원 등" oninput="generateSns()">
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">모집 세부 안내 문구 (줄바꿈 구분)</label>
-                    <textarea class="form-control form-control-sm" id="recruitmentBullets" rows="4" oninput="generateSns()" placeholder="항목별 줄바꿈">운동 좋아하거나 못해도 환영&#10;즐거운 교제로 함께해요&#10;육아 아빠 언제든 환영&#10;회비 : 정기참석시 1만원</textarea>
+                    <textarea class="form-control form-control-sm" id="recruitmentBullets" rows="4" oninput="generateSns()" placeholder="항목별 줄바꿈">운동 좋아하거나 못해도 환영&#10;즐거운 교제로 함께해요&#10;육아 아빠 언제든 환영&#10;회비 : 경기참석시 1만원</textarea>
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1">다음 모임 일정 안내</label>
-                    <input type="text" class="form-control form-control-sm" id="nextMeetup" value="— 다음 2째주 주일 17시 정기모임 (시즌경기)" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="nextMeetup" value="- 매월 2째주 주일 17시 정기모임 (시즌경기)" oninput="generateSns()">
                 </div>
 
                 <div class="mb-2">
                     <label class="form-label small fw-bold mb-1 text-warning-emphasis">강조/주의 알림 (노란 박스)</label>
-                    <input type="text" class="form-control form-control-sm" id="cautionBox" value="※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="cautionBox" value="※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!" oninput="generateSns()">
                 </div>
 
                 <div class="row g-2 mb-2">
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">순위/선수기록 링크</label>
-                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="https://github.com/Irum725/WBC" placeholder="예: https://... 또는 /rankings" oninput="generateSns()">
+                        <input type="text" class="form-control form-control-sm" id="applyUrl" value="wbcclub.pythonanywhere.com" placeholder="예: wbcclub.pythonanywhere.com" oninput="generateSns()">
                     </div>
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">네이버 밴드</label>
-                        <input type="text" class="form-control form-control-sm" id="bandUrl" value="band.us/@wbcbaseball" oninput="generateSns()">
+                        <input type="text" class="form-control form-control-sm" id="bandUrl" value="band.us/@wbc" oninput="generateSns()">
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label small fw-bold mb-1">문의처</label>
-                    <input type="text" class="form-control form-control-sm" id="contactInfo" value="담당자: 총무 (010-XXXX-XXXX)" oninput="generateSns()">
+                    <input type="text" class="form-control form-control-sm" id="contactInfo" value="이주호집사 010-3485-2419" oninput="generateSns()">
                 </div>
 
                 <button type="button" class="btn btn-success w-100 py-2 fw-bold" onclick="generateSns()">
-                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>메시지 & 그래픽 카드 실시간 갱신
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>메시지 & 4:3 그래픽 카드 실시간 갱신
                 </button>
             </div>
         </div>
@@ -530,12 +648,12 @@
                 <ul class="nav nav-tabs card-header-tabs" id="snsTabs" role="tablist">
                     <li class="nav-item">
                         <button class="nav-link active fw-bold" id="poster-tab" data-bs-toggle="tab" data-bs-target="#posterContent">
-                            <i class="fa-solid fa-image text-danger me-1"></i>스포츠 그래픽 카드
+                            <i class="fa-solid fa-image text-danger me-1"></i>스포츠 그래픽 카드 (4:3)
                         </button>
                     </li>
                     <li class="nav-item">
                         <button class="nav-link fw-bold" id="ai-prompt-tab" data-bs-toggle="tab" data-bs-target="#aiPromptContent">
-                            <i class="fa-solid fa-robot text-primary me-1"></i>AI 이미지 프롬프트
+                            <i class="fa-solid fa-robot text-primary me-1"></i>AI 이미지 프롬프트 (4:3)
                         </button>
                     </li>
                     <li class="nav-item">
@@ -555,135 +673,132 @@
                     <!-- Tab 1: Live Sports Graphic Poster Preview & Export -->
                     <div class="tab-pane fade show active" id="posterContent">
                         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                            <div class="small text-muted" id="posterModeBadge">
-                                <i class="fa-solid fa-circle-info text-primary me-1"></i>
-                                <span>브로드캐스트 포스터 그래픽이 실시간 렌더링됩니다.</span>
+                            <div class="small text-muted">
+                                <span class="badge bg-dark text-warning border me-1">4:3 비율</span>
+                                <span>레퍼런스 이미지 디자인이 실시간 렌더링됩니다.</span>
                             </div>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-secondary fw-medium" onclick="copyGraphicCard()">
                                     <i class="fa-solid fa-copy me-1"></i>이미지 복사
                                 </button>
                                 <button type="button" class="btn btn-sm btn-danger fw-bold" onclick="downloadGraphicCard()">
-                                    <i class="fa-solid fa-download me-1"></i>고해상도 PNG 다운로드
+                                    <i class="fa-solid fa-download me-1"></i>4:3 고해상도 PNG 다운로드
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Graphic Card Outer Container (Scrollable on small screens) -->
-                        <div class="overflow-auto p-2 bg-dark rounded border mb-2" style="max-height: 720px;">
+                        <!-- 4:3 Aspect Ratio Card Viewport -->
+                        <div class="poster-viewport-container">
                             <div id="broadcastGraphicCard">
-                                <div class="floodlight-l"></div>
-                                <div class="floodlight-r"></div>
+                                <div class="stadium-light-l"></div>
+                                <div class="stadium-light-r"></div>
 
-                                <div class="graphic-body">
-                                    <!-- Left Section -->
-                                    <div class="sec-left">
-                                        <div class="title-box">
-                                            <div class="bat-deco">⚾ ⚔️</div>
-                                            <div class="graphic-title" id="cardTitle">
-                                                제1회 <span class="gold-accent">W.B.C.</span><br>경기결과
+                                <!-- 3 Sections Grid Body -->
+                                <div class="graphic-grid-body">
+                                    <!-- 1. LEFT SECTION -->
+                                    <div class="col-left-sec">
+                                        <div class="sec-header-line">LEFT SECTION</div>
+
+                                        <div class="bat-and-title-wrap">
+                                            <div class="cross-bats-bg">⚔️</div>
+                                            <div class="baseball-top-icon">⚾</div>
+                                            <div class="title-3d-text" id="cardTitle">
+                                                제1회<br>
+                                                <span class="gold-wbc">W.B.C.</span>
+                                                경기결과
                                             </div>
                                             <div>
-                                                <span class="date-badge" id="cardDate">2026. 9. 13</span>
+                                                <span class="date-ribbon-badge" id="cardDate">2026. 9. 13</span>
                                             </div>
-                                        </div>
-
-                                        <div class="win-banner">
-                                            <p class="win-subtitle" id="cardWinSubtitle">Believers WIN! 10:1 승리</p>
+                                            <div class="win-score-subtitle" id="cardWinSubtitle">
+                                                Believers WIN! 10:1 승리
+                                            </div>
                                         </div>
 
                                         <!-- Mini Scoreboard -->
-                                        <div class="mini-scoreboard">
-                                            <div class="header-lbl">
-                                                <span id="cardSbHeaderLbl">STADIUM SCOREBOARD</span>
-                                                <span class="text-warning">OFFICIAL</span>
-                                            </div>
-                                            <table class="mini-sb-table">
+                                        <div class="mini-stadium-sb">
+                                            <table>
                                                 <thead>
                                                     <tr id="cardSbHeader">
-                                                        <th style="text-align: left;">TEAM</th>
+                                                        <th style="text-align: left; padding-left: 2px;">TEAM</th>
                                                         <th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
                                                         <th>R</th><th>H</th><th>E</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="cardSbBody">
-                                                    <!-- Dynamic scoreboard rows -->
+                                                    <!-- Dynamic rows -->
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
 
-                                    <!-- Center Section -->
-                                    <div class="sec-center">
-                                        <!-- Podium Graphic -->
-                                        <div class="podium-wrap">
-                                            <div class="podium-step podium-2">
-                                                <span>🥈 2위</span>
-                                                <span id="podium2Name" style="font-size: 10px; color: #f1f5f9;">—</span>
+                                    <!-- 2. CENTER SECTION -->
+                                    <div class="col-center-sec">
+                                        <div class="sec-header-line">CENTER SECTION</div>
+
+                                        <!-- Podium with Medals -->
+                                        <div class="podium-outer-wrap">
+                                            <div class="medals-hang-row">
+                                                <span>🥈</span>
+                                                <span style="font-size: 24px;">🥇</span>
+                                                <span>🥉</span>
                                             </div>
-                                            <div class="podium-step podium-1">
-                                                <span style="color: #fef08a;">👑 1위</span>
-                                                <span id="podium1Name" style="font-size: 11px; color: #fff;">—</span>
-                                            </div>
-                                            <div class="podium-step podium-3">
-                                                <span>🥉 3위</span>
-                                                <span id="podium3Name" style="font-size: 10px; color: #fef3c7;">—</span>
+                                            <div class="podium-stairs-svg">
+                                                <div class="podium-col p-col-2">2위</div>
+                                                <div class="podium-col p-col-1">1</div>
+                                                <div class="podium-col p-col-3">3</div>
                                             </div>
                                         </div>
 
-                                        <!-- Top 6 Ranks -->
-                                        <div class="rank-list" id="cardRankList">
-                                            <!-- Dynamic top ranks -->
+                                        <!-- Top 6 Ranks (Capsule rows) -->
+                                        <div class="rank-capsule-list" id="cardRankList">
+                                            <!-- Dynamic rank capsules -->
                                         </div>
 
-                                        <!-- MVP Summary Box -->
-                                        <div class="mvp-summary-box">
-                                            <div class="mvp-name-line" id="cardMvpName">
-                                                <i class="fa-solid fa-crown text-warning me-1"></i>경기 MVP : 이름 (팀명)
+                                        <!-- MVP Summary Banner -->
+                                        <div class="mvp-card-banner">
+                                            <div class="mvp-crown-badge">
+                                                👑<br>MVP
                                             </div>
-                                            <div class="mvp-stats-line" id="cardMvpStats">
-                                                00.0점 / 0타수 0안타 0타점 0홈런
+                                            <div class="mvp-info-text">
+                                                <div id="cardMvpName">경기 MVP : 박동진 (Believers)</div>
+                                                <div id="cardMvpStats" class="text-secondary small">- 26.7점 / 5타수 3안타 5타점 3홈런</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Right Section -->
-                                    <div class="sec-right">
-                                        <div class="red-ribbon" id="cardRecruitHeader">
+                                    <!-- 3. RIGHT SECTION -->
+                                    <div class="col-right-sec">
+                                        <div class="sec-header-line right-header">RIGHT SECTION</div>
+
+                                        <div class="classic-3d-ribbon" id="cardRecruitHeader">
                                             선수 모집중
                                         </div>
 
-                                        <div class="target-audience-box">
-                                            <strong>대상 :</strong> <span id="cardTargetAudience">세계로교회 성도, 청·장년 누구나</span>
-                                        </div>
-
-                                        <ul class="promo-bullet-list" id="cardBullets">
-                                            <li>운동 좋아하거나 못해도 환영</li>
-                                            <li>즐거운 교제로 함께해요</li>
-                                            <li>육아 아빠 언제든 환영</li>
-                                            <li>회비 : 정기참석시 1만원</li>
+                                        <ul class="right-bullet-list" id="cardBullets">
+                                            <li>- 대상 : 세계로교회 남전도회 회원</li>
+                                            <li>- 운동 좋아하거나 못해도 환영</li>
+                                            <li>- 즐거운 교제로 함께해요</li>
+                                            <li>- 육아 아빠 언제든 환영</li>
+                                            <li>- 회비 : 경기참석시 1만원</li>
                                         </ul>
                                     </div>
                                 </div>
 
-                                <!-- Bottom Footer -->
-                                <div class="graphic-footer">
-                                    <div class="next-meetup-line" id="cardNextMeetup">
-                                        — 다음 2째주 주일 17시 정기모임 (시즌경기)
+                                <!-- BOTTOM FOOTER (FULL WIDTH) -->
+                                <div class="broadcast-bottom-footer">
+                                    <p class="footer-meetup-txt" id="cardNextMeetup">
+                                        - 매월 2째주 주일 17시 정기모임 (시즌경기)
+                                    </p>
+                                    <div class="footer-caution-badge" id="cardCautionText">
+                                        ※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!
                                     </div>
-                                    <div class="caution-banner" id="cardCautionBox">
-                                        <i class="fa-solid fa-triangle-exclamation text-warning"></i>
-                                        <span id="cardCautionText">※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!</span>
-                                    </div>
-                                    <div class="contact-row">
-                                        <div>
-                                            <span class="text-white">순위/선수기록 :</span> <a href="#" id="cardApplyLink" target="_blank">wbc.example.com</a>
-                                        </div>
-                                        <div>
-                                            <span class="text-white">밴드 :</span> <span id="cardBandLink" class="text-info">band.us/@wbc</span>
-                                            <span class="mx-1">|</span>
-                                            <span class="text-white">문의 :</span> <span id="cardContactText">담당자 (010-XXXX-XXXX)</span>
-                                        </div>
+                                    <p class="footer-link-txt">
+                                        - 순위/기록: <span id="cardApplyLink" class="text-info">wbcclub.pythonanywhere.com</span>
+                                    </p>
+                                    <div class="footer-contact-txt">
+                                        <span>- 밴드 : <span id="cardBandLink">band.us/@wbc</span></span>
+                                        <span>- 문의 : <span id="cardContactText">이주호집사 010-3485-2419</span></span>
                                     </div>
                                 </div>
                             </div>
@@ -695,8 +810,8 @@
                         <div class="alert alert-primary border small p-3 mb-3 d-flex align-items-start gap-2">
                             <i class="fa-solid fa-sparkles text-primary fs-5 mt-1"></i>
                             <div>
-                                <strong>AI 이미지 생성 프롬프트 자동 생성 완료!</strong><br>
-                                아래 영문 프롬프트는 <strong>DALL-E 3, Midjourney, ChatGPT Plus, Bing Image Creator</strong> 등에서 즉시 사용할 수 있도록 최적화된 프롬프트입니다. 회차별 경기 또는 시즌 종합 데이터와 홍보 설정이 자동으로 채워져 있습니다.
+                                <strong>4:3 비율 AI 이미지 생성 프롬프트 자동 생성 완료!</strong><br>
+                                아래 영문 프롬프트는 <strong>Midjourney (--ar 4:3), DALL-E 3, ChatGPT Plus</strong> 등에서 완벽한 4:3 비율의 방송 그래픽을 생성하도록 최적화되어 있습니다.
                             </div>
                         </div>
 
@@ -706,7 +821,7 @@
 
                         <div class="d-flex gap-2">
                             <button class="btn btn-primary w-100 fw-bold py-2" onclick="copyText('aiPromptText')">
-                                <i class="fa-solid fa-copy me-1"></i>AI 영문 프롬프트 1클릭 복사
+                                <i class="fa-solid fa-copy me-1"></i>4:3 AI 영문 프롬프트 1클릭 복사
                             </button>
                         </div>
                     </div>
@@ -857,28 +972,26 @@ function renderGraphicCard(d) {
 
     // Title & Date
     if (d.data_mode === 'season') {
-        document.getElementById('cardTitle').innerHTML = `2026 <span class="gold-accent">W.B.C.</span><br>시즌 종합 결산`;
+        document.getElementById('cardTitle').innerHTML = `2026<br><span class="gold-wbc">W.B.C.</span>시즌결과`;
     } else {
-        document.getElementById('cardTitle').innerHTML = `제${d.game_number || 1}회 <span class="gold-accent">W.B.C.</span><br>경기결과`;
+        document.getElementById('cardTitle').innerHTML = `제${d.game_number || 1}회<br><span class="gold-wbc">W.B.C.</span>경기결과`;
     }
     document.getElementById('cardDate').innerText = d.game_date;
     document.getElementById('cardWinSubtitle').innerText = d.win_subtitle || `${d.winner_name} WIN! ${d.winner_score}:${d.loser_score} 승리`;
 
     // Scoreboard Header & Body
-    const headerLbl = document.getElementById('cardSbHeaderLbl');
     const headerRow = document.getElementById('cardSbHeader');
     const sbBody = document.getElementById('cardSbBody');
     sbBody.innerHTML = '';
 
     if (d.table_type === 'season') {
-        if (headerLbl) headerLbl.innerText = 'SEASON STANDINGS & STATS';
         headerRow.innerHTML = '';
         (d.table_headers || []).forEach((th, idx) => {
-            headerRow.innerHTML += `<th style="${idx === 0 ? 'text-align: left; padding-left: 6px;' : ''}">${th}</th>`;
+            headerRow.innerHTML += `<th style="${idx === 0 ? 'text-align: left; padding-left: 2px;' : ''}">${th}</th>`;
         });
 
         // Winner Row (Top)
-        let wHtml = `<tr class="winner-row"><td style="text-align: left; padding-left: 6px; font-weight: 900;">${d.winner_name} 👑</td>`;
+        let wHtml = `<tr class="win-row"><td style="text-align: left; padding-left: 2px;">${d.winner_name}</td>`;
         (d.winner_scores || []).forEach(s => {
             wHtml += `<td>${s}</td>`;
         });
@@ -886,62 +999,53 @@ function renderGraphicCard(d) {
         sbBody.innerHTML += wHtml;
 
         // Loser Row (Bottom)
-        let lHtml = `<tr class="loser-row"><td style="text-align: left; padding-left: 6px; font-weight: 700;">${d.loser_name}</td>`;
+        let lHtml = `<tr class="lose-row"><td style="text-align: left; padding-left: 2px;">${d.loser_name}</td>`;
         (d.loser_scores || []).forEach(s => {
             lHtml += `<td>${s}</td>`;
         });
         lHtml += `</tr>`;
         sbBody.innerHTML += lHtml;
     } else {
-        if (headerLbl) headerLbl.innerText = 'STADIUM SCOREBOARD';
-        headerRow.innerHTML = '<th style="text-align: left; padding-left: 6px;">TEAM</th>';
+        headerRow.innerHTML = '<th style="text-align: left; padding-left: 2px;"></th>';
         (d.innings || []).forEach(inn => {
             headerRow.innerHTML += `<th>${inn}</th>`;
         });
         headerRow.innerHTML += '<th>R</th><th>H</th><th>E</th>';
 
         // Winner Row (Top)
-        let wHtml = `<tr class="winner-row"><td style="text-align: left; padding-left: 6px; font-weight: 900;">${d.winner_name} 👑</td>`;
+        let wHtml = `<tr class="win-row"><td style="text-align: left; padding-left: 2px;">${d.winner_name}</td>`;
         (d.winner_scores || []).forEach(s => {
             wHtml += `<td>${s}</td>`;
         });
-        wHtml += `<td class="highlight-r">${d.winner_score}</td><td>${d.winner_h}</td><td>${d.winner_e}</td></tr>`;
+        wHtml += `<td>${d.winner_score}</td><td>${d.winner_h}</td><td>${d.winner_e}</td></tr>`;
         sbBody.innerHTML += wHtml;
 
         // Loser Row (Bottom)
-        let lHtml = `<tr class="loser-row"><td style="text-align: left; padding-left: 6px; font-weight: 700;">${d.loser_name}</td>`;
+        let lHtml = `<tr class="lose-row"><td style="text-align: left; padding-left: 2px;">${d.loser_name}</td>`;
         (d.loser_scores || []).forEach(s => {
             lHtml += `<td>${s}</td>`;
         });
-        lHtml += `<td class="highlight-r">${d.loser_score}</td><td>${d.loser_h}</td><td>${d.loser_e}</td></tr>`;
+        lHtml += `<td>${d.loser_score}</td><td>${d.loser_h}</td><td>${d.loser_e}</td></tr>`;
         sbBody.innerHTML += lHtml;
     }
 
-    // Podium Names
+    // Rank List (1위 ~ 6위) - 캡슐 스타일
     const ranks = d.top_ranks || [];
-    document.getElementById('podium1Name').innerText = ranks[0] ? `${ranks[0].name}` : '—';
-    document.getElementById('podium2Name').innerText = ranks[1] ? `${ranks[1].name}` : '—';
-    document.getElementById('podium3Name').innerText = ranks[2] ? `${ranks[2].name}` : '—';
-
-    // Rank List (1위 ~ 6위)
     const rankListElem = document.getElementById('cardRankList');
     rankListElem.innerHTML = '';
     ranks.forEach((r, idx) => {
         const is1st = (idx === 0);
-        const mvpSeal = r.is_mvp ? '<span class="mvp-seal">MVP</span>' : '';
-        const rowClass = is1st ? 'rank-row rank-1-highlight' : 'rank-row';
+        const mvpSeal = r.is_mvp ? '<span class="mvp-ribbon-seal">MVP</span>' : '';
+        const statStr = r.hr > 0 ? `타율 ${r.avg}, 홈런 ${r.hr}` : `타율 ${r.avg}`;
         rankListElem.innerHTML += `
-            <div class="${rowClass}">
+            <div class="capsule-row ${is1st ? 'rank-1' : ''}">
                 <div class="d-flex align-items-center">
-                    <strong style="width: 22px; color: ${is1st ? '#facc15' : '#94a3b8'};">${r.rank}위</strong>
-                    <span class="fw-bold ms-1" style="color: ${is1st ? '#fff' : '#f1f5f9'};">${r.name}</span>
-                    <small class="text-muted ms-1" style="font-size: 10px;">(${r.team})</small>
-                    ${mvpSeal}
+                    <span class="capsule-badge">${r.rank}위</span>
+                    <span class="capsule-name">${r.name}</span>
                 </div>
-                <div class="text-end" style="font-size: 10.5px; color: ${is1st ? '#fef08a' : '#cbd5e1'};">
-                    <span class="fw-bold">AVG ${r.avg}</span>
-                    <span class="ms-2 text-warning">${r.rbi}타점</span>
-                    ${r.hr > 0 ? `<span class="ms-1 text-danger fw-bold">${r.hr}HR</span>` : ''}
+                <div class="d-flex align-items-center">
+                    <span class="capsule-stats">${statStr}</span>
+                    ${mvpSeal}
                 </div>
             </div>
         `;
@@ -949,32 +1053,30 @@ function renderGraphicCard(d) {
 
     // MVP Summary Box
     if (d.mvp) {
-        const mvpTitlePrefix = d.data_mode === 'season' ? '시즌 종합 MVP' : '경기 MVP';
+        const mvpPrefix = d.data_mode === 'season' ? '시즌 MVP' : '경기 MVP';
         document.getElementById('cardMvpName').innerHTML = `
-            <i class="fa-solid fa-crown text-warning me-1"></i>${mvpTitlePrefix} : <strong>${d.mvp.name}</strong> (${d.mvp.team})
+            ${mvpPrefix} : <strong>${d.mvp.name}</strong> (${d.mvp.team})
         `;
-        document.getElementById('cardMvpStats').innerText = d.mvp.stats_line || '';
+        document.getElementById('cardMvpStats').innerText = `- ${d.mvp.stats_line || ''}`;
     }
 
     // Promo Section
     const p = d.promo || {};
     document.getElementById('cardRecruitHeader').innerText = p.recruitment_title || '선수 모집중';
-    document.getElementById('cardTargetAudience').innerText = p.target_audience || '';
     
     const bulletsElem = document.getElementById('cardBullets');
     bulletsElem.innerHTML = '';
+    bulletsElem.innerHTML += `<li>- 대상 : <strong>${p.target_audience || '세계로교회 남전도회 회원'}</strong></li>`;
     (p.bullets || []).forEach(b => {
-        bulletsElem.innerHTML += `<li>${b}</li>`;
+        bulletsElem.innerHTML += `<li>- ${b}</li>`;
     });
 
     // Footer
-    document.getElementById('cardNextMeetup').innerText = p.next_meetup || '';
-    document.getElementById('cardCautionText').innerText = p.caution_box || '';
-    const applyLink = document.getElementById('cardApplyLink');
-    applyLink.innerText = p.apply_url || '';
-    applyLink.href = p.apply_url || '#';
-    document.getElementById('cardBandLink').innerText = p.band_url || '';
-    document.getElementById('cardContactText').innerText = p.contact_info || '';
+    document.getElementById('cardNextMeetup').innerText = p.next_meetup || '- 매월 2째주 주일 17시 정기모임 (시즌경기)';
+    document.getElementById('cardCautionText').innerText = p.caution_box || '※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!';
+    document.getElementById('cardApplyLink').innerText = p.apply_url || 'wbcclub.pythonanywhere.com';
+    document.getElementById('cardBandLink').innerText = p.band_url || 'band.us/@wbc';
+    document.getElementById('cardContactText').innerText = p.contact_info || '이주호집사 010-3485-2419';
 }
 
 function downloadGraphicCard() {
@@ -985,14 +1087,16 @@ function downloadGraphicCard() {
     }
 
     html2canvas(card, {
-        scale: 2,
+        scale: 2, // 960x720 -> 1920x1440 초고해상도 4:3 출력
         useCORS: true,
-        backgroundColor: '#050b18'
+        backgroundColor: '#020617',
+        width: 960,
+        height: 720
     }).then(canvas => {
         const link = document.createElement('a');
         const filename = currentMode === 'season' 
-            ? 'WBC_2026시즌_종합결산_안내포스터.png' 
-            : `WBC_제${currentGraphicData ? (currentGraphicData.game_number || 1) : 1}회_경기결과_안내포스터.png`;
+            ? 'WBC_2026시즌_종합결산_4x3포스터.png' 
+            : `WBC_제${currentGraphicData ? (currentGraphicData.game_number || 1) : 1}회_경기결과_4x3포스터.png`;
         link.download = filename;
         link.href = canvas.toDataURL('image/png');
         link.click();
@@ -1009,20 +1113,22 @@ function copyGraphicCard() {
     html2canvas(card, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#050b18'
+        backgroundColor: '#020617',
+        width: 960,
+        height: 720
     }).then(canvas => {
         canvas.toBlob(blob => {
             if (navigator.clipboard && navigator.clipboard.write) {
                 navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob })
                 ]).then(() => {
-                    alert('포스터 이미지가 클립보드에 복사되었습니다!\n카카오톡 단체방이나 SNS에 [Ctrl + V]로 바로 붙여넣으세요.');
+                    alert('4:3 방송 포스터 이미지가 클립보드에 복사되었습니다!\n카카오톡 단체방이나 SNS에 [Ctrl + V]로 바로 붙여넣으세요.');
                 }).catch(err => {
                     console.warn(err);
-                    alert('클립보드 복사 권한이 제한되어 있습니다. [고해상도 PNG 다운로드]를 이용해주세요.');
+                    alert('클립보드 복사 권한이 제한되어 있습니다. [4:3 고해상도 PNG 다운로드]를 이용해주세요.');
                 });
             } else {
-                alert('사용 중인 브라우저가 이미지 직접 복사를 지원하지 않습니다. [고해상도 PNG 다운로드]를 이용해주세요.');
+                alert('사용 중인 브라우저가 이미지 직접 복사를 지원하지 않습니다. [4:3 고해상도 PNG 다운로드]를 이용해주세요.');
             }
         });
     });

@@ -743,9 +743,9 @@ def sns_generate():
     gid = d.get('game_id')
     mvp = d.get('mvp', '').strip()
 
-    # 사용자 정의 홍보/광고/모집 및 일정 파라미터 공통
+    # 사용자 정의 홍보/광고/모집 및 일정 파라미터 공통 (첨부 레퍼런스 이미지 기준 기본값)
     recruitment_title = d.get('recruitment_title', '').strip() or "선수 모집중"
-    target_audience = d.get('target_audience', '').strip() or "세계로교회 성도, 청·장년 누구나 (초보 환영)"
+    target_audience = d.get('target_audience', '').strip() or "세계로교회 남전도회 회원"
 
     raw_bullets = d.get('recruitment_bullets')
     if isinstance(raw_bullets, list):
@@ -760,14 +760,14 @@ def sns_generate():
             "운동 좋아하거나 못해도 환영",
             "즐거운 교제로 함께해요",
             "육아 아빠 언제든 환영",
-            "회비 : 정기참석시 1만원"
+            "회비 : 경기참석시 1만원"
         ]
 
-    next_meetup = d.get('next_meetup', '').strip() or "— 다음 2째주 주일 17시 정기모임 (시즌경기)"
-    caution_box = d.get('caution_box', '').strip() or "※ 금. 10월 시즌경기는 10월 4일(주일) 17:00 진행!"
-    apply_url = d.get('apply_url', '').strip() or "https://github.com/Irum725/WBC"
-    band_url = d.get('band_url', '').strip() or "band.us/@wbcbaseball"
-    contact_info = d.get('contact_info', '').strip() or "담당자: 총무 (010-XXXX-XXXX)"
+    next_meetup = d.get('next_meetup', '').strip() or "- 매월 2째주 주일 17시 정기모임 (시즌경기)"
+    caution_box = d.get('caution_box', '').strip() or "※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!"
+    apply_url = d.get('apply_url', '').strip() or "wbcclub.pythonanywhere.com"
+    band_url = d.get('band_url', '').strip() or "band.us/@wbc"
+    contact_info = d.get('contact_info', '').strip() or "이주호집사 010-3485-2419"
     bullets_prompt_text = "\n".join([f"  - {b}" for b in bullets])
     bullets_msg_text = "\n".join([f"• {b}" for b in bullets])
 
@@ -902,9 +902,10 @@ def sns_generate():
         lead_stats_str = f"{lead_team['wins']}W {lead_team['losses']}L {lead_team['ties']}D | R:{lead_team['runs']} H:{lead_team['hits']} HR:{lead_team['hr']} AVG:{lead_team['avg']}"
         trail_stats_str = f"{trail_team['wins']}W {trail_team['losses']}L {trail_team['ties']}D | R:{trail_team['runs']} H:{trail_team['hits']} HR:{trail_team['hr']} AVG:{trail_team['avg']}"
 
-        ai_prompt = f"""Create a Korean baseball tournament results announcement graphic with a dramatic sports broadcast aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers.
+        ai_prompt = f"""Create a Korean baseball tournament results announcement graphic in a 4:3 aspect ratio with a dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections labeled 'LEFT SECTION', 'CENTER SECTION', 'RIGHT SECTION' at the top with subtle glowing dividers, and a full-width bottom footer.
 
 **LEFT SECTION:**
+- Top header line: 'LEFT SECTION'
 - Bold large title "2026 W.B.C. 시즌 종합 결산" stacked in 3-4 lines with white and gold/cream colored 3D text
 - Crossed wooden baseball bats behind the title with a baseball in the center
 - Bright stadium floodlights illuminating the scene from upper corners
@@ -1044,10 +1045,16 @@ def sns_generate():
     # ─────────────────────────────────────────────
     # [모드 B] 회차별 단일 경기 모드 (기본)
     # ─────────────────────────────────────────────
-    game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
+    if not gid:
+        game = conn.execute('SELECT * FROM games ORDER BY game_date DESC, id DESC LIMIT 1').fetchone()
+        if game:
+            gid = game['id']
+    else:
+        game = conn.execute('SELECT * FROM games WHERE id=?', (gid,)).fetchone()
+
     if not game:
         conn.close()
-        return jsonify({'err':'없음'}), 404
+        return jsonify({'err':'경기를 찾을 수 없습니다.'}), 404
 
     recs = conn.execute('''
         SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
@@ -1319,9 +1326,10 @@ def sns_generate():
             ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
     ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
-    ai_prompt = f"""Create a Korean baseball tournament results announcement graphic with a dramatic sports broadcast aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers.
+    ai_prompt = f"""Create a Korean baseball tournament results announcement graphic in a 4:3 aspect ratio with a dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections labeled 'LEFT SECTION', 'CENTER SECTION', 'RIGHT SECTION' at the top with subtle glowing dividers, and a full-width bottom footer.
 
 **LEFT SECTION:**
+- Top header line: 'LEFT SECTION'
 - Bold large title "제{gnum}회 W.B.C. 경기결과" stacked in 3-4 lines with white and gold/cream colored 3D text
 - Crossed wooden baseball bats behind the title with a baseball in the center
 - Bright stadium floodlights illuminating the scene from upper corners
