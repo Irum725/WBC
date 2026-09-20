@@ -948,12 +948,12 @@ def generate_sns_payload(d=None):
 
         ranks_prompt_lines = []
         for i, r in enumerate(top6):
-            mvp_badge = " (시즌 MVP)" if r['is_mvp'] else ""
+            mvp_badge = " [MVP]" if r['is_mvp'] else ""
             stat_summary = format_rank_stat_line(r)
             if i == 0:
-                ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
+                ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']}   {stat_summary}{mvp_badge}")
             else:
-                ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
+                ranks_prompt_lines.append(f"  - {i+1}위: {r['name']}   {stat_summary}{mvp_badge}")
         ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
         lead_stats_str = f"{lead_team['wins']} {lead_team['losses']} {lead_team['ties']} {lead_team['runs']} {lead_team['hits']} {lead_team['hr']} {lead_team['avg']}"
@@ -983,9 +983,9 @@ def generate_sns_payload(d=None):
 **SECTION 2 (CENTER) — '{center_sec_title}':**
 - Top header line: '{center_sec_title}'
 - 3-tier podium graphic at the top with gold/silver/bronze medals (🥇 1위, 🥈 2위, 🥉 3위) displaying season leader names: 1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name}
-- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위):
+- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위). Each row displays the rank badge, player name, and their batting stats directly next to the name left-aligned in a clean, consistent vertical column across all rows:
 {ranks_prompt_text}
-  - A shiny gold circular "MVP" ribbon seal attached to the MVP row
+  - A shiny gold circular "MVP" ribbon seal attached to the right side of the MVP row
 - MVP summary block at bottom with a crown icon: "시즌 종합 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
 
 **SECTION 3 (RIGHT) — '{right_sec_title}':**
@@ -1025,7 +1025,8 @@ def generate_sns_payload(d=None):
 2. 중앙 섹션 [{center_sec_title}]:
 - 상단 헤더: '{center_sec_title}'
 - 3단 시상대(포디움)와 금/은/동 메달 (1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name})
-- 시즌 누적 타율 TOP 6 캡슐 바 리스트 (시즌 MVP 선수에 황금 실링 배지 부착)
+- 시즌 누적 타율 TOP 6 캡슐 바 리스트 (각 행마다 이름 옆에 타율 기록을 좌측정렬로 일치된 열에 배치, MVP 선수 행 우측에 황금 실링 배지 부착):
+{ranks_prompt_text}
 - 하단 👑 시즌 종합 MVP 배지 및 기록 박스: "시즌 종합 MVP : {mvp_name} ({mvp_info['team']})"
 
 3. 우측 섹션 [{right_sec_title}]:
@@ -1432,12 +1433,12 @@ def generate_sns_payload(d=None):
 
     ranks_prompt_lines = []
     for i, r in enumerate(top6):
-        mvp_badge = " (MVP)" if r['is_mvp'] else ""
+        mvp_badge = " [MVP]" if r['is_mvp'] else ""
         stat_summary = format_rank_stat_line(r)
         if i == 0:
-            ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
+            ranks_prompt_lines.append(f"  - 1위 row in gold highlight: {r['name']}   {stat_summary}{mvp_badge}")
         else:
-            ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] {stat_summary}{mvp_badge}")
+            ranks_prompt_lines.append(f"  - {i+1}위: {r['name']}   {stat_summary}{mvp_badge}")
     ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
     left_sec_title = "MATCH RESULTS"
@@ -1464,9 +1465,9 @@ def generate_sns_payload(d=None):
 **SECTION 2 (CENTER) — '{center_sec_title}':**
 - Top header line: '{center_sec_title}'
 - 3-tier podium graphic at the top with gold/silver/bronze medals (🥇 1위, 🥈 2위, 🥉 3위) displaying top player names: 1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name}
-- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위):
+- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위). Each row displays the rank badge, player name, and their batting stats directly next to the name left-aligned in a clean, consistent vertical column across all rows:
 {ranks_prompt_text}
-  - A shiny gold circular "MVP" ribbon seal attached to the MVP row
+  - A shiny gold circular "MVP" ribbon seal attached to the right side of the MVP row
 - MVP summary block at bottom with a crown icon: "경기 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
 
 **SECTION 3 (RIGHT) — '{right_sec_title}':**
@@ -1506,7 +1507,8 @@ def generate_sns_payload(d=None):
 2. 중앙 섹션 [{center_sec_title}]:
 - 상단 헤더: '{center_sec_title}'
 - 3단 시상대(포디움)와 금/은/동 메달 (1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name})
-- 1위~6위 흰색 캡슐형 타율 순위 리스트 (타율, 홈런, 타점 기록 표기, MVP 선수에 황금 실링 배지 부착)
+- 1위~6위 흰색 캡슐형 순위 리스트 (각 행마다 이름 옆에 타율 기록을 좌측정렬로 일치된 열에 배치, MVP 선수 행 우측에 황금 실링 배지 부착):
+{ranks_prompt_text}
 - 하단 👑 경기 MVP 서머리 박스: "경기 MVP : {mvp_name} ({mvp_info['team']})" / "{mvp_stats_line}"
 
 3. 우측 섹션 [{right_sec_title}]:

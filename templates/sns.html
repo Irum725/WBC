@@ -311,7 +311,6 @@ if (typeof html2canvas === 'undefined') {
     border-radius: 6px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 3.5px 8px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     font-size: 12.5px;
@@ -322,10 +321,12 @@ if (typeof html2canvas === 'undefined') {
     color: #334155;
     font-weight: 900;
     font-size: 11.5px;
-    padding: 2px 6px;
+    padding: 2px 4px;
     border-radius: 4px;
-    min-width: 26px;
+    width: 28px;
+    min-width: 28px;
     text-align: center;
+    flex-shrink: 0;
 }
 .capsule-row.rank-1 .capsule-badge {
     background: #fbbf24;
@@ -336,15 +337,28 @@ if (typeof html2canvas === 'undefined') {
     color: #000000;
     font-size: 13.5px;
     margin-left: 8px;
+    width: 52px;
+    min-width: 52px;
+    flex-shrink: 0;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
 }
 .capsule-stats {
     font-weight: 800;
     color: #1e293b;
     font-size: 12px;
-    margin-left: auto;
+    margin-left: 12px;
+    flex-grow: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 /* MVP 황금 실링 리본 배지 */
 .mvp-ribbon-seal {
+    margin-left: auto;
+    flex-shrink: 0;
     background: radial-gradient(circle, #fde047 20%, #d97706 80%);
     color: #000000;
     font-size: 9px;
@@ -353,7 +367,6 @@ if (typeof html2canvas === 'undefined') {
     border-radius: 10px;
     border: 1px solid #ffffff;
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    margin-left: 6px;
 }
 
 /* MVP 하단 서머리 박스 */
@@ -809,15 +822,10 @@ if (typeof html2canvas === 'undefined') {
                                             {% set top_display = (initial_sns_data.graphic_data.top_ranks if (initial_sns_data and initial_sns_data.graphic_data.top_ranks) else (records or [])[:6]) %}
                                             {% for r in top_display %}
                                             <div class="capsule-row {% if loop.first %}rank-1{% endif %}">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="capsule-badge">{{ loop.index }}위</span>
-                                                    <span class="capsule-name">{{ r.name }}</span>
-                                                    <small class="capsule-team">({{ r.team }})</small>
-                                                </div>
-                                                <div class="d-flex align-items-center">
-                                                    <span class="capsule-stats">타율 {{ '%0.3f'|format(r.avg|float) if r.avg is string else '%0.3f'|format(r.avg) }}{% if r.hr and r.hr > 0 %}, 홈런 {{ r.hr }}{% endif %}{% if r.rbi and r.rbi > 0 %}, 타점 {{ r.rbi }}{% endif %}</span>
-                                                    {% if r.is_mvp %}<span class="mvp-ribbon-seal">MVP</span>{% endif %}
-                                                </div>
+                                                <span class="capsule-badge">{{ loop.index }}위</span>
+                                                <span class="capsule-name">{{ r.name }}</span>
+                                                <span class="capsule-stats">타율 {{ '%0.3f'|format(r.avg|float) if r.avg is string else '%0.3f'|format(r.avg) }}{% if r.hr and r.hr > 0 %}, 홈런 {{ r.hr }}{% endif %}{% if r.rbi and r.rbi > 0 %}, 타점 {{ r.rbi }}{% endif %}</span>
+                                                {% if r.is_mvp %}<span class="mvp-ribbon-seal">MVP</span>{% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -1331,15 +1339,10 @@ function renderGraphicCard(d) {
             const statStr = statParts.join(', ');
             rankListElem.innerHTML += `
                 <div class="capsule-row ${is1st ? 'rank-1' : ''}">
-                    <div class="d-flex align-items-center">
-                        <span class="capsule-badge">${r.rank}위</span>
-                        <span class="capsule-name">${r.name}</span>
-                        <small class="capsule-team">(${r.team})</small>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <span class="capsule-stats">${statStr}</span>
-                        ${mvpSeal}
-                    </div>
+                    <span class="capsule-badge">${r.rank}위</span>
+                    <span class="capsule-name">${r.name}</span>
+                    <span class="capsule-stats">${statStr}</span>
+                    ${mvpSeal}
                 </div>
             `;
         });
