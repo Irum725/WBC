@@ -714,6 +714,12 @@ def sns_page(gid=None):
             rd['mvp_pts'] = calc_mvp_points(r)
             recs.append(rd)
 
+        # 타율 기준 순위 정렬 (동률시 안타수 > 타수 > 타점 > 홈런 > MVP점수 순)
+        recs = sorted(
+            [r for r in recs if r['ab'] > 0],
+            key=lambda x: (x.get('avg', 0.0), x.get('hits', 0), x.get('ab', 0), x.get('rbi', 0), x.get('hr', 0), x.get('mvp_pts', 0.0)),
+            reverse=True
+        ) + [r for r in recs if r.get('ab', 0) <= 0]
         mvp_cands = sorted([r for r in recs if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)[:5]
         hr_list   = sorted([r for r in recs if r['hr'] > 0], key=lambda x: -x['hr'])
         rbi_list  = sorted([r for r in recs if r['rbi'] > 0], key=lambda x: -x['rbi'])
@@ -865,15 +871,23 @@ def generate_sns_payload(d=None):
             rd['mvp_pts'] = calc_mvp_points(rd)
             season_recs.append(rd)
 
-        sorted_season = sorted(season_recs, key=lambda x: (x['mvp_pts'], x['avg'], x['hits']), reverse=True)
+        # MVP 추천용 종합점수 순 정렬
+        sorted_season_mvp = sorted(season_recs, key=lambda x: (x['mvp_pts'], x['avg'], x['hits']), reverse=True)
+
+        # 순위표용 타율 기준 시즌 순위 정렬 (동률시 안타수 > 타수 > 홈런 > 타점 > MVP점수 순)
+        sorted_season = sorted(
+            [r for r in season_recs if r['ab'] > 0],
+            key=lambda x: (x.get('avg', 0.0), x.get('hits', 0), x.get('ab', 0), x.get('hr', 0), x.get('rbi', 0), x.get('mvp_pts', 0.0)),
+            reverse=True
+        ) + [r for r in season_recs if r.get('ab', 0) <= 0]
 
         mvp_row = None
         if mvp:
-            for r in sorted_season:
+            for r in sorted_season_mvp:
                 if r['name'] == mvp:
                     mvp_row = r; break
-        if not mvp_row and sorted_season:
-            mvp_row = sorted_season[0]
+        if not mvp_row and sorted_season_mvp:
+            mvp_row = sorted_season_mvp[0]
 
         mvp_name = mvp_row['name'] if mvp_row else (mvp or '—')
         mvp_stats_line = f"{mvp_row['mvp_pts']}점 / {mvp_row['ab']}타수 {mvp_row['hits']}안타 {mvp_row['rbi']}타점 {mvp_row['hr']}홈런" if mvp_row else "—"
@@ -1171,7 +1185,16 @@ def generate_sns_payload(d=None):
 
     team_stats_str = "\n\n".join(team_stats_blocks)
 
-    sorted_hitters = sorted([r for r in rec_list if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)
+    # MVP 추천용 종합점수 순 정렬
+    sorted_mvp_hitters = sorted([r for r in rec_list if r['ab'] > 0], key=lambda x: x['mvp_pts'], reverse=True)
+
+    # 순위표용 타율 기준 순위 정렬 (동률시 안타수 > 타수 > 타점 > 홈런 > MVP점수 순)
+    sorted_hitters = sorted(
+        [r for r in rec_list if r['ab'] > 0],
+        key=lambda x: (x.get('avg', 0.0), x.get('hits', 0), x.get('ab', 0), x.get('rbi', 0), x.get('hr', 0), x.get('mvp_pts', 0.0)),
+        reverse=True
+    ) + [r for r in rec_list if r.get('ab', 0) <= 0]
+
     hr_lead = sorted([r for r in rec_list if r['hr'] > 0], key=lambda x: -x['hr'])
     rbi_lead = sorted([r for r in rec_list if r['rbi'] > 0], key=lambda x: -x['rbi'])
 
@@ -1189,7 +1212,7 @@ def generate_sns_payload(d=None):
     # MVP
     mvp_row = None
     if mvp: mvp_row = get_row(mvp)
-    if not mvp_row and sorted_hitters: mvp_row = sorted_hitters[0]
+    if not mvp_row and sorted_mvp_hitters: mvp_row = sorted_mvp_hitters[0]
 
     mvp_detail = ""
     if mvp_row:
@@ -1555,7 +1578,7 @@ def generate_sns_payload(d=None):
         'ai_prompt': ai_prompt,
         'ai_prompt_ko': ai_prompt_ko,
         'graphic_data': graphic_data,
-        'mvp_cands': sorted_hitters[:5] if data_mode == 'single' else sorted_season[:5],
+        'mvp_cands': sorted_mvp_hitters[:5] if data_mode == 'single' else sorted_season_mvp[:5],
         'awards': awards if data_mode == 'single' else {}
     }
 
