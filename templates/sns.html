@@ -742,7 +742,7 @@ if (typeof html2canvas === 'undefined') {
                                 <div class="graphic-grid-body">
                                     <!-- 1. LEFT SECTION -->
                                     <div class="col-left-sec">
-                                        <div class="sec-header-line">LEFT SECTION</div>
+                                        <div class="sec-header-line" id="cardLeftSecHeader">MATCH RESULTS</div>
 
                                         <div class="bat-and-title-wrap">
                                             <div class="cross-bats-bg">⚔️</div>
@@ -779,7 +779,7 @@ if (typeof html2canvas === 'undefined') {
 
                                     <!-- 2. CENTER SECTION -->
                                     <div class="col-center-sec">
-                                        <div class="sec-header-line" id="cardCenterSecHeader">경기 순위표 (TOP RANKINGS)</div>
+                                        <div class="sec-header-line" id="cardCenterSecHeader">TOP RANKINGS & MVP</div>
 
                                         <!-- Podium with Medals -->
                                         <div class="podium-outer-wrap">
@@ -841,7 +841,7 @@ if (typeof html2canvas === 'undefined') {
 
                                     <!-- 3. RIGHT SECTION -->
                                     <div class="col-right-sec">
-                                        <div class="sec-header-line right-header">RIGHT SECTION</div>
+                                        <div class="sec-header-line right-header" id="cardRightSecHeader">JOIN THE CLUB</div>
 
                                         <div class="classic-3d-ribbon" id="cardRecruitHeader">
                                             선수 모집중
@@ -936,24 +936,67 @@ if (typeof html2canvas === 'undefined') {
                         </div>
                     </div>
 
-                    <!-- Tab 2: AI Image Prompt Generator -->
+                    <!-- Tab 2: AI Image Prompt Generator (Nano Banana / Midjourney) -->
                     <div class="tab-pane fade" id="aiPromptContent">
                         <div class="alert alert-primary border small p-3 mb-3 d-flex align-items-start gap-2">
-                            <i class="fa-solid fa-sparkles text-primary fs-5 mt-1"></i>
+                            <i class="fa-solid fa-wand-magic-sparkles text-primary fs-4 mt-1"></i>
                             <div>
-                                <strong>4:3 비율 AI 이미지 생성 프롬프트 자동 생성 완료!</strong><br>
-                                아래 영문 프롬프트는 <strong>Midjourney (--ar 4:3), DALL-E 3, ChatGPT Plus</strong> 등에서 완벽한 4:3 비율의 방송 그래픽을 생성하도록 최적화되어 있습니다.
+                                <strong class="fs-6">🍌 나노바나나 & AI 고품질 4:3 포스터 프롬프트</strong><br>
+                                <span class="text-muted">수정한 스코어보드, 1~6위 타자 순위, MVP, 홍보/주의 문구가 100% 반영된 프롬프트입니다. 나노바나나(Nano Banana), Midjourney (--ar 4:3), FLUX, DALL-E 3에 그대로 복사하여 고품질 그래픽을 생성하세요.</span>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <textarea class="form-control font-monospace bg-light" id="aiPromptText" rows="18" readonly style="font-size: 0.85rem; line-height: 1.5;"></textarea>
+                        <!-- Sub Pills: 영문 프롬프트 vs 한국어 프롬프트 -->
+                        <ul class="nav nav-pills mb-2 small" id="promptSubTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active py-1 px-3 fw-bold" id="subtab-en-tab" data-bs-toggle="pill" data-bs-target="#subtab-en" type="button" role="tab">
+                                    <i class="fa-solid fa-globe me-1"></i>나노바나나 / Midjourney 영문 프롬프트 (추천)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link py-1 px-3 fw-bold" id="subtab-ko-tab" data-bs-toggle="pill" data-bs-target="#subtab-ko" type="button" role="tab">
+                                    <i class="fa-solid fa-language me-1"></i>한국어 상세 프롬프트
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content border rounded p-2 bg-light mb-3">
+                            <!-- 영문 프롬프트 -->
+                            <div class="tab-pane fade show active" id="subtab-en" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-primary">Nano Banana / Midjourney v6 / FLUX.1</span>
+                                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="copyText('aiPromptText')">
+                                        <i class="fa-solid fa-copy me-1"></i>영문 프롬프트 복사
+                                    </button>
+                                </div>
+                                <textarea class="form-control font-monospace bg-white" id="aiPromptText" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;"></textarea>
+                            </div>
+
+                            <!-- 한국어 프롬프트 -->
+                            <div class="tab-pane fade" id="subtab-ko" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-secondary">한국어 지시문 / ChatGPT / Claude</span>
+                                    <button class="btn btn-sm btn-outline-secondary fw-bold" onclick="copyText('aiPromptTextKo')">
+                                        <i class="fa-solid fa-copy me-1"></i>한국어 프롬프트 복사
+                                    </button>
+                                </div>
+                                <textarea class="form-control font-monospace bg-white" id="aiPromptTextKo" rows="16" readonly style="font-size: 0.82rem; line-height: 1.45;"></textarea>
+                            </div>
                         </div>
 
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-primary w-100 fw-bold py-2" onclick="copyText('aiPromptText')">
-                                <i class="fa-solid fa-copy me-1"></i>4:3 AI 영문 프롬프트 1클릭 복사
-                            </button>
+                        <!-- 나노바나나 이용 팁 가이드 -->
+                        <div class="card border-0 bg-warning-subtle text-dark p-2 small mb-2">
+                            <div class="d-flex gap-2">
+                                <span class="fs-5">💡</span>
+                                <div>
+                                    <strong>나노바나나 / AI 포스터 생성 꿀팁</strong>
+                                    <ul class="mb-0 ps-3 mt-1" style="font-size: 0.8rem;">
+                                        <li>나노바나나 또는 Midjourney 생성창에 상단 영문 프롬프트를 붙여넣으세요.</li>
+                                        <li>프롬프트 끝에 <code>--ar 4:3</code> 파라미터가 포함되어 있어 4:3 방송 포스터 비율로 완벽하게 렌더링됩니다.</li>
+                                        <li>상단에서 홍보 문구, 일정, 주의사항 등을 수정하면 프롬프트가 즉시 실시간으로 자동 갱신됩니다.</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1181,6 +1224,9 @@ function generateSns() {
         if (data.ai_prompt) {
             document.getElementById('aiPromptText').value = data.ai_prompt;
         }
+        if (data.ai_prompt_ko && document.getElementById('aiPromptTextKo')) {
+            document.getElementById('aiPromptTextKo').value = data.ai_prompt_ko;
+        }
         if (data.mvp_cands && currentMode === 'single') {
             gameMvpCands = data.mvp_cands;
         }
@@ -1195,7 +1241,10 @@ function generateSns() {
 function renderGraphicCard(d) {
     if (!d) return;
 
-    // 1. LEFT SECTION: Title & Date & Win Subtitle
+    // 1. LEFT SECTION: Header, Title & Date & Win Subtitle
+    if (document.getElementById('cardLeftSecHeader')) {
+        document.getElementById('cardLeftSecHeader').innerText = d.left_sec_title || (d.data_mode === 'season' ? 'SEASON SUMMARY' : 'MATCH RESULTS');
+    }
     if (d.data_mode === 'season') {
         document.getElementById('cardTitle').innerHTML = `2026<br><span class="gold-wbc">W.B.C.</span>시즌결과`;
     } else {
@@ -1257,7 +1306,7 @@ function renderGraphicCard(d) {
     // 2. CENTER SECTION: Header, Podium, Top 6 Ranks & MVP
     const centerHeader = document.getElementById('cardCenterSecHeader');
     if (centerHeader) {
-        centerHeader.innerText = d.data_mode === 'season' ? '시즌 순위표 (TOP RANKINGS)' : '경기 순위표 (TOP RANKINGS)';
+        centerHeader.innerText = d.center_sec_title || (d.data_mode === 'season' ? 'SEASON LEADERS & MVP' : 'TOP RANKINGS & MVP');
     }
 
     const ranks = d.top_ranks || [];
@@ -1301,7 +1350,10 @@ function renderGraphicCard(d) {
         document.getElementById('cardMvpStats').innerText = `- ${d.mvp.stats_line || ''}`;
     }
 
-    // 3. RIGHT SECTION: Promo
+    // 3. RIGHT SECTION: Header & Promo
+    if (document.getElementById('cardRightSecHeader')) {
+        document.getElementById('cardRightSecHeader').innerText = d.right_sec_title || 'JOIN THE CLUB';
+    }
     const p = d.promo || {};
     document.getElementById('cardRecruitHeader').innerText = p.recruitment_title || '선수 모집중';
     

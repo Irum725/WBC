@@ -930,47 +930,88 @@ def sns_generate():
         lead_stats_str = f"{lead_team['wins']}W {lead_team['losses']}L {lead_team['ties']}D | R:{lead_team['runs']} H:{lead_team['hits']} HR:{lead_team['hr']} AVG:{lead_team['avg']}"
         trail_stats_str = f"{trail_team['wins']}W {trail_team['losses']}L {trail_team['ties']}D | R:{trail_team['runs']} H:{trail_team['hits']} HR:{trail_team['hr']} AVG:{trail_team['avg']}"
 
-        ai_prompt = f"""Create a Korean baseball tournament results announcement graphic in a 4:3 aspect ratio with a dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections labeled 'LEFT SECTION', 'CENTER SECTION', 'RIGHT SECTION' at the top with subtle glowing dividers, and a full-width bottom footer.
+        left_sec_title = "SEASON SUMMARY"
+        center_sec_title = "SEASON LEADERS & MVP"
+        right_sec_title = "JOIN THE CLUB"
 
-**LEFT SECTION:**
-- Top header line: 'LEFT SECTION'
-- Bold large title "2026 W.B.C. 시즌 종합 결산" stacked in 3-4 lines with white and gold/cream colored 3D text
-- Crossed wooden baseball bats behind the title with a baseball in the center
-- Bright stadium floodlights illuminating the scene from upper corners
-- A date badge/ribbon: "{dstr}"
+        p1_name = top6[0]['name'] if top6 else '—'
+        p2_name = top6[1]['name'] if len(top6) > 1 else '—'
+        p3_name = top6[2]['name'] if len(top6) > 2 else '—'
+
+        ai_prompt = f"""Create a Korean baseball championship season results announcement graphic in a 4:3 aspect ratio with an ultra-dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers, labeled '{left_sec_title}', '{center_sec_title}', '{right_sec_title}' at the top, and a full-width bottom footer.
+
+**SECTION 1 (LEFT) — '{left_sec_title}':**
+- Top header line: '{left_sec_title}'
+- Bold large 3D title: "2026 W.B.C. 시즌 종합 결산" stacked in 3-4 lines with white and gold/cream metallic 3D text
+- Crossed wooden baseball bats behind the title with a photorealistic baseball in the center
+- Bright stadium floodlights illuminating the scene from upper corners with volumetric light rays
+- Date badge/ribbon: "{dstr}"
 - Subtitle line: "{win_subtitle}"
 - Mini baseball scoreboard at the bottom showing season standings table columns: TEAM, W, L, D, R, H, HR, AVG:
-  - {lead_team['name']}: {lead_stats_str}
+  - {lead_team['name']}: {lead_stats_str} (highlighted gold winner row)
   - {trail_team['name']}: {trail_stats_str}
 
-**CENTER SECTION:**
-- 3-tier podium graphic at the top with gold/silver/bronze medals (1위, 2위, 3위) and "1", "2", "3" placeholders
-- Vertical rank list with rounded rectangle rows for each rank (1위 through 6위):
+**SECTION 2 (CENTER) — '{center_sec_title}':**
+- Top header line: '{center_sec_title}'
+- 3-tier podium graphic at the top with gold/silver/bronze medals (🥇 1위, 🥈 2위, 🥉 3위) displaying season leader names: 1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name}
+- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위):
 {ranks_prompt_text}
-  - Alternating subtle row backgrounds for readability
-  - A gold "MVP" badge/seal attached to the MVP-ranked row
+  - A shiny gold circular "MVP" ribbon seal attached to the MVP row
 - MVP summary block at bottom with a crown icon: "시즌 종합 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
 
-**RIGHT SECTION:**
-- A curved red ribbon/banner header with "{recruitment_title}" in bold white
-- Vertical bulleted list below in white clean text:
+**SECTION 3 (RIGHT) — '{right_sec_title}':**
+- Top header line: '{right_sec_title}'
+- A curved red 3D ribbon banner header with "{recruitment_title}" in bold white typography
+- Vertical bulleted list below in crisp white text:
   - 대상 : {target_audience}
 {bullets_prompt_text}
-- A red accent vertical bar/border separating it from center section
+- A red accent vertical glowing bar separating it from center section
 
 **BOTTOM FOOTER (full width):**
 - Next meet-up announcement line: "{next_meetup}"
-- Yellow highlighted caution box with warning icon: "{caution_box}"
-- Application/contact info row (split):
+- Yellow highlighted caution box with warning alert icon: "{caution_box}"
+- Application and contact info row (split):
   - 순위/선수기록 : {apply_url}
   - 밴드 : {band_url}    — 문의 : {contact_info}
 
-**STYLE REQUIREMENTS:**
-- Color palette : deep navy/midnight blue background, gold/cream highlights, white primary text, red accent banners, subtle spotlight glow effects
-- Typography : Korean sans-serif (Pretendard/Noto Sans KR style), heavy bold weights for titles, clear hierarchy
-- Mood : celebratory sports championship atmosphere with stadium lighting glow, light flares, and slight motion blur accents
-- Decorative elements : baseball icons (ball, bats, gloves), medals, crowns, MVP seal, lightning/flash effects
-- Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
+**STYLE REQUIREMENTS (OPTIMIZED FOR NANO BANANA / MIDJOURNEY / FLUX):**
+- Aspect Ratio: 4:3 (--ar 4:3)
+- Style: Professional Korean sports broadcast television motion graphic, ESPN/KBO broadcast quality, octane render, 8K resolution, photorealistic, sharp focus, volumetric stadium lighting, 3D typography, premium midnight navy and gold palette, no blur, high contrast."""
+
+        ai_prompt_ko = f"""[나노바나나 / AI 고품질 이미지 생성 프롬프트 - 2026 시즌 결산 4:3 방송 포스터]
+
+■ 구도 및 비율: 4:3 화면비 (가로 960 × 세로 720 기준), 딥 네이비 배경의 방송용 그래픽
+■ 상단 3개 섹션 타이틀: '{left_sec_title}', '{center_sec_title}', '{right_sec_title}'
+
+1. 좌측 섹션 [{left_sec_title}]:
+- 상단 헤더: '{left_sec_title}'
+- 3D 입체 타이틀: "2026 W.B.C. 시즌 종합 결산" (화이트 & 골드 크림 3D 텍스트)
+- 교차된 목재 야구 배트와 중앙 야구공 엠블럼, 상단 스타디움 조명 빛줄기
+- 날짜 리본 배지: "{dstr}"
+- 승리 부제: "{win_subtitle}"
+- 시즌 팀 순위표 (팀명, 승, 패, 무, 득점, 안타, 홈런, 팀타율)
+  - {lead_team['name']}: {lead_stats_str}
+  - {trail_team['name']}: {trail_stats_str}
+
+2. 중앙 섹션 [{center_sec_title}]:
+- 상단 헤더: '{center_sec_title}'
+- 3단 시상대(포디움)와 금/은/동 메달 (1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name})
+- 시즌 누적 타율 TOP 6 캡슐 바 리스트 (시즌 MVP 선수에 황금 실링 배지 부착)
+- 하단 👑 시즌 종합 MVP 배지 및 기록 박스: "시즌 종합 MVP : {mvp_name} ({mvp_info['team']})"
+
+3. 우측 섹션 [{right_sec_title}]:
+- 상단 헤더: '{right_sec_title}'
+- 입체 곡선 레드 3D 리본 타이틀: "{recruitment_title}"
+- 모집 세부 안내 항목:
+  - 대상 : {target_audience}
+{bullets_prompt_text}
+
+4. 하단 전체 푸터:
+- 정기모임 일정: "{next_meetup}"
+- 옐로우 강조 주의 박스: "{caution_box}"
+- 하단 정보: 순위/선수기록 {apply_url} | 밴드 {band_url} | 문의 {contact_info}
+
+■ 스타일 키워드: 8K 해상도, KBO 스포츠 방송 그래픽, 스타디움 스포트라이트, 4:3 종횡비, 네이비 & 골드 럭셔리 질감"""
 
         medals = ['🥇','🥈','🥉','  4','  5', '  6']
         top6_msg = ''
@@ -1051,6 +1092,9 @@ def sns_generate():
             'loser_e': 0,
             'top_ranks': top6,
             'ranking_table': ranking_table,
+            'left_sec_title': left_sec_title,
+            'center_sec_title': center_sec_title,
+            'right_sec_title': right_sec_title,
             'mvp': mvp_info,
             'promo': {
                 'recruitment_title': recruitment_title,
@@ -1068,6 +1112,7 @@ def sns_generate():
             'long': long_msg,
             'short': short_msg,
             'ai_prompt': ai_prompt,
+            'ai_prompt_ko': ai_prompt_ko,
             'graphic_data': graphic_data
         })
 
@@ -1355,47 +1400,88 @@ def sns_generate():
             ranks_prompt_lines.append(f"  - {i+1}위: {r['name']} [{r['team']}] 타율 {r['avg']}, 홈런 {r['hr']}{mvp_badge}")
     ranks_prompt_text = "\n".join(ranks_prompt_lines) if ranks_prompt_lines else "  - 1위: 기록 대기중"
 
-    ai_prompt = f"""Create a Korean baseball tournament results announcement graphic in a 4:3 aspect ratio with a dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections labeled 'LEFT SECTION', 'CENTER SECTION', 'RIGHT SECTION' at the top with subtle glowing dividers, and a full-width bottom footer.
+    left_sec_title = "MATCH RESULTS"
+    center_sec_title = "TOP RANKINGS & MVP"
+    right_sec_title = "JOIN THE CLUB"
 
-**LEFT SECTION:**
-- Top header line: 'LEFT SECTION'
-- Bold large title "제{gnum}회 W.B.C. 경기결과" stacked in 3-4 lines with white and gold/cream colored 3D text
-- Crossed wooden baseball bats behind the title with a baseball in the center
-- Bright stadium floodlights illuminating the scene from upper corners
-- A date badge/ribbon: "{dstr}"
+    p1_name = top6[0]['name'] if top6 else '—'
+    p2_name = top6[1]['name'] if len(top6) > 1 else '—'
+    p3_name = top6[2]['name'] if len(top6) > 2 else '—'
+
+    ai_prompt = f"""Create a Korean baseball tournament results announcement graphic in a 4:3 aspect ratio with an ultra-dramatic sports broadcast television aesthetic on a deep navy blue background. The layout must be divided into THREE distinct vertical sections with subtle glowing dividers, labeled '{left_sec_title}', '{center_sec_title}', '{right_sec_title}' at the top, and a full-width bottom footer.
+
+**SECTION 1 (LEFT) — '{left_sec_title}':**
+- Top header line: '{left_sec_title}'
+- Bold large 3D title: "제{gnum}회 W.B.C. 경기결과" stacked in 3-4 lines with white and gold/cream metallic 3D text
+- Crossed wooden baseball bats behind the title with a photorealistic baseball in the center
+- Bright stadium floodlights illuminating the scene from upper corners with volumetric light rays
+- Date badge/ribbon: "{dstr}"
 - Subtitle line: "{winner_name} WIN! {winner_score}:{loser_score} 승리"
-- Mini baseball scoreboard at the bottom showing columns: team name, 그리고 이닝 {innings_header_str} R H E, with two team rows (winner on top in highlighted color, loser below)
+- Mini baseball scoreboard at the bottom showing columns: team name, 그리고 이닝 {innings_header_str} R H E, with two team rows (winner on top in highlighted gold color, loser below):
   - {winner_name}: {winner_inn_str} | R:{winner_score} H:{winner_h} E:{winner_e}
   - {loser_name}: {loser_inn_str} | R:{loser_score} H:{loser_h} E:{loser_e}
 
-**CENTER SECTION:**
-- 3-tier podium graphic at the top with gold/silver/bronze medals (1위, 2위, 3위) and "1", "2", "3" placeholders
-- Vertical rank list with rounded rectangle rows for each rank (1위 through 6위):
+**SECTION 2 (CENTER) — '{center_sec_title}':**
+- Top header line: '{center_sec_title}'
+- 3-tier podium graphic at the top with gold/silver/bronze medals (🥇 1위, 🥈 2위, 🥉 3위) displaying top player names: 1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name}
+- Vertical rank list with rounded rectangle white capsule rows for each rank (1위 through 6위):
 {ranks_prompt_text}
-  - Alternating subtle row backgrounds for readability
-  - A gold "MVP" badge/seal attached to the MVP-ranked row
+  - A shiny gold circular "MVP" ribbon seal attached to the MVP row
 - MVP summary block at bottom with a crown icon: "경기 MVP : {mvp_name} ({mvp_info['team']})" and stats line "{mvp_stats_line}"
 
-**RIGHT SECTION:**
-- A curved red ribbon/banner header with "{recruitment_title}" in bold white
-- Vertical bulleted list below in white clean text:
+**SECTION 3 (RIGHT) — '{right_sec_title}':**
+- Top header line: '{right_sec_title}'
+- A curved red 3D ribbon banner header with "{recruitment_title}" in bold white typography
+- Vertical bulleted list below in crisp white text:
   - 대상 : {target_audience}
 {bullets_prompt_text}
-- A red accent vertical bar/border separating it from center section
+- A red accent vertical glowing bar separating it from center section
 
 **BOTTOM FOOTER (full width):**
 - Next meet-up announcement line: "{next_meetup}"
-- Yellow highlighted caution box with warning icon: "{caution_box}"
-- Application/contact info row (split):
+- Yellow highlighted caution box with warning alert icon: "{caution_box}"
+- Application and contact info row (split):
   - 순위/선수기록 : {apply_url}
   - 밴드 : {band_url}    — 문의 : {contact_info}
 
-**STYLE REQUIREMENTS:**
-- Color palette : deep navy/midnight blue background, gold/cream highlights, white primary text, red accent banners, subtle spotlight glow effects
-- Typography : Korean sans-serif (Pretendard/Noto Sans KR style), heavy bold weights for titles, clear hierarchy
-- Mood : celebratory sports championship atmosphere with stadium lighting glow, light flares, and slight motion blur accents
-- Decorative elements : baseball icons (ball, bats, gloves), medals, crowns, MVP seal, lightning/flash effects
-- Overall feel : professional sports broadcast graphic designed for sharing in church/community baseball club group chats"""
+**STYLE REQUIREMENTS (OPTIMIZED FOR NANO BANANA / MIDJOURNEY / FLUX):**
+- Aspect Ratio: 4:3 (--ar 4:3)
+- Style: Professional Korean sports broadcast television motion graphic, ESPN/KBO broadcast quality, octane render, 8K resolution, photorealistic, sharp focus, volumetric stadium lighting, 3D typography, premium midnight navy and gold palette, no blur, high contrast."""
+
+    ai_prompt_ko = f"""[나노바나나 / AI 고품질 이미지 생성 프롬프트 - 제{gnum}회 경기 결과 4:3 방송 포스터]
+
+■ 구도 및 비율: 4:3 화면비 (가로 960 × 세로 720 기준), 딥 네이비 배경의 방송용 그래픽
+■ 상단 3개 섹션 타이틀: '{left_sec_title}', '{center_sec_title}', '{right_sec_title}'
+
+1. 좌측 섹션 [{left_sec_title}]:
+- 상단 헤더: '{left_sec_title}'
+- 3D 입체 타이틀: "제{gnum}회 W.B.C. 경기결과" (화이트 & 골드 크림 3D 텍스트)
+- 교차된 목재 야구 배트와 중앙 야구공 엠블럼, 상단 스타디움 조명 빛줄기
+- 날짜 리본 배지: "{dstr}"
+- 승리 부제: "{winner_name} WIN! {winner_score}:{loser_score} 승리"
+- 하단 미니 LED 전광판 스코어보드 (팀명, {innings_header_str}, R, H, E)
+  - {winner_name}: {winner_score}점 (승리팀 골드 하이라이트)
+  - {loser_name}: {loser_score}점
+
+2. 중앙 섹션 [{center_sec_title}]:
+- 상단 헤더: '{center_sec_title}'
+- 3단 시상대(포디움)와 금/은/동 메달 (1위 {p1_name}, 2위 {p2_name}, 3위 {p3_name})
+- 1위~6위 흰색 캡슐형 순위 리스트 (MVP 선수에 황금 실링 배지 부착)
+- 하단 👑 경기 MVP 서머리 박스: "경기 MVP : {mvp_name} ({mvp_info['team']})" / "{mvp_stats_line}"
+
+3. 우측 섹션 [{right_sec_title}]:
+- 상단 헤더: '{right_sec_title}'
+- 입체 곡선 레드 3D 리본 타이틀: "{recruitment_title}"
+- 모집 세부 안내 항목:
+  - 대상 : {target_audience}
+{bullets_prompt_text}
+
+4. 하단 전체 푸터:
+- 정기모임 일정: "{next_meetup}"
+- 옐로우 강조 주의 박스: "{caution_box}"
+- 하단 정보: 순위/선수기록 {apply_url} | 밴드 {band_url} | 문의 {contact_info}
+
+■ 스타일 키워드: 8K 해상도, KBO 스포츠 방송 그래픽, 스타디움 스포트라이트, 4:3 종횡비, 네이비 & 골드 럭셔리 질감"""
 
     ranking_table = []
     for i, r in enumerate(sorted_hitters):
@@ -1439,6 +1525,9 @@ def sns_generate():
         'loser_scores': loser_scores,
         'top_ranks': top6,
         'ranking_table': ranking_table,
+        'left_sec_title': left_sec_title,
+        'center_sec_title': center_sec_title,
+        'right_sec_title': right_sec_title,
         'mvp': mvp_info,
         'promo': {
             'recruitment_title': recruitment_title,
@@ -1456,6 +1545,7 @@ def sns_generate():
         'long': long_msg,
         'short': short_msg,
         'ai_prompt': ai_prompt,
+        'ai_prompt_ko': ai_prompt_ko,
         'graphic_data': graphic_data,
         'mvp_cands': sorted_hitters[:5] if data_mode == 'single' else sorted_season[:5],
         'awards': awards if data_mode == 'single' else {}
