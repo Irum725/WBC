@@ -177,6 +177,42 @@
     </div>
 </div>
 
+{% if not edit_game %}
+<!-- [안전장치 & 다기기 실시간 동기화] 라인업 확정 Lock / Unlock 제어 바 -->
+<div id="lineupLockControlBar" class="card shadow-sm border-0 mb-3 overflow-hidden">
+    <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light border rounded-3" id="lineupLockStatusBg">
+        <div class="d-flex align-items-center gap-3">
+            <div id="lineupLockIcon" class="fs-3 text-primary">
+                <i class="fa-solid fa-lock-open"></i>
+            </div>
+            <div>
+                <div class="fw-bold d-flex align-items-center gap-2" id="lineupLockTitle">
+                    <span class="fs-6">🔓 라인업 편집 모드</span>
+                    <span class="badge bg-secondary" id="lineupLockBadge">자유 편집 가능</span>
+                </div>
+                <div class="text-muted small" id="lineupLockDesc">
+                    참석자 명단과 팀 배정을 완료한 후, <strong>[🔒 라인업 최종 확정 및 잠금]</strong>을 누르면 다른 모든 기기에 실시간으로 동기화됩니다.
+                </div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSyncDraft" onclick="fetchAndApplyServerDraft(true)" title="다른 기기에서 수정한 최신 라인업 불러오기">
+                <i class="fa-solid fa-rotate me-1"></i>서버 동기화
+            </button>
+            <button type="button" class="btn btn-primary fw-bold shadow-sm" id="btnLockLineup" onclick="lockCurrentLineup()">
+                <i class="fa-solid fa-lock me-1"></i>🔒 라인업 최종 확정 및 잠금 (모든 기기 동기화)
+            </button>
+            <button type="button" class="btn btn-warning fw-bold shadow-sm d-none" id="btnUnlockLineup" onclick="unlockCurrentLineup()">
+                <i class="fa-solid fa-lock-open me-1"></i>🔓 라인업 잠금 해제 (수정 모드)
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="btnResetDraft" onclick="resetServerDraft()" title="저장된 라인업 드래프트 초기화">
+                <i class="fa-solid fa-trash me-1"></i>초기화
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- 경기 기본 정보 및 [출전팀 : 출전팀] 대진 설정 카드 -->
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-white py-2 fw-bold text-dark d-flex justify-content-between align-items-center">
@@ -388,9 +424,14 @@
                         전력 차이: 0.000 (황금 밸런스 ⚖️)
                     </span>
                 </h6>
-                <button type="button" class="btn btn-success btn-lg px-4 fw-bold shadow" onclick="applySplitToScoreSheet()">
-                    <i class="fa-solid fa-table-list me-2"></i>📋 경기 기록지에 즉시 적용 (이닝별 성적 입력 시작)
-                </button>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-success btn-lg px-3 fw-bold shadow-sm" onclick="applySplitToScoreSheet()">
+                        <i class="fa-solid fa-table-list me-1"></i>기록지에 적용
+                    </button>
+                    <button type="button" class="btn btn-success btn-lg px-4 fw-bold shadow" onclick="applyAndLockSplit()">
+                        <i class="fa-solid fa-lock me-1"></i>🔒 기록지 적용 & 라인업 확정 잠금 (모든 기기 동기화)
+                    </button>
+                </div>
             </div>
 
             <!-- 수동 조정 팁 안내 바 -->
@@ -554,8 +595,10 @@ const dbPlayers = [
 // 수정 모드 데이터 (존재 시)
 const editGame = {{ edit_game | tojson if edit_game else 'null' }};
 const editRecords = {{ edit_records | tojson if edit_records else '[]' }};
+const serverDraftData = {{ active_draft | tojson if active_draft else 'null' }};
 
 let matchMode = (editGame && editGame.match_type) ? editGame.match_type : '2teams'; // '2teams' | '4teams'
+let isLineupLocked = false;
 
 // W.B.C 4대 팀 마스터 메타 정보
 const WBC_TEAM_META = {
@@ -638,7 +681,239 @@ document.addEventListener('DOMContentLoaded', () => {
     applySettings();
     initPlayerChips();
     syncTeamBuilderBadges();
+
+    // 신규 모드일 때 서버에 저장된 활성 드래프트가 있으면 자동 복원 및 잠금 상태 반영
+    if (!editGame && serverDraftData) {
+        applyDraftDataToUI(serverDraftData);
+    } else if (!editGame) {
+        updateLockUI(false);
+    }
+
+    // 다른 탭이나 앱에서 돌아왔을 때 서버 최신 상태 확인
+    window.addEventListener('focus', () => {
+        if (!editGame) {
+            fetchAndApplyServerDraft(false);
+        }
+    });
 });
+
+// =============================================================
+// [안전장치 & 다기기 동기화] 라인업 Lock / Unlock 제어 함수군
+// =============================================================
+function updateLockUI(isLocked, lockedAt = null) {
+    isLineupLocked = !!isLocked;
+    const bar = document.getElementById('lineupLockControlBar');
+    if (!bar) return;
+
+    const bg = document.getElementById('lineupLockStatusBg');
+    const icon = document.getElementById('lineupLockIcon');
+    const title = document.getElementById('lineupLockTitle');
+    const desc = document.getElementById('lineupLockDesc');
+    const btnLock = document.getElementById('btnLockLineup');
+    const btnUnlock = document.getElementById('btnUnlockLineup');
+    const btnRun = document.getElementById('btnRunSplit');
+
+    if (isLineupLocked) {
+        if (bg) bg.className = 'card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-success-subtle border border-success-subtle rounded-3';
+        if (icon) icon.innerHTML = '<i class="fa-solid fa-lock text-success"></i>';
+        const timeStr = lockedAt ? `<span class="badge bg-success ms-2">${lockedAt} 확정</span>` : '<span class="badge bg-success ms-2">실시간 동기화 중</span>';
+        if (title) title.innerHTML = `<span class="text-success fw-bold fs-6">🔒 라인업 확정 및 잠금 완료 (보호 중)</span> ${timeStr}`;
+        if (desc) desc.innerHTML = '현재 라인업이 서버에 확정 저장되었습니다. 다른 스마트폰·태블릿에서도 동일하게 표시되며, 팀 구성 변동이 방지됩니다.';
+        if (btnLock) btnLock.classList.add('d-none');
+        if (btnUnlock) btnUnlock.classList.remove('d-none');
+        if (btnRun) {
+            btnRun.classList.remove('btn-primary');
+            btnRun.classList.add('btn-secondary');
+            btnRun.innerHTML = `<i class="fa-solid fa-lock me-2"></i>라인업 확정됨 (잠금 해제 후 재배정 가능)`;
+        }
+    } else {
+        if (bg) bg.className = 'card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light border rounded-3';
+        if (icon) icon.innerHTML = '<i class="fa-solid fa-lock-open text-primary"></i>';
+        if (title) title.innerHTML = '<span class="text-dark fw-bold fs-6">🔓 라인업 편집 모드</span> <span class="badge bg-secondary ms-2">자유 편집 가능</span>';
+        if (desc) desc.innerHTML = '참석자 명단과 팀 배정을 완료한 후, <strong>[🔒 라인업 최종 확정 및 잠금]</strong>을 누르면 다른 모든 기기에 실시간으로 동기화됩니다.';
+        if (btnLock) btnLock.classList.remove('d-none');
+        if (btnUnlock) btnUnlock.classList.add('d-none');
+        if (btnRun) {
+            btnRun.classList.remove('btn-secondary');
+            btnRun.classList.add('btn-primary');
+            btnRun.innerHTML = `<i class="fa-solid fa-bolt me-2"></i>전력 균형 팀 배정 & 최적 타순 자동 생성`;
+        }
+    }
+
+    renderSetupTable();
+}
+
+async function lockCurrentLineup() {
+    const activePlayers = setupList.filter(item => item.team && item.team !== 'None' && item.name && item.name.trim() !== '');
+    if (activePlayers.length < 2) {
+        alert('최소 2명 이상의 선수가 출전팀에 배정되어 있어야 라인업을 확정할 수 있습니다.');
+        return;
+    }
+
+    const payload = {
+        match_type: matchMode,
+        game_date: document.getElementById('gameDate') ? document.getElementById('gameDate').value : '',
+        game_number: document.getElementById('gameNumber') ? parseInt(document.getElementById('gameNumber').value) || 1 : 1,
+        location: document.getElementById('gameLocation') ? document.getElementById('gameLocation').value : '스크린야구장',
+        setup_data: setupList,
+        attendees_data: Array.from(selectedAttendeeNames),
+        split_result: lastSplitResult
+    };
+
+    try {
+        const res = await fetch('/api/match/draft/lock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if (d.ok) {
+            const nowTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            updateLockUI(true, nowTime);
+            showLockAlert('🔒 라인업이 성공적으로 확정 및 잠금되었습니다!<br><small class="text-muted">다른 기기(스마트폰, 태블릿 등)에서도 동일한 라인업이 동기화됩니다.</small>', 'success');
+        } else {
+            alert('라인업 잠금 저장 실패: ' + (d.err || '오류가 발생했습니다.'));
+        }
+    } catch (e) {
+        alert('서버 통신 실패: ' + e);
+    }
+}
+
+async function unlockCurrentLineup() {
+    if (!confirm('라인업 잠금을 해제하시겠습니까?\n\n잠금을 해제하면 팀 구성과 타순을 다시 수정할 수 있습니다.')) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/match/draft/unlock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const d = await res.json();
+        if (d.ok) {
+            updateLockUI(false);
+            showLockAlert('🔓 라인업 잠금이 해제되었습니다. 이제 팀 구성과 타순을 자유롭게 수정할 수 있습니다.', 'info');
+        } else {
+            alert('잠금 해제 실패: ' + (d.err || '오류가 발생했습니다.'));
+        }
+    } catch (e) {
+        alert('서버 통신 실패: ' + e);
+    }
+}
+
+async function fetchAndApplyServerDraft(isManual = false) {
+    try {
+        const res = await fetch('/api/match/draft');
+        const data = await res.json();
+        if (data.ok && data.draft) {
+            applyDraftDataToUI(data.draft);
+            if (isManual) {
+                showLockAlert('🔄 서버의 최신 라인업 데이터와 성공적으로 동기화되었습니다!', 'success');
+            }
+        } else {
+            if (isManual) {
+                alert('현재 서버에 저장된 활성 라인업이 없습니다.');
+            }
+        }
+    } catch (e) {
+        if (isManual) alert('서버 동기화 실패: ' + e);
+    }
+}
+
+function applyDraftDataToUI(draft) {
+    if (!draft) return;
+
+    if (draft.match_type && draft.match_type !== matchMode) {
+        switchMode(draft.match_type);
+        if (draft.match_type === '4teams') {
+            const el = document.getElementById('m_4teams');
+            if (el) el.checked = true;
+        } else {
+            const el = document.getElementById('m_2teams');
+            if (el) el.checked = true;
+        }
+    }
+
+    if (draft.game_date && document.getElementById('gameDate')) {
+        document.getElementById('gameDate').value = draft.game_date;
+    }
+    if (draft.game_number && document.getElementById('gameNumber')) {
+        document.getElementById('gameNumber').value = draft.game_number;
+    }
+    if (draft.location && document.getElementById('gameLocation')) {
+        document.getElementById('gameLocation').value = draft.location;
+    }
+
+    if (draft.attendees_data && Array.isArray(draft.attendees_data)) {
+        selectedAttendeeNames = new Set(draft.attendees_data);
+        document.querySelectorAll('.player-chip').forEach(chip => {
+            if (selectedAttendeeNames.has(chip.dataset.name)) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+        const cntEl = document.getElementById('selectedCountText');
+        if (cntEl) cntEl.innerText = selectedAttendeeNames.size;
+    }
+
+    if (draft.setup_data && Array.isArray(draft.setup_data)) {
+        setupList = JSON.parse(JSON.stringify(draft.setup_data));
+        renderSetupTable();
+        applySettings();
+    }
+
+    if (draft.split_result && typeof draft.split_result === 'object') {
+        lastSplitResult = draft.split_result;
+        renderSplitPreview(lastSplitResult, false);
+    }
+
+    updateLockUI(draft.is_locked === 1, draft.locked_at);
+}
+
+async function resetServerDraft() {
+    if (!confirm('저장된 라인업 드래프트를 초기화하시겠습니까?\n\n팀 구성과 타순이 초기화되며 새로운 경기를 처음부터 시작합니다.')) {
+        return;
+    }
+    try {
+        const res = await fetch('/api/match/draft/reset', { method: 'POST' });
+        const d = await res.json();
+        if (d.ok) {
+            window.location.reload();
+        } else {
+            alert('초기화 실패: ' + (d.err || '오류가 발생했습니다.'));
+        }
+    } catch (e) {
+        alert('서버 통신 실패: ' + e);
+    }
+}
+
+function applyAndLockSplit() {
+    applySplitToScoreSheet();
+    lockCurrentLineup();
+}
+
+function showLockAlert(msg, type = 'success') {
+    const existing = document.getElementById('lockAlertBanner');
+    if (existing) existing.remove();
+
+    const el = document.createElement('div');
+    el.id = 'lockAlertBanner';
+    el.className = `alert alert-${type} alert-dismissible fade show shadow-lg fw-bold position-fixed top-0 start-50 translate-middle-x mt-4 text-center`;
+    el.style.zIndex = '9999';
+    el.style.minWidth = '320px';
+    el.innerHTML = `
+        ${msg}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => {
+        if (el && el.parentNode) {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 300);
+        }
+    }, 3500);
+}
 
 // =============================================================
 // [스마트 도구] 참석자 기반 팀 자동 배정 & 타순 추천 로직
@@ -681,16 +956,28 @@ function initPlayerChips() {
 }
 
 function togglePlayerChip(chip) {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 참석자 명단이 보호 중입니다.<br><small class="text-muted">참석자를 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     chip.classList.toggle('active');
     updateSelectedAttendees();
 }
 
 function selectAllChips() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">수정하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     document.querySelectorAll('.player-chip').forEach(c => c.classList.add('active'));
     updateSelectedAttendees();
 }
 
 function deselectAllChips() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">수정하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('active'));
     updateSelectedAttendees();
 }
@@ -726,6 +1013,10 @@ function parseNamesFromRawText(text) {
 }
 
 function parseAttendeeText() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">명단을 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     const text = document.getElementById('tbTextInput').value;
     const names = parseNamesFromRawText(text);
     if (names.length === 0) {
@@ -745,6 +1036,10 @@ function parseAttendeeText() {
 }
 
 function clearAttendeeInput() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">명단을 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     if (document.getElementById('tbTextInput')) {
         document.getElementById('tbTextInput').value = '';
     }
@@ -807,6 +1102,10 @@ function toggleTeamBuilderCollapse() {
 }
 
 async function runAutoTeamSplit() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 경기 라인업이 확정 및 잠금 보호 중입니다.<br><small class="text-muted">팀 구성을 다시 나누시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     updateSelectedAttendees();
     const attendeeList = Array.from(selectedAttendeeNames);
     if (attendeeList.length < 2) {
@@ -995,6 +1294,10 @@ function renderSplitPreview(data, shouldScroll = true) {
 }
 
 function moveLineupOrder(tName, pIdx, dir) {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">타순을 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     if (!lastSplitResult || !lastSplitResult.teams || !lastSplitResult.teams[tName]) return;
     const list = lastSplitResult.teams[tName];
     const targetIdx = pIdx + dir;
@@ -1014,6 +1317,10 @@ function moveLineupOrder(tName, pIdx, dir) {
 }
 
 function switchLineupTeam(fromTeam, pIdx, toTeam) {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">팀을 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     if (!lastSplitResult || !lastSplitResult.teams) return;
     const fromList = lastSplitResult.teams[fromTeam];
     const toList = lastSplitResult.teams[toTeam];
@@ -1236,6 +1543,9 @@ function initSetupList() {
                 });
             }
         });
+    } else if (serverDraftData && serverDraftData.setup_data && Array.isArray(serverDraftData.setup_data) && serverDraftData.setup_data.length > 0) {
+        // [서버 활성 드래프트 복원]
+        setupList = JSON.parse(JSON.stringify(serverDraftData.setup_data));
     } else {
         // [신규 모드] 기존 신규 생성 로직
         dbPlayers.forEach((p, idx) => {
@@ -1273,6 +1583,10 @@ function recalcAutoOrders() {
 }
 
 function addSetupBlankRow() {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">공란을 추가하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     const defaultTeam = currentActiveTeamKeys[0] || 'World';
     const nextOrder = setupList.filter(p => p.team === defaultTeam).length + 1;
     setupList.push({
@@ -1292,6 +1606,7 @@ function addSetupBlankRow() {
 function renderSetupTable() {
     const tbody = document.getElementById('setupTableBody');
     tbody.innerHTML = '';
+    const disabledAttr = isLineupLocked ? 'disabled' : '';
 
     setupList.forEach((item, idx) => {
         const tr = document.createElement('tr');
@@ -1307,25 +1622,25 @@ function renderSetupTable() {
             <td><span class="badge bg-light text-secondary border">${idx + 1}</span></td>
             <td>
                 <input type="text" class="form-control form-control-sm text-center fw-bold ${isBlank ? 'player-name-blank' : ''}"
-                    value="${item.name}" placeholder="대타/게스트/선수명"
+                    value="${item.name}" placeholder="대타/게스트/선수명" ${disabledAttr}
                     onchange="setupList[${idx}].name = this.value.trim(); updateSummaryBadge();">
             </td>
             <td>
-                <select class="form-select form-select-sm fw-bold"
+                <select class="form-select form-select-sm fw-bold" ${disabledAttr}
                     onchange="setupList[${idx}].team = this.value; updateSummaryBadge();">
                     ${teamOptions}
                 </select>
             </td>
             <td>
                 <div class="input-group input-group-sm" style="width: 125px; margin: auto;">
-                    <button type="button" class="btn btn-outline-secondary px-1" onclick="stepSetupOrder(${idx}, -1)" title="타순 1단계 위로">▲</button>
-                    <input type="number" class="form-control text-center p-0 fw-bold" min="1" max="25"
+                    <button type="button" class="btn btn-outline-secondary px-1" ${disabledAttr} onclick="stepSetupOrder(${idx}, -1)" title="타순 1단계 위로">▲</button>
+                    <input type="number" class="form-control text-center p-0 fw-bold" min="1" max="25" ${disabledAttr}
                         value="${item.order}" onchange="setupList[${idx}].order = parseInt(this.value)||1">
-                    <button type="button" class="btn btn-outline-secondary px-1" onclick="stepSetupOrder(${idx}, 1)" title="타순 1단계 아래로">▼</button>
+                    <button type="button" class="btn btn-outline-secondary px-1" ${disabledAttr} onclick="stepSetupOrder(${idx}, 1)" title="타순 1단계 아래로">▼</button>
                 </div>
             </td>
             <td>
-                <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="deleteSetupRow(${idx})" title="삭제">
+                <button type="button" class="btn btn-outline-danger btn-sm p-1" ${disabledAttr} onclick="deleteSetupRow(${idx})" title="삭제">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td>
@@ -1337,6 +1652,10 @@ function renderSetupTable() {
 }
 
 function stepSetupOrder(idx, delta) {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">타순을 변경하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     if (!setupList[idx]) return;
     const cur = parseInt(setupList[idx].order) || 1;
     const next = Math.max(1, cur + delta);
@@ -1345,6 +1664,10 @@ function stepSetupOrder(idx, delta) {
 }
 
 function deleteSetupRow(idx) {
+    if (isLineupLocked) {
+        showLockAlert('🔒 현재 라인업이 확정 및 잠금되어 있습니다.<br><small class="text-muted">선수를 제외하시려면 상단의 [🔓 라인업 잠금 해제]를 먼저 눌러주세요.</small>', 'warning');
+        return;
+    }
     setupList.splice(idx, 1);
     renderSetupTable();
 }

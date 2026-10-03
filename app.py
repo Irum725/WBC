@@ -121,6 +121,20 @@ def init_db():
             FOREIGN KEY (game_id)   REFERENCES games(id)   ON DELETE CASCADE,
             FOREIGN KEY (player_id) REFERENCES players(id)
         );
+        CREATE TABLE IF NOT EXISTS active_match_draft (
+            id              INTEGER PRIMARY KEY CHECK (id = 1),
+            is_locked       INTEGER DEFAULT 0,
+            match_type      TEXT DEFAULT '2teams',
+            game_date       TEXT,
+            game_number     INTEGER,
+            location        TEXT,
+            notes           TEXT,
+            setup_data      TEXT,
+            attendees_data  TEXT,
+            split_result    TEXT,
+            locked_at       TEXT,
+            updated_at      TEXT DEFAULT (datetime('now','localtime'))
+        );
     ''')
     cnt = c.execute('SELECT COUNT(*) FROM players').fetchone()[0]
     if cnt == 0:
@@ -891,16 +905,116 @@ def api_team_split():
     finally:
         conn.close()
 
+# ─────────────────────────────────────────────
+# 라인업 드래프트 서버 동기화 & Lock/Unlock API
+# ─────────────────────────────────────────────
+@app.route('/api/match/draft', methods=['GET'])
+def api_get_match_draft():
+    conn = get_db()
+    row = conn.execute('SELECT * FROM active_match_draft WHERE id = 1').fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'ok': True, 'draft': None})
+    d = dict(row)
+    for k in ('setup_data', 'attendees_data', 'split_result'):
+        if d.get(k) and isinstance(d[k], str):
+            try:
+                d[k] = json.loads(d[k])
+            except Exception:
+                pass
+    return jsonify({'ok': True, 'draft': d})
+
+@app.route('/api/match/draft/lock', methods=['POST'])
+@admin_required
+def api_lock_match_draft():
+    data = request.get_json() or {}
+    match_type = data.get('match_type', '2teams')
+    game_date = data.get('game_date', date.today().isoformat())
+    game_number = data.get('game_number', 1)
+    location = data.get('location', '스크린야구장')
+    notes = data.get('notes', '')
+    
+    setup_data = data.get('setup_data')
+    if isinstance(setup_data, (list, dict)):
+        setup_data = json.dumps(setup_data, ensure_ascii=False)
+    
+    attendees_data = data.get('attendees_data')
+    if isinstance(attendees_data, (list, dict, set)):
+        attendees_data = json.dumps(list(attendees_data), ensure_ascii=False)
+
+    split_result = data.get('split_result')
+    if isinstance(split_result, (list, dict)):
+        split_result = json.dumps(split_result, ensure_ascii=False)
+
+    conn = get_db()
+    try:
+        conn.execute('''
+            INSERT OR REPLACE INTO active_match_draft
+            (id, is_locked, match_type, game_date, game_number, location, notes,
+             setup_data, attendees_data, split_result, locked_at, updated_at)
+            VALUES (1, 1, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
+        ''', (match_type, game_date, game_number, location, notes, setup_data, attendees_data, split_result))
+        conn.commit()
+        return jsonify({'ok': True, 'msg': '🔒 라인업이 확정 및 잠금되었습니다. 모든 기기에 즉시 동기화됩니다.'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'ok': False, 'err': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/match/draft/unlock', methods=['POST'])
+@admin_required
+def api_unlock_match_draft():
+    conn = get_db()
+    try:
+        conn.execute('''
+            UPDATE active_match_draft
+            SET is_locked = 0, updated_at = datetime('now', 'localtime')
+            WHERE id = 1
+        ''')
+        conn.commit()
+        return jsonify({'ok': True, 'msg': '🔓 라인업 잠금이 해제되었습니다. 이제 팀 구성 및 타순 수정이 가능합니다.'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'ok': False, 'err': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/match/draft/reset', methods=['POST'])
+@admin_required
+def api_reset_match_draft():
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM active_match_draft WHERE id = 1')
+        conn.commit()
+        return jsonify({'ok': True, 'msg': '라인업 드래프트가 초기화되었습니다. 새로운 경기를 구성할 수 있습니다.'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'ok': False, 'err': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route('/game/new')
 @admin_required
 def game_new():
     conn = get_db()
     players = get_players_with_season_stats(conn)
     game_count = conn.execute('SELECT COUNT(*) FROM games').fetchone()[0]
+    draft_row = conn.execute('SELECT * FROM active_match_draft WHERE id = 1').fetchone()
+    active_draft = None
+    if draft_row:
+        active_draft = dict(draft_row)
+        for k in ('setup_data', 'attendees_data', 'split_result'):
+            if active_draft.get(k) and isinstance(active_draft[k], str):
+                try:
+                    active_draft[k] = json.loads(active_draft[k])
+                except Exception:
+                    pass
     conn.close()
     return render_template('game_input.html',
         players=players, today=date.today().isoformat(),
-        next_num=game_count+1, edit_game=None, edit_records=[])
+        next_num=game_count+1, edit_game=None, edit_records=[],
+        active_draft=active_draft)
 
 @app.route('/game/<int:gid>/edit')
 @admin_required
@@ -988,6 +1102,9 @@ def game_save():
                  st['ab'],st['hits'],st['singles'],st['doubles'],st['triples'],st['hr'],
                  rec.get('rbi',0), rec.get('bb',0),
                  st['k'],st['out'],st['dp'],st['avg'],st['slg'],st['obp']))
+        
+        # 경기 저장 성공 시 활성 라인업 드래프트 초기화 (새로운 경기를 위해)
+        c.execute('DELETE FROM active_match_draft WHERE id = 1')
         conn.commit()
         return jsonify({'ok':True,'game_id':gid})
     except Exception as e:
