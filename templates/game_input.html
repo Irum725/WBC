@@ -862,7 +862,7 @@ function renderSplitPreview(data, shouldScroll = true) {
                         ${guestBadge}
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-secondary small fw-bold">타율 ${avgStr}${hrStr}${rbiStr}</span>
+                        <span class="text-secondary small fw-bold">타율 ${avgStr} <span class="text-muted fw-normal">(${p.season_ab || 0}타수 ${p.season_hits || 0}안타${hrStr}${rbiStr})</span></span>
                         <span class="badge ${roleClass} role-badge">${p.role || `${p.order}번`}</span>
 
                         <!-- 팀 변경 드롭다운 -->

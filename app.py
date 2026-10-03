@@ -393,20 +393,45 @@ def get_players_with_season_stats(conn):
         ORDER BY season_avg DESC, season_hits DESC, p.name ASC
     ''').fetchall()
 
+    total_ab = sum(r['season_ab'] for r in rows)
+    total_hits = sum(r['season_hits'] for r in rows)
+    league_avg = round(total_hits / total_ab, 3) if total_ab > 0 else 0.300
+    C = 4.0 # 표본 부족(타석 수 편차) 보정을 위한 의사 타수 (규정 타석 완충 계수)
+
     result = []
     for r in rows:
         d = dict(r)
-        d['rating'] = round(d['season_avg'] * 100 + d['season_slg'] * 20 + d['season_hr'] * 5 + d['season_rbi'] * 2 + d['season_hits'] * 1.5, 1)
+        ab = d['season_ab']
+        hits = d['season_hits']
+        hr = d['season_hr']
+        rbi = d['season_rbi']
+
+        # 타석 수(표본) 신뢰도 보정 타율 및 장타율 (Empirical Bayes Shrinkage)
+        # 1타수 1안타(1.000) 등 표본이 적은 경우 리그 평균으로 자연스럽게 회귀 보정
+        d['adj_avg'] = round((hits + C * league_avg) / (ab + C), 3) if (ab + C) > 0 else d['season_avg']
+        d['adj_slg'] = round(((d['season_1b'] + d['season_2b']*2 + d['season_3b']*3 + d['season_hr']*4) + C * (league_avg * 1.5)) / (ab + C), 3) if (ab + C) > 0 else d['season_slg']
+
+        # 표본 크기(타석수)와 실제 타격 생산력을 공정하게 반영한 전력 종합 점수
+        d['rating'] = round(
+            (d['adj_avg'] * 120) + 
+            (d['adj_slg'] * 25) + 
+            (hr * 8) + 
+            (rbi * 3) + 
+            (hits * 3) + 
+            min(ab, 10) * 1.5, 
+            1
+        )
         result.append(d)
     return result
 
 def assign_batting_order(players):
     """
     야구 전술적 타순 배정 (1번~N번):
+    타석 수(표본 신뢰도)와 누적 성적(안타·홈런·타점)을 함께 고려하여 배정
     1번 (리드오프): 출루/타율 높은 타자 (테이블세터)
     2번 (작전/연결): 컨택 우수 타자 (테이블세터)
-    3번 (팀 최고타자): 팀 내 타율 최상위 타자
-    4번 (거포 클린업): 장타/홈런/타점 해결사
+    3번 (팀 최고타자): 다수 타석에서 검증된 팀 최고 타자 (안타수 및 보정타율)
+    4번 (거포 클린업): 팀 내 최고 홈런/장타율/타점 해결사
     5번 (해결사 클린업): 득점 찬스 클러치 히터
     6~7번: 하위타선 연결
     8~N번: 하위타선 및 신규 게스트
@@ -417,44 +442,47 @@ def assign_batting_order(players):
         return []
     lineup = [None] * n
 
-    def pop_best(candidates, key_fn, prefer_veteran=True):
-        if prefer_veteran:
-            vets = [c for c in candidates if not c.get('is_guest') and c.get('season_ab', 0) > 0]
-            pool = vets if vets else candidates
-        else:
-            pool = candidates
-        best_p = max(pool, key=key_fn)
+    def pop_best(candidates, key_fn, pool=None):
+        active_pool = [c for c in pool if c in candidates] if pool else candidates
+        if not active_pool:
+            active_pool = candidates
+        best_p = max(active_pool, key=key_fn)
         candidates.remove(best_p)
         return best_p
 
-    # 4번 타자: 최고 장타/홈런/타점
+    # 4번 거포: 홈런, 타점, 장타력 (실제 장타 생산력 검증 타자 우선)
     if n >= 4:
-        p4 = pop_best(remaining, lambda p: (p.get('season_hr', 0) * 10 + p.get('season_rbi', 0) * 3 + p.get('season_slg', 0) * 5 + p.get('season_avg', 0) * 2))
+        power_pool = [c for c in remaining if not c.get('is_guest') and (c.get('season_hr', 0) > 0 or c.get('season_rbi', 0) >= 2)]
+        p4 = pop_best(remaining, lambda p: (p.get('season_hr', 0) * 15 + p.get('season_rbi', 0) * 4 + p.get('adj_slg', p.get('season_slg', 0)) * 10 + p.get('season_hits', 0) * 2), pool=power_pool)
         p4['role'] = '4번 거포 (클린업)'
         lineup[3] = p4
 
-    # 3번 타자: 남은 선수 중 최고 타율/안타
+    # 3번 중심타자: 다수 타석에서 검증된 팀 최고 타자 (안타 수 2개 이상 또는 타석 3회 이상 검증 타자 우선)
+    # 1타수 1안타(1.000) 등 표본이 부족한 선수가 3번에 배치되지 않도록 방지
     if len(remaining) > 0 and n >= 3:
-        p3 = pop_best(remaining, lambda p: (p.get('season_avg', 0), p.get('season_hits', 0)))
-        p3['role'] = '3번 중심타자 (최고타율)'
+        proven_3rd = [c for c in remaining if not c.get('is_guest') and c.get('season_hits', 0) >= 2]
+        if not proven_3rd:
+            proven_3rd = [c for c in remaining if not c.get('is_guest') and c.get('season_ab', 0) >= 3]
+        p3 = pop_best(remaining, lambda p: (p.get('season_hits', 0) * 15 + p.get('adj_avg', p.get('season_avg', 0)) * 100 + min(p.get('season_ab', 0), 10) * 4), pool=proven_3rd)
+        p3['role'] = '3번 중심타자 (최고타자)'
         lineup[2] = p3
 
-    # 5번 타자: 남은 선수 중 해결사 (타점/장타)
+    # 5번 해결사: 타점/장타 찬스 클러치
     if len(remaining) > 0 and n >= 5:
-        p5 = pop_best(remaining, lambda p: (p.get('season_rbi', 0) * 2 + p.get('season_slg', 0) * 4 + p.get('season_avg', 0)))
+        p5 = pop_best(remaining, lambda p: (p.get('season_rbi', 0) * 3 + p.get('adj_slg', p.get('season_slg', 0)) * 8 + p.get('adj_avg', p.get('season_avg', 0)) * 20))
         p5['role'] = '5번 해결사 (클린업)'
         lineup[4] = p5
 
-    # 1번 타자: 남은 선수 중 출루/타율
+    # 1번 리드오프: 출루/타율 높은 발빠른 타자 (1타수 1안타 등 타격 센스 타자도 기용 가능)
     if len(remaining) > 0:
-        p1 = pop_best(remaining, lambda p: (p.get('season_avg', 0) * 10 + p.get('season_bb', 0) * 2 - p.get('season_k', 0) * 0.5))
+        p1 = pop_best(remaining, lambda p: (p.get('adj_avg', p.get('season_avg', 0)) * 20 + p.get('season_bb', 0) * 2 - p.get('season_k', 0) * 0.5))
         p1['role'] = '1번 리드오프 (테이블세터)'
         lineup[0] = p1
 
-    # 2번 타자: 남은 선수 중 컨택/연결
+    # 2번 작전/연결: 컨택/작전
     if len(remaining) > 0 and n >= 2:
-        p2 = pop_best(remaining, lambda p: (p.get('season_avg', 0), -p.get('season_k', 0)))
-        p2['role'] = '2번 테이블세터 (작전/연결)'
+        p2 = pop_best(remaining, lambda p: (p.get('adj_avg', p.get('season_avg', 0)) * 20 - p.get('season_k', 0) * 0.5))
+        p2['role'] = '2번 작전연결 (테이블세터)'
         lineup[1] = p2
 
     # 나머지 6번, 7번, 8번... N번: 전력 순서대로 배치 (기존 선수 우선)
