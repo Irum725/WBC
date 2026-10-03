@@ -318,7 +318,7 @@ def index():
     season_avg = round(season_row['th'] / season_row['tab'], 3) if season_row['tab'] > 0 else 0.0
 
     # TOP 5 선수 (p.id 포함)
-    top5 = conn.execute('''
+    top5_rows = conn.execute('''
         SELECT p.id, p.name, p.team,
                COUNT(DISTINCT br.game_id) games,
                SUM(br.ab) tab, SUM(br.hits) th, SUM(br.hr) thr, SUM(br.rbi) trbi,
@@ -330,8 +330,17 @@ def index():
                     ELSE 0 END sslg
         FROM batting_records br JOIN players p ON p.id=br.player_id
         GROUP BY p.id HAVING SUM(br.ab)>=1
-        ORDER BY savg DESC, th DESC LIMIT 5
+        ORDER BY savg DESC, sslg DESC, thr DESC, trbi DESC, tab DESC
+        LIMIT 5
     ''').fetchall()
+    badges_map = get_all_player_badges(conn)
+    top5 = []
+    for r in top5_rows:
+        d = dict(r)
+        badges = badges_map.get(d['id'], {})
+        d['condition_badge'] = badges.get('condition')
+        d['growth_badge'] = badges.get('growth')
+        top5.append(d)
 
     latest_recs = []
     latest_team_stats = {}
@@ -362,6 +371,193 @@ def index():
         season_hits=season_hits, season_hr=season_hr, season_rbi=season_rbi, season_avg=season_avg,
         top5=top5, latest_recs=latest_recs, latest_team_stats=latest_team_stats,
         latest_awards=latest_awards, scoreboard=scoreboard, fmt_date=fmt_date)
+
+# ─────────────────────────────────────────────
+# 선수 컨디션(최근 경기력) & 성장(라이징 스타) 분석 엔진
+# ─────────────────────────────────────────────
+def get_all_player_badges(conn):
+    """
+    모든 선수의 출전 경기 기록을 바탕으로:
+    1) 최근 경기력/컨디션 뱃지 (Condition Badge: 불방망이, 상승세, 안타 행진, 안타 조준 등)
+    2) 성장 및 눈여겨볼 기대주 뱃지 (Growth Badge: 주목할 라이징 스타, 폭풍 성장주, 급상승 다크호스, 특급 해결사, 잠재력 폭발 등)
+    를 계산하여 {player_id: {'condition': {...}, 'growth': {...}}} 형태로 반환
+    """
+    history_rows = conn.execute('''
+        SELECT br.player_id, br.game_id, g.game_date, g.game_number,
+               br.ab, br.hits, br.singles, br.doubles, br.triples, br.hr, br.rbi, br.avg, br.slg
+        FROM batting_records br
+        JOIN games g ON g.id = br.game_id
+        ORDER BY br.player_id ASC, g.game_date ASC, g.id ASC
+    ''').fetchall()
+
+    player_games = {}
+    for r in history_rows:
+        pid = r['player_id']
+        if pid not in player_games:
+            player_games[pid] = []
+        player_games[pid].append(dict(r))
+
+    all_players = conn.execute('SELECT id, name FROM players').fetchall()
+    result = {}
+
+    for p in all_players:
+        pid = p['id']
+        games = player_games.get(pid, [])
+        m = len(games)
+
+        if not games:
+            c_badge = {
+                'text': '출전 대기',
+                'icon': 'fa-solid fa-hourglass-start',
+                'emoji': '⏳',
+                'class': 'bg-light text-secondary border',
+                'desc': '첫 경기 데뷔를 기다리는 기대주'
+            }
+            g_badge = {
+                'text': '새로운 기대주',
+                'icon': 'fa-solid fa-seedling',
+                'emoji': '🌱',
+                'class': 'bg-light text-success border',
+                'desc': '그라운드를 빛낼 새로운 기대주!'
+            }
+        else:
+            last = games[-1]
+            last_h = last.get('hits', 0)
+            last_hr = last.get('hr', 0)
+            last_rbi = last.get('rbi', 0)
+            last_avg = last.get('avg', 0.0)
+
+            # 1. Condition Badge (최근 경기력/타격감)
+            if last_h >= 3 or last_hr >= 1 or (last_h >= 2 and last_rbi >= 2) or last_avg >= 0.700:
+                c_badge = {
+                    'text': '불방망이',
+                    'icon': 'fa-solid fa-fire',
+                    'emoji': '🔥',
+                    'class': 'bg-danger text-white',
+                    'desc': f'최근 경기 맹타 폭발! ({last_h}안타{f" {last_hr}홈런" if last_hr > 0 else ""} {last_rbi}타점)'
+                }
+            elif last_h >= 2 or last_avg >= 0.500:
+                c_badge = {
+                    'text': '상승세',
+                    'icon': 'fa-solid fa-bolt',
+                    'emoji': '⚡',
+                    'class': 'bg-warning text-dark',
+                    'desc': f'최근 경기 멀티히트! ({last_h}안타, 컨디션 쾌조)'
+                }
+            elif last_h >= 1:
+                c_badge = {
+                    'text': '안타 행진',
+                    'icon': 'fa-solid fa-arrow-trend-up',
+                    'emoji': '🟢',
+                    'class': 'bg-success text-white',
+                    'desc': f'최근 경기 안타 기록! ({last_h}안타)'
+                }
+            else:
+                c_badge = {
+                    'text': '안타 조준',
+                    'icon': 'fa-solid fa-crosshairs',
+                    'emoji': '🎯',
+                    'class': 'bg-light text-secondary border',
+                    'desc': '영점 조절 완료! 안타 조준 중'
+                }
+
+            # 2. Growth Badge (성장 추세 및 눈여겨볼 기대주)
+            if m >= 2:
+                mid = m // 2
+                early = games[:mid]
+                recent = games[mid:]
+                early_ab = sum(g.get('ab', 0) for g in early)
+                early_h = sum(g.get('hits', 0) for g in early)
+                early_avg = (early_h / early_ab) if early_ab > 0 else 0.0
+                rec_ab = sum(g.get('ab', 0) for g in recent)
+                rec_h = sum(g.get('hits', 0) for g in recent)
+                rec_avg = (rec_h / rec_ab) if rec_ab > 0 else 0.0
+                diff = rec_avg - early_avg
+
+                if early_avg <= 0.250 and (rec_avg >= 0.333 or rec_h >= 2):
+                    g_badge = {
+                        'text': '주목할 라이징 스타',
+                        'icon': 'fa-solid fa-star',
+                        'emoji': '🌟',
+                        'class': 'bg-warning-subtle text-dark border border-warning',
+                        'desc': '초기 부진을 딛고 기량이 일취월장하는 특급 라이징 스타!'
+                    }
+                elif diff >= 0.150:
+                    g_badge = {
+                        'text': '폭풍 성장주',
+                        'icon': 'fa-solid fa-rocket',
+                        'emoji': '🚀',
+                        'class': 'bg-danger-subtle text-danger border border-danger',
+                        'desc': '타격 감각이 급성장하며 가파른 상승 곡선을 그리는 기대주!'
+                    }
+                elif rec_avg >= early_avg:
+                    g_badge = {
+                        'text': '급상승 다크호스',
+                        'icon': 'fa-solid fa-chart-line',
+                        'emoji': '📈',
+                        'class': 'bg-success-subtle text-success border border-success',
+                        'desc': '경기를 치를수록 위협적으로 진화하는 다크호스!'
+                    }
+                else:
+                    g_badge = {
+                        'text': '잠재력 충전',
+                        'icon': 'fa-solid fa-gem',
+                        'emoji': '💎',
+                        'class': 'bg-info-subtle text-info-emphasis border border-info',
+                        'desc': '타석 경험을 바탕으로 언제든 폭발할 수 있는 특급 원석!'
+                    }
+            else:
+                # 1경기 출전 데이터 기반
+                h = last.get('hits', 0)
+                ab = last.get('ab', 0)
+                hr = last.get('hr', 0)
+                if hr >= 1 or h >= 3:
+                    g_badge = {
+                        'text': '특급 해결사',
+                        'icon': 'fa-solid fa-crown',
+                        'emoji': '👑',
+                        'class': 'bg-primary-subtle text-primary border border-primary',
+                        'desc': '팀의 득점을 책임지는 핵심 슬러거'
+                    }
+                elif h >= 2:
+                    g_badge = {
+                        'text': '잠재력 폭발',
+                        'icon': 'fa-solid fa-gem',
+                        'emoji': '💎',
+                        'class': 'bg-info-subtle text-info-emphasis border border-info',
+                        'desc': '날카로운 타격 감각을 뽐내는 핵심 전력'
+                    }
+                elif ab == 1 and h == 1:
+                    g_badge = {
+                        'text': '주목할 라이징 스타',
+                        'icon': 'fa-solid fa-star',
+                        'emoji': '🌟',
+                        'class': 'bg-warning-subtle text-dark border border-warning',
+                        'desc': '100% 출루 감각의 빛나는 타격 센스!'
+                    }
+                elif h >= 1:
+                    g_badge = {
+                        'text': '급상승 다크호스',
+                        'icon': 'fa-solid fa-chart-line',
+                        'emoji': '📈',
+                        'class': 'bg-success-subtle text-success border border-success',
+                        'desc': '안타 생산력을 갖춘 상대가 경계할 다크호스!'
+                    }
+                else:
+                    g_badge = {
+                        'text': '도약 대기 기대주',
+                        'icon': 'fa-solid fa-rocket',
+                        'emoji': '🚀',
+                        'class': 'bg-secondary-subtle text-secondary border',
+                        'desc': '차곡차곡 쌓인 타석 경험, 다음 경기 반등 예약!'
+                    }
+
+        result[pid] = {
+            'condition': c_badge,
+            'growth': g_badge
+        }
+
+    return result
 
 # ─────────────────────────────────────────────
 # 스마트 참석자 팀 자동 분배 & 타순 추천 로직
@@ -398,9 +594,15 @@ def get_players_with_season_stats(conn):
     league_avg = round(total_hits / total_ab, 3) if total_ab > 0 else 0.300
     C = 4.0 # 표본 부족(타석 수 편차) 보정을 위한 의사 타수 (규정 타석 완충 계수)
 
+    badges_map = get_all_player_badges(conn)
+
     result = []
     for r in rows:
         d = dict(r)
+        pid = d['id']
+        badges = badges_map.get(pid, {})
+        d['condition_badge'] = badges.get('condition')
+        d['growth_badge'] = badges.get('growth')
         ab = d['season_ab']
         hits = d['season_hits']
         hr = d['season_hr']
@@ -546,7 +748,21 @@ def build_team_split(attendee_names, target_teams=None, conn=None):
                     'season_avg': avg_batting,
                     'season_slg': avg_batting,
                     'rating': avg_rating,
-                    'is_guest': True
+                    'is_guest': True,
+                    'condition_badge': {
+                        'text': '첫 출전',
+                        'icon': 'fa-solid fa-sparkles',
+                        'emoji': '✨',
+                        'class': 'bg-light text-primary border',
+                        'desc': '이번 경기 첫 출전 게스트'
+                    },
+                    'growth_badge': {
+                        'text': '비밀 병기',
+                        'icon': 'fa-solid fa-wand-magic-sparkles',
+                        'emoji': '🔮',
+                        'class': 'bg-primary-subtle text-primary border border-primary',
+                        'desc': '경기의 판도를 바꿀 수 있는 비밀 병기!'
+                    }
                 })
 
         if not attendees:
@@ -829,8 +1045,19 @@ def rankings():
         GROUP BY p.id HAVING SUM(br.ab)>=1
         ORDER BY savg DESC, th DESC, tab DESC
     ''', params).fetchall()
+
+    badges_map = get_all_player_badges(conn)
+    players_list = []
+    for r in rows:
+        d = dict(r)
+        pid = d['id']
+        badges = badges_map.get(pid, {})
+        d['condition_badge'] = badges.get('condition')
+        d['growth_badge'] = badges.get('growth')
+        players_list.append(d)
+
     conn.close()
-    return render_template('rankings.html', players=rows, team_filter=team)
+    return render_template('rankings.html', players=players_list, team_filter=team)
 
 @app.route('/history')
 def history():
@@ -1998,8 +2225,16 @@ def analytics_page():
             GROUP BY p.id ORDER BY gc DESC, p.id ASC LIMIT 1
         ''').fetchone()
         sel_player = top_p if top_p else players[0]
+
+    badges_map = get_all_player_badges(conn)
+    sel_dict = dict(sel_player) if sel_player else None
+    if sel_dict:
+        badges = badges_map.get(sel_dict['id'], {})
+        sel_dict['condition_badge'] = badges.get('condition')
+        sel_dict['growth_badge'] = badges.get('growth')
+
     conn.close()
-    return render_template('analytics.html', players=players, sel_player=sel_player)
+    return render_template('analytics.html', players=players, sel_player=sel_dict, badges_map=badges_map)
 
 @app.route('/api/analytics/player/<int:pid>')
 def api_analytics_player(pid):
@@ -2102,8 +2337,19 @@ def api_analytics_player(pid):
     elif len(timeline) == 1:
         trend = '첫 경기 순항 🚀'
 
+    conn = get_db()
+    badges_map = get_all_player_badges(conn)
+    conn.close()
+    badges = badges_map.get(pid, {})
+
+    p_dict = dict(player)
+    p_dict['condition_badge'] = badges.get('condition')
+    p_dict['growth_badge'] = badges.get('growth')
+
     return jsonify({
-        'player': dict(player),
+        'player': p_dict,
+        'condition_badge': badges.get('condition'),
+        'growth_badge': badges.get('growth'),
         'total_games': total_games,
         'total_ab': run_ab,
         'total_hits': run_hits,

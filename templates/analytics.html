@@ -88,6 +88,26 @@
     </div>
 </div>
 
+<!-- Player Badges Spotlight Banner -->
+<div class="card shadow-sm border-0 mb-4 bg-white rounded-3">
+    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="text-secondary small fw-bold"><i class="fa-solid fa-id-badge text-primary me-1"></i>선수 프로필 지표:</span>
+            <strong class="text-dark fs-6" id="badgePlayerName">{% if sel_player %}{{ sel_player.name }}{% else %}선수명{% endif %}</strong>
+            <span class="badge bg-light text-dark border" id="badgePlayerTeam">{% if sel_player %}{{ sel_player.team }}{% endif %}</span>
+            <span class="badge py-1 px-2 {% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.class }}{% endif %}" id="badgeCondition" title="{% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.desc }}{% endif %}">
+                {% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.emoji }} {{ sel_player.condition_badge.text }}{% endif %}
+            </span>
+            <span class="badge py-1 px-2 {% if sel_player and sel_player.growth_badge %}{{ sel_player.growth_badge.class }}{% endif %}" id="badgeGrowth" title="{% if sel_player and sel_player.growth_badge %}{{ sel_player.growth_badge.desc }}{% endif %}">
+                {% if sel_player and sel_player.growth_badge %}{{ sel_player.growth_badge.emoji }} {{ sel_player.growth_badge.text }}{% endif %}
+            </span>
+        </div>
+        <div class="text-muted small" id="badgeDescription">
+            {% if sel_player and sel_player.growth_badge %}{{ sel_player.growth_badge.desc }}{% else %}선수별 최근 경기력 및 성장 분석 지표입니다.{% endif %}
+        </div>
+    </div>
+</div>
+
 <!-- KPI Summary Cards -->
 <div class="row g-3 mb-4" id="kpiContainer">
     <div class="col-6 col-md-3">
@@ -316,7 +336,41 @@ function updateKpi(d) {
         document.getElementById('kpiBestGame').textContent = '기록 없음';
     }
 
-    document.getElementById('tablePlayerBadge').textContent = `${d.player.name} (${d.player.team})`;
+    if (d.player) {
+        document.getElementById('tablePlayerBadge').textContent = `${d.player.name} (${d.player.team})`;
+        const nameEl = document.getElementById('badgePlayerName');
+        const teamEl = document.getElementById('badgePlayerTeam');
+        if (nameEl) nameEl.textContent = d.player.name;
+        if (teamEl) teamEl.textContent = d.player.team;
+    }
+
+    const cBadgeEl = document.getElementById('badgeCondition');
+    if (cBadgeEl) {
+        if (d.condition_badge) {
+            cBadgeEl.className = `badge py-1 px-2 ${d.condition_badge.class}`;
+            cBadgeEl.textContent = `${d.condition_badge.emoji} ${d.condition_badge.text}`;
+            cBadgeEl.title = d.condition_badge.desc;
+            cBadgeEl.style.display = 'inline-block';
+        } else {
+            cBadgeEl.style.display = 'none';
+        }
+    }
+
+    const gBadgeEl = document.getElementById('badgeGrowth');
+    const descEl = document.getElementById('badgeDescription');
+    if (gBadgeEl) {
+        if (d.growth_badge) {
+            gBadgeEl.className = `badge py-1 px-2 ${d.growth_badge.class}`;
+            gBadgeEl.textContent = `${d.growth_badge.emoji} ${d.growth_badge.text}`;
+            gBadgeEl.title = d.growth_badge.desc;
+            gBadgeEl.style.display = 'inline-block';
+            if (descEl) {
+                descEl.textContent = `${d.condition_badge ? d.condition_badge.desc + ' · ' : ''}${d.growth_badge.desc}`;
+            }
+        } else {
+            gBadgeEl.style.display = 'none';
+        }
+    }
 }
 
 function updateTable(d) {
