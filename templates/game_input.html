@@ -73,6 +73,68 @@
     border-radius: 8px;
     padding: 10px;
 }
+
+/* 스마트 팀 배정 & 타순 추천 카드 스타일 */
+.team-builder-card {
+    border: 2px solid #2563eb !important;
+    border-radius: 12px;
+    background: #f8fafc;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
+}
+.player-chip {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease-in-out;
+    padding: 5px 10px;
+    font-size: 0.83rem;
+    border-radius: 18px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.player-chip:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-1px);
+}
+.player-chip.active {
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    border-color: #1e40af !important;
+    box-shadow: 0 2px 5px rgba(29, 78, 216, 0.3);
+    font-weight: 700;
+}
+.player-chip.active .chip-stat {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+.chip-stat {
+    font-size: 0.72rem;
+    padding: 1px 5px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: bold;
+}
+.preview-lineup-item {
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+.role-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
 </style>
 {% endblock %}
 
@@ -221,6 +283,111 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- [스마트 도구] 참석인원 기반 팀 자동 분배 & 타순 추천 카드 -->
+<!-- ========================================================================= -->
+<div class="card team-builder-card mb-4" id="teamBuilderCard">
+    <div class="card-header bg-gradient bg-primary text-white py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="fw-bold fs-6 d-flex align-items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-warning fs-5"></i>
+            <span>⚡ 스마트 참석자 팀 자동 분배 & 최적 타순 추천</span>
+            <span class="badge bg-warning text-dark px-2 py-1 ms-1">타율 & 시즌 성적 기반 전력 밸런싱</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleTeamBuilderCollapse()">
+                <i class="fa-solid fa-chevron-up" id="tbCollapseIcon"></i> <span id="tbCollapseText">접기</span>
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-3" id="tbBody">
+        <p class="text-muted small mb-3">
+            <i class="fa-solid fa-circle-info text-primary me-1"></i>
+            참석자 명단 텍스트(카톡/밴드 댓글 등)를 붙여넣거나 아래 등록 선수를 클릭하세요. 
+            선수들의 <strong>시즌 타율·장타율·홈런·타점</strong>을 종합 분석하여 <strong>양 팀 전력이 균등하도록 팀과 1~N번 타순</strong>을 자동 추천합니다.
+        </p>
+
+        <div class="row g-3">
+            <!-- 좌측: 카톡/밴드 텍스트 붙여넣기 -->
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 bg-white shadow-sm p-3 rounded-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold small text-dark mb-0">
+                            <i class="fa-solid fa-paste text-primary me-1"></i>1. 카톡 / 밴드 참석 명단 붙여넣기
+                        </label>
+                        <span class="text-muted small">번호·기호 자동 정제</span>
+                    </div>
+                    <textarea id="tbTextInput" class="form-control mb-2" rows="4" style="font-size: 0.85rem;"
+                        placeholder="예:&#10;1. 김진혁&#10;2. 박동진&#10;3. 서관승&#10;4. 이종욱&#10;5. 임명길&#10;또는 쉼표 구분: 김진혁, 이주호, 황주현..."></textarea>
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="parseAttendeeText()">
+                            <i class="fa-solid fa-list-check me-1"></i>텍스트 명단 반영하기
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAttendeeInput()">
+                            <i class="fa-solid fa-eraser me-1"></i>입력 지우기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우측: 등록 선수 원클릭 칩 선택 -->
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 bg-white shadow-sm p-3 rounded-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+                        <label class="form-label fw-bold small text-dark mb-0">
+                            <i class="fa-solid fa-user-check text-success me-1"></i>2. 등록 선수 클릭 토글 (원클릭)
+                        </label>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="selectAllChips()">전체선택</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0" onclick="deselectAllChips()">전체해제</button>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-2 p-2 border rounded bg-light" id="playerChipsContainer" style="max-height: 125px; overflow-y: auto;">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small">
+                        <span>선택된 참석자: <strong class="text-primary fs-6" id="selectedCountText">0</strong>명</span>
+                        <span class="text-secondary small">💡 타율 및 시즌 성적이 높은 순으로 정렬됨</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 실행 액션 바 -->
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold small text-dark"><i class="fa-solid fa-trophy text-warning me-1"></i>배정 대상:</span>
+                <span class="badge bg-primary text-white px-2 py-1 fs-6" id="tbTeam1Badge">World</span>
+                <span class="fw-bold text-muted">VS</span>
+                <span class="badge bg-warning text-dark px-2 py-1 fs-6" id="tbTeam2Badge">Believers</span>
+            </div>
+            <button type="button" class="btn btn-primary px-4 py-2 fw-bold shadow" id="btnRunSplit" onclick="runAutoTeamSplit()">
+                <i class="fa-solid fa-bolt me-2"></i>전력 균형 팀 배정 & 최적 타순 자동 생성
+            </button>
+        </div>
+
+        <!-- 배정 결과 미리보기 카드 (초기에는 d-none) -->
+        <div id="splitResultSection" class="mt-4 pt-3 border-top d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-success fs-5"></i>
+                    <span>전력 균등 팀 배정 및 최적 타순 생성 완료</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" id="splitBalanceBadge">
+                        전력 차이: 0.000 (황금 밸런스 ⚖️)
+                    </span>
+                </h6>
+                <button type="button" class="btn btn-success btn-lg px-4 fw-bold shadow" onclick="applySplitToScoreSheet()">
+                    <i class="fa-solid fa-table-list me-2"></i>📋 경기 기록지에 즉시 적용 (이닝별 성적 입력 시작)
+                </button>
+            </div>
+
+            <!-- 팀별 라인업 미리보기 2열 그리드 -->
+            <div class="row g-3" id="splitLineupContainer">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- [섹션 1] 팀 선택 및 타순 설정 창 -->
 <!-- ========================================================================= -->
 <div class="card shadow-sm border-0 mb-4" id="setupCard">
@@ -341,10 +508,21 @@
 
 {% block scripts %}
 <script>
-// DB 등록 선수들
+// DB 등록 선수들 (시즌 누적 성적 포함)
 const dbPlayers = [
     {% for p in players %}
-    { id: {{ p.id }}, name: "{{ p.name }}", defaultTeam: "{{ p.team }}" },
+    { 
+        id: {{ p.id }}, 
+        name: "{{ p.name }}", 
+        defaultTeam: "{{ p.team }}",
+        avg: {{ p.season_avg or 0.0 }},
+        slg: {{ p.season_slg or 0.0 }},
+        hr: {{ p.season_hr or 0 }},
+        rbi: {{ p.season_rbi or 0 }},
+        hits: {{ p.season_hits or 0 }},
+        ab: {{ p.season_ab or 0 }},
+        rating: {{ p.rating or 25.0 }}
+    },
     {% endfor %}
 ];
 
@@ -433,7 +611,353 @@ document.addEventListener('DOMContentLoaded', () => {
     initSetupList();
     renderSetupTable();
     applySettings();
+    initPlayerChips();
+    syncTeamBuilderBadges();
 });
+
+// =============================================================
+// [스마트 도구] 참석자 기반 팀 자동 배정 & 타순 추천 로직
+// =============================================================
+let selectedAttendeeNames = new Set();
+let lastSplitResult = null;
+
+function initPlayerChips() {
+    const container = document.getElementById('playerChipsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // 타율 및 랭킹점수 내림차순 정렬
+    const sorted = [...dbPlayers].sort((a, b) => (b.rating - a.rating) || (b.avg - a.avg));
+    sorted.forEach(p => {
+        const chip = document.createElement('div');
+        chip.className = 'player-chip';
+        chip.id = `chip-p-${p.id}`;
+        chip.dataset.name = p.name;
+        chip.dataset.id = p.id;
+        
+        let avgStr = '.000';
+        if (p.avg >= 1.0) avgStr = p.avg.toFixed(3);
+        else if (p.avg > 0) avgStr = p.avg.toFixed(3).replace(/^0\./, '.');
+
+        let hrBadge = p.hr > 0 ? ` · HR ${p.hr}` : '';
+        chip.innerHTML = `
+            <span>${p.name}</span>
+            <span class="chip-stat">${avgStr}${hrBadge}</span>
+        `;
+        chip.onclick = () => togglePlayerChip(chip);
+        container.appendChild(chip);
+    });
+
+    updateSelectedAttendees();
+}
+
+function togglePlayerChip(chip) {
+    chip.classList.toggle('active');
+    updateSelectedAttendees();
+}
+
+function selectAllChips() {
+    document.querySelectorAll('.player-chip').forEach(c => c.classList.add('active'));
+    updateSelectedAttendees();
+}
+
+function deselectAllChips() {
+    document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('active'));
+    updateSelectedAttendees();
+}
+
+function updateSelectedAttendees() {
+    selectedAttendeeNames.clear();
+    document.querySelectorAll('.player-chip.active').forEach(c => {
+        selectedAttendeeNames.add(c.dataset.name.trim());
+    });
+    
+    // 텍스트 상자에 입력된 추가 선수/게스트도 합산
+    const rawText = document.getElementById('tbTextInput') ? document.getElementById('tbTextInput').value : '';
+    const extraGuests = parseNamesFromRawText(rawText);
+    extraGuests.forEach(name => selectedAttendeeNames.add(name));
+
+    const countElem = document.getElementById('selectedCountText');
+    if (countElem) {
+        countElem.innerText = selectedAttendeeNames.size;
+    }
+}
+
+function parseNamesFromRawText(text) {
+    if (!text || !text.trim()) return [];
+    const lines = text.split(/[\r\n,]+/);
+    const names = [];
+    lines.forEach(line => {
+        const clean = line.replace(/^[0-9]+[\.\)\:\-\s]*/, '').trim();
+        if (clean && clean.length <= 15) {
+            names.push(clean);
+        }
+    });
+    return names;
+}
+
+function parseAttendeeText() {
+    const text = document.getElementById('tbTextInput').value;
+    const names = parseNamesFromRawText(text);
+    if (names.length === 0) {
+        alert('입력된 텍스트에서 선수 이름을 찾을 수 없습니다.');
+        return;
+    }
+
+    const nameSet = new Set(names);
+    document.querySelectorAll('.player-chip').forEach(chip => {
+        if (nameSet.has(chip.dataset.name)) {
+            chip.classList.add('active');
+        }
+    });
+
+    updateSelectedAttendees();
+    alert(`총 ${selectedAttendeeNames.size}명의 참석자가 반영되었습니다.`);
+}
+
+function clearAttendeeInput() {
+    if (document.getElementById('tbTextInput')) {
+        document.getElementById('tbTextInput').value = '';
+    }
+    deselectAllChips();
+}
+
+function syncTeamBuilderBadges() {
+    if (document.getElementById('tbTeam1Badge') && currentActiveTeamKeys.length >= 2) {
+        document.getElementById('tbTeam1Badge').innerText = currentActiveTeamKeys[0];
+        document.getElementById('tbTeam2Badge').innerText = currentActiveTeamKeys[1];
+    }
+}
+
+function toggleTeamBuilderCollapse() {
+    const body = document.getElementById('tbBody');
+    const icon = document.getElementById('tbCollapseIcon');
+    const text = document.getElementById('tbCollapseText');
+    if (body.classList.contains('d-none')) {
+        body.classList.remove('d-none');
+        icon.className = 'fa-solid fa-chevron-up';
+        text.innerText = '접기';
+    } else {
+        body.classList.add('d-none');
+        icon.className = 'fa-solid fa-chevron-down';
+        text.innerText = '펼치기';
+    }
+}
+
+async function runAutoTeamSplit() {
+    updateSelectedAttendees();
+    const attendeeList = Array.from(selectedAttendeeNames);
+    if (attendeeList.length < 2) {
+        alert('참석자 명단을 2명 이상 선택하거나 텍스트로 입력해주세요.');
+        return;
+    }
+
+    const btn = document.getElementById('btnRunSplit');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>전력 분석 및 밸런스 계산 중...`;
+
+    try {
+        const resp = await fetch('/api/team-builder/split', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                attendees: attendeeList,
+                teams: currentActiveTeamKeys.slice(0, 2)
+            })
+        });
+        const res = await resp.json();
+        if (!res.ok) {
+            throw new Error(res.err || '팀 분배 계산 실패');
+        }
+
+        lastSplitResult = res.data;
+        renderSplitPreview(res.data);
+    } catch (err) {
+        console.error(err);
+        alert('팀 분배 중 오류가 발생했습니다: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-bolt me-2"></i>전력 균형 팀 배정 & 최적 타순 자동 생성`;
+    }
+}
+
+function renderSplitPreview(data) {
+    const sec = document.getElementById('splitResultSection');
+    const container = document.getElementById('splitLineupContainer');
+    sec.classList.remove('d-none');
+    container.innerHTML = '';
+
+    const teams = data.teams || {};
+    const summaries = data.summaries || {};
+    const tKeys = Object.keys(teams);
+
+    if (tKeys.length >= 2) {
+        const r1 = summaries[tKeys[0]] ? summaries[tKeys[0]].rating : 0;
+        const r2 = summaries[tKeys[1]] ? summaries[tKeys[1]].rating : 0;
+        const diff = Math.abs(r1 - r2).toFixed(1);
+        const avg1 = summaries[tKeys[0]] ? summaries[tKeys[0]].avg.toFixed(3) : '.000';
+        const avg2 = summaries[tKeys[1]] ? summaries[tKeys[1]].avg.toFixed(3) : '.000';
+        document.getElementById('splitBalanceBadge').innerHTML = 
+            `전력 차이: ${diff}점 (팀타율: ${tKeys[0]} ${avg1} vs ${tKeys[1]} ${avg2}) ⚖️ 완벽 밸런스`;
+    }
+
+    tKeys.forEach(tName => {
+        const pList = teams[tName] || [];
+        const summary = summaries[tName] || {};
+        const meta = WBC_TEAM_META[tName] || { label: tName, cardClass: '', badgeClass: 'bg-primary text-white' };
+
+        let itemsHtml = '';
+        pList.forEach(p => {
+            let roleClass = 'bg-secondary text-white';
+            if (p.order === 4) roleClass = 'bg-danger text-white'; // 거포
+            else if (p.order === 3) roleClass = 'bg-warning text-dark'; // 중심타자
+            else if (p.order === 5) roleClass = 'bg-primary text-white'; // 해결사
+            else if (p.order === 1) roleClass = 'bg-success text-white'; // 리드오프
+            else if (p.order === 2) roleClass = 'bg-info text-dark'; // 테이블세터
+
+            let avgStr = '.000';
+            if (p.season_avg >= 1.0) avgStr = p.season_avg.toFixed(3);
+            else if (p.season_avg > 0) avgStr = p.season_avg.toFixed(3).replace(/^0\./, '.');
+
+            let hrStr = (p.season_hr && p.season_hr > 0) ? ` · 홈런 ${p.season_hr}` : '';
+            let rbiStr = (p.season_rbi && p.season_rbi > 0) ? ` · ${p.season_rbi}타점` : '';
+            let guestBadge = p.is_guest ? '<span class="badge bg-light text-dark border ms-1">신규/게스트</span>' : '';
+
+            itemsHtml += `
+                <div class="preview-lineup-item">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-dark rounded-circle" style="width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;">${p.order}</span>
+                        <strong class="text-dark">${p.name}</strong>
+                        ${guestBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-secondary small fw-bold">타율 ${avgStr}${hrStr}${rbiStr}</span>
+                        <span class="badge ${roleClass} role-badge">${p.role || `${p.order}번`}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        const col = document.createElement('div');
+        col.className = 'col-md-6';
+        col.innerHTML = `
+            <div class="card h-100 shadow-sm border-0 rounded-3 overflow-hidden ${meta.cardClass}">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge ${meta.badgeClass} fs-6">${meta.label}</span>
+                        <span class="badge bg-light text-dark border">${pList.length}명 배정</span>
+                    </div>
+                    <div class="text-end">
+                        <span class="small fw-bold text-primary">예상 팀타율: ${(summary.avg || 0).toFixed(3)}</span>
+                        <span class="text-muted small ms-1">(전력점수 ${(summary.rating || 0).toFixed(1)})</span>
+                    </div>
+                </div>
+                <div class="card-body p-2 bg-light">
+                    ${itemsHtml || '<div class="text-muted p-3 text-center small">배정된 선수가 없습니다.</div>'}
+                </div>
+            </div>
+        `;
+        container.appendChild(col);
+    });
+
+    sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function applySplitToScoreSheet() {
+    if (!lastSplitResult || !lastSplitResult.teams) {
+        alert('먼저 팀 배정 및 타순 생성을 실행해주세요.');
+        return;
+    }
+
+    const assignedMap = {};
+    const teams = lastSplitResult.teams;
+    for (const tName in teams) {
+        teams[tName].forEach(p => {
+            assignedMap[p.name.trim()] = {
+                team: tName,
+                order: p.order,
+                id: p.id || 0
+            };
+        });
+    }
+
+    // 1. 기존 setupList에 있는 선수들의 팀과 타순 갱신
+    const processedNames = new Set();
+    setupList.forEach(item => {
+        const cleanName = item.name.trim();
+        if (assignedMap[cleanName]) {
+            item.team = assignedMap[cleanName].team;
+            item.order = assignedMap[cleanName].order;
+            if (assignedMap[cleanName].id && (!item.player_id || item.player_id === 0)) {
+                item.player_id = assignedMap[cleanName].id;
+            }
+            processedNames.add(cleanName);
+        } else {
+            // 이번 경기에 불참한 선수는 불참 처리
+            item.team = 'None';
+            item.order = 99;
+        }
+    });
+
+    // 2. 신규 게스트 등 setupList에 없던 선수 추가
+    for (const name in assignedMap) {
+        if (!processedNames.has(name)) {
+            setupList.push({
+                player_id: assignedMap[name].id || 0,
+                name: name,
+                team: assignedMap[name].team,
+                order: assignedMap[name].order,
+                rbi: 0,
+                innings: Array(13).fill('')
+            });
+            processedNames.add(name);
+        }
+    }
+
+    // 3. 설정 테이블 갱신 및 섹션 2 타격 기록지 테이블 정렬 적용
+    renderSetupTable();
+    applySettings();
+
+    // 4. 섹션 2 경기 기록지 위치로 부드럽게 스크롤
+    scrollToRecords();
+
+    // 5. 성공 토스트 배너 출력
+    showApplyToast();
+}
+
+function scrollToRecords() {
+    const el = document.getElementById('separatedTeamTables');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function showApplyToast() {
+    const existing = document.getElementById('applySuccessAlert');
+    if (existing) existing.remove();
+
+    const alertBox = document.createElement('div');
+    alertBox.id = 'applySuccessAlert';
+    alertBox.className = 'alert alert-success alert-dismissible fade show shadow-lg fw-bold position-fixed top-0 start-50 translate-middle-x mt-4';
+    alertBox.style.zIndex = '9999';
+    alertBox.style.maxWidth = '90%';
+    alertBox.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-circle-check fs-4 text-success"></i>
+            <div>
+                <div class="fs-6">🎉 팀 배정 및 최적 타순이 경기 기록지에 완벽히 적용되었습니다!</div>
+                <div class="small fw-normal text-muted">아래 팀별 타격 기록지에서 각 이닝별 성적(안타, 홈런, 아웃 등)을 바로 클릭하여 입력해주세요.</div>
+            </div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.body.appendChild(alertBox);
+    setTimeout(() => {
+        if (alertBox && alertBox.parentNode) {
+            bootstrap.Alert.getOrCreateInstance(alertBox).close();
+        }
+    }, 4500);
+}
 
 function switchMode(mode) {
     matchMode = mode;
@@ -478,6 +1002,8 @@ function updateActiveTeams() {
             p.team = currentActiveTeamKeys[0];
         }
     });
+
+    syncTeamBuilderBadges();
 }
 
 function initSetupList() {

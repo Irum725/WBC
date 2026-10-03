@@ -363,13 +363,277 @@ def index():
         top5=top5, latest_recs=latest_recs, latest_team_stats=latest_team_stats,
         latest_awards=latest_awards, scoreboard=scoreboard, fmt_date=fmt_date)
 
+# ─────────────────────────────────────────────
+# 스마트 참석자 팀 자동 분배 & 타순 추천 로직
+# ─────────────────────────────────────────────
+def get_players_with_season_stats(conn):
+    rows = conn.execute('''
+        SELECT p.id, p.name, p.team, p.is_active,
+               COUNT(DISTINCT br.game_id) AS games_count,
+               COALESCE(SUM(br.ab), 0) AS season_ab,
+               COALESCE(SUM(br.hits), 0) AS season_hits,
+               COALESCE(SUM(br.singles), 0) AS season_1b,
+               COALESCE(SUM(br.doubles), 0) AS season_2b,
+               COALESCE(SUM(br.triples), 0) AS season_3b,
+               COALESCE(SUM(br.hr), 0) AS season_hr,
+               COALESCE(SUM(br.rbi), 0) AS season_rbi,
+               COALESCE(SUM(br.bb), 0) AS season_bb,
+               COALESCE(SUM(br.k), 0) AS season_k,
+               COALESCE(SUM(br.dp), 0) AS season_dp,
+               CASE WHEN SUM(br.ab) > 0
+                    THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab), 3)
+                    ELSE 0.0 END AS season_avg,
+               CASE WHEN SUM(br.ab) > 0
+                    THEN ROUND(CAST(SUM(br.singles)+SUM(br.doubles)*2+SUM(br.triples)*3+SUM(br.hr)*4 AS REAL)/SUM(br.ab), 3)
+                    ELSE 0.0 END AS season_slg
+        FROM players p
+        LEFT JOIN batting_records br ON br.player_id = p.id
+        WHERE p.is_active = 1
+        GROUP BY p.id
+        ORDER BY season_avg DESC, season_hits DESC, p.name ASC
+    ''').fetchall()
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        d['rating'] = round(d['season_avg'] * 100 + d['season_slg'] * 20 + d['season_hr'] * 5 + d['season_rbi'] * 2 + d['season_hits'] * 1.5, 1)
+        result.append(d)
+    return result
+
+def assign_batting_order(players):
+    """
+    야구 전술적 타순 배정 (1번~N번):
+    1번 (리드오프): 출루/타율 높은 타자 (테이블세터)
+    2번 (작전/연결): 컨택 우수 타자 (테이블세터)
+    3번 (팀 최고타자): 팀 내 타율 최상위 타자
+    4번 (거포 클린업): 장타/홈런/타점 해결사
+    5번 (해결사 클린업): 득점 찬스 클러치 히터
+    6~7번: 하위타선 연결
+    8~N번: 하위타선 및 신규 게스트
+    """
+    remaining = list(players)
+    n = len(remaining)
+    if n == 0:
+        return []
+    lineup = [None] * n
+
+    def pop_best(candidates, key_fn, prefer_veteran=True):
+        if prefer_veteran:
+            vets = [c for c in candidates if not c.get('is_guest') and c.get('season_ab', 0) > 0]
+            pool = vets if vets else candidates
+        else:
+            pool = candidates
+        best_p = max(pool, key=key_fn)
+        candidates.remove(best_p)
+        return best_p
+
+    # 4번 타자: 최고 장타/홈런/타점
+    if n >= 4:
+        p4 = pop_best(remaining, lambda p: (p.get('season_hr', 0) * 10 + p.get('season_rbi', 0) * 3 + p.get('season_slg', 0) * 5 + p.get('season_avg', 0) * 2))
+        p4['role'] = '4번 거포 (클린업)'
+        lineup[3] = p4
+
+    # 3번 타자: 남은 선수 중 최고 타율/안타
+    if len(remaining) > 0 and n >= 3:
+        p3 = pop_best(remaining, lambda p: (p.get('season_avg', 0), p.get('season_hits', 0)))
+        p3['role'] = '3번 중심타자 (최고타율)'
+        lineup[2] = p3
+
+    # 5번 타자: 남은 선수 중 해결사 (타점/장타)
+    if len(remaining) > 0 and n >= 5:
+        p5 = pop_best(remaining, lambda p: (p.get('season_rbi', 0) * 2 + p.get('season_slg', 0) * 4 + p.get('season_avg', 0)))
+        p5['role'] = '5번 해결사 (클린업)'
+        lineup[4] = p5
+
+    # 1번 타자: 남은 선수 중 출루/타율
+    if len(remaining) > 0:
+        p1 = pop_best(remaining, lambda p: (p.get('season_avg', 0) * 10 + p.get('season_bb', 0) * 2 - p.get('season_k', 0) * 0.5))
+        p1['role'] = '1번 리드오프 (테이블세터)'
+        lineup[0] = p1
+
+    # 2번 타자: 남은 선수 중 컨택/연결
+    if len(remaining) > 0 and n >= 2:
+        p2 = pop_best(remaining, lambda p: (p.get('season_avg', 0), -p.get('season_k', 0)))
+        p2['role'] = '2번 테이블세터 (작전/연결)'
+        lineup[1] = p2
+
+    # 나머지 6번, 7번, 8번... N번: 전력 순서대로 배치 (기존 선수 우선)
+    remaining_sorted = sorted(remaining, key=lambda p: (not p.get('is_guest', False), p.get('rating', 0), p.get('season_avg', 0)), reverse=True)
+    idx_rem = 0
+    for i in range(len(lineup)):
+        if lineup[i] is None and idx_rem < len(remaining_sorted):
+            p = remaining_sorted[idx_rem]
+            idx_rem += 1
+            order_num = i + 1
+            if order_num <= 7:
+                p['role'] = f'{order_num}번 하위타선 연결'
+            else:
+                p['role'] = f'{order_num}번 하위타선'
+            lineup[i] = p
+
+    for i, p in enumerate(lineup):
+        p['order'] = i + 1
+
+    return lineup
+
+def build_team_split(attendee_names, target_teams=None, conn=None):
+    if not target_teams:
+        target_teams = ['World', 'Believers']
+    close_conn = False
+    if not conn:
+        conn = get_db()
+        close_conn = True
+
+    try:
+        all_players = get_players_with_season_stats(conn)
+        player_map = {p['name'].strip(): p for p in all_players}
+
+        if all_players:
+            avg_rating = round(sum(p['rating'] for p in all_players) / len(all_players), 1)
+            avg_batting = round(sum(p['season_avg'] for p in all_players) / len(all_players), 3)
+        else:
+            avg_rating = 25.0
+            avg_batting = 0.250
+
+        attendees = []
+        seen = set()
+        for name in attendee_names:
+            clean = name.strip()
+            if not clean or clean in seen:
+                continue
+            seen.add(clean)
+            if clean in player_map:
+                attendees.append(dict(player_map[clean]))
+            else:
+                attendees.append({
+                    'id': 0,
+                    'name': clean,
+                    'team': 'Guest',
+                    'is_active': 1,
+                    'games_count': 0,
+                    'season_ab': 0,
+                    'season_hits': 0,
+                    'season_hr': 0,
+                    'season_rbi': 0,
+                    'season_avg': avg_batting,
+                    'season_slg': avg_batting,
+                    'rating': avg_rating,
+                    'is_guest': True
+                })
+
+        if not attendees:
+            return {'teams': {t: [] for t in target_teams}, 'summaries': {}, 'total_attendees': 0}
+
+        sorted_players = sorted(attendees, key=lambda x: (x['rating'], x['season_avg']), reverse=True)
+        num_teams = len(target_teams)
+        teams = {t: [] for t in target_teams}
+
+        for idx, p in enumerate(sorted_players):
+            round_idx = idx // num_teams
+            pick_in_round = idx % num_teams
+            if round_idx % 2 == 1:
+                pick_in_round = num_teams - 1 - pick_in_round
+            assigned_team = target_teams[pick_in_round]
+            p_copy = dict(p)
+            p_copy['team'] = assigned_team
+            teams[assigned_team].append(p_copy)
+
+        if num_teams == 2:
+            tA, tB = target_teams[0], target_teams[1]
+            improved = True
+            iterations = 0
+            while improved and iterations < 25:
+                iterations += 1
+                improved = False
+                curr_diff = abs(sum(p['rating'] for p in teams[tA]) - sum(p['rating'] for p in teams[tB]))
+                best_diff = curr_diff
+                best_swap = None
+
+                for i, pA in enumerate(teams[tA]):
+                    for j, pB in enumerate(teams[tB]):
+                        new_diff = abs((sum(p['rating'] for p in teams[tA]) - pA['rating'] + pB['rating']) -
+                                       (sum(p['rating'] for p in teams[tB]) - pB['rating'] + pA['rating']))
+                        if new_diff < best_diff - 0.5:
+                            best_diff = new_diff
+                            best_swap = (i, j)
+
+                if best_swap:
+                    i, j = best_swap
+                    pA = teams[tA][i]
+                    pB = teams[tB][j]
+                    pA['team'] = tB
+                    pB['team'] = tA
+                    teams[tA][i] = pB
+                    teams[tB][j] = pA
+                    improved = True
+
+        result_teams = {}
+        team_summaries = {}
+        for t_name, player_list in teams.items():
+            if not player_list:
+                result_teams[t_name] = []
+                team_summaries[t_name] = {'count': 0, 'avg': 0.0, 'rating': 0.0, 'total_hits': 0, 'total_hr': 0}
+                continue
+
+            lineup = assign_batting_order(player_list)
+            result_teams[t_name] = lineup
+            team_avg = round(sum(p['season_avg'] for p in player_list) / len(player_list), 3)
+            team_rating = round(sum(p['rating'] for p in player_list), 1)
+            team_summaries[t_name] = {
+                'count': len(player_list),
+                'avg': team_avg,
+                'rating': team_rating,
+                'total_hits': sum(p.get('season_hits', 0) for p in player_list),
+                'total_hr': sum(p.get('season_hr', 0) for p in player_list),
+            }
+
+        return {
+            'teams': result_teams,
+            'summaries': team_summaries,
+            'total_attendees': len(attendees)
+        }
+    finally:
+        if close_conn:
+            conn.close()
+
+@app.route('/api/team-builder/split', methods=['POST'])
+def api_team_split():
+    data = request.get_json() or {}
+    raw_attendees = data.get('attendees', [])
+    teams = data.get('teams', ['World', 'Believers'])
+    
+    clean_attendees = []
+    if isinstance(raw_attendees, str):
+        import re
+        lines = re.split(r'[\r\n,]+', raw_attendees)
+        for line in lines:
+            c = re.sub(r'^[0-9]+[\.\)\:\-\s]*', '', line.strip()).strip()
+            if c:
+                clean_attendees.append(c)
+    elif isinstance(raw_attendees, list):
+        for item in raw_attendees:
+            if isinstance(item, str):
+                import re
+                c = re.sub(r'^[0-9]+[\.\)\:\-\s]*', '', item.strip()).strip()
+                if c:
+                    clean_attendees.append(c)
+            elif isinstance(item, dict) and 'name' in item:
+                clean_attendees.append(str(item['name']).strip())
+
+    conn = get_db()
+    try:
+        result = build_team_split(clean_attendees, teams, conn)
+        return jsonify({'ok': True, 'data': result})
+    except Exception as e:
+        return jsonify({'ok': False, 'err': str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route('/game/new')
 @admin_required
 def game_new():
     conn = get_db()
-    players = conn.execute(
-        'SELECT * FROM players WHERE is_active=1 ORDER BY team, id'
-    ).fetchall()
+    players = get_players_with_season_stats(conn)
     game_count = conn.execute('SELECT COUNT(*) FROM games').fetchone()[0]
     conn.close()
     return render_template('game_input.html',
@@ -386,9 +650,7 @@ def game_edit(gid):
         flash('수정할 경기 정보를 찾을 수 없습니다.', 'danger')
         return redirect(url_for('history'))
     
-    players = conn.execute(
-        'SELECT * FROM players WHERE is_active=1 ORDER BY team, id'
-    ).fetchall()
+    players = get_players_with_season_stats(conn)
     recs = conn.execute('''
         SELECT p.name, p.team, br.*
         FROM batting_records br JOIN players p ON p.id=br.player_id
