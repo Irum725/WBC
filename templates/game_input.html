@@ -353,11 +353,13 @@
 
         <!-- 실행 액션 바 -->
         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-bold small text-dark"><i class="fa-solid fa-trophy text-warning me-1"></i>배정 대상:</span>
-                <span class="badge bg-primary text-white px-2 py-1 fs-6" id="tbTeam1Badge">World</span>
-                <span class="fw-bold text-muted">VS</span>
-                <span class="badge bg-warning text-dark px-2 py-1 fs-6" id="tbTeam2Badge">Believers</span>
+                <div id="tbTargetTeamsBadges" class="d-flex align-items-center gap-1 flex-wrap">
+                    <span class="badge bg-primary text-white px-2 py-1 fs-6" id="tbTeam1Badge">World</span>
+                    <span class="fw-bold text-muted">VS</span>
+                    <span class="badge bg-warning text-dark px-2 py-1 fs-6" id="tbTeam2Badge">Believers</span>
+                </div>
             </div>
             <button type="button" class="btn btn-primary px-4 py-2 fw-bold shadow" id="btnRunSplit" onclick="runAutoTeamSplit()">
                 <i class="fa-solid fa-bolt me-2"></i>전력 균형 팀 배정 & 최적 타순 자동 생성
@@ -732,9 +734,42 @@ function clearAttendeeInput() {
 }
 
 function syncTeamBuilderBadges() {
-    if (document.getElementById('tbTeam1Badge') && currentActiveTeamKeys.length >= 2) {
-        document.getElementById('tbTeam1Badge').innerText = currentActiveTeamKeys[0];
-        document.getElementById('tbTeam2Badge').innerText = currentActiveTeamKeys[1];
+    const container = document.getElementById('tbTargetTeamsBadges');
+    if (!container) return;
+
+    if (matchMode === '2teams') {
+        const t1 = currentActiveTeamKeys[0] || 'World';
+        const t2 = currentActiveTeamKeys[1] || 'Believers';
+        const m1 = WBC_TEAM_META[t1] || { label: t1, badgeClass: 'team-badge-world' };
+        const m2 = WBC_TEAM_META[t2] || { label: t2, badgeClass: 'team-badge-believers' };
+        container.innerHTML = `
+            <span class="badge ${m1.badgeClass} px-2 py-1 fs-6">${m1.label}</span>
+            <span class="fw-bold text-muted">VS</span>
+            <span class="badge ${m2.badgeClass} px-2 py-1 fs-6">${m2.label}</span>
+            <span class="badge bg-light text-dark border ms-1 small">단일 경기 2팀 배정</span>
+        `;
+    } else {
+        const t1 = currentActiveTeamKeys[0] || 'World';
+        const t2 = currentActiveTeamKeys[1] || 'Believers';
+        const t3 = currentActiveTeamKeys[2] || 'Faith';
+        const t4 = currentActiveTeamKeys[3] || 'Grace';
+        const m1 = WBC_TEAM_META[t1] || { label: t1, badgeClass: 'team-badge-world' };
+        const m2 = WBC_TEAM_META[t2] || { label: t2, badgeClass: 'team-badge-believers' };
+        const m3 = WBC_TEAM_META[t3] || { label: t3, badgeClass: 'team-badge-faith' };
+        const m4 = WBC_TEAM_META[t4] || { label: t4, badgeClass: 'team-badge-grace' };
+
+        container.innerHTML = `
+            <span class="badge bg-secondary-subtle text-dark border px-2 py-1 small fw-bold"><i class="fa-solid fa-door-open me-1"></i>룸 1</span>
+            <span class="badge ${m1.badgeClass} px-2 py-1">${m1.label}</span>
+            <span class="fw-bold text-muted small">VS</span>
+            <span class="badge ${m2.badgeClass} px-2 py-1">${m2.label}</span>
+            <span class="text-muted fw-bold mx-1">|</span>
+            <span class="badge bg-secondary-subtle text-dark border px-2 py-1 small fw-bold"><i class="fa-solid fa-door-open me-1"></i>룸 2</span>
+            <span class="badge ${m3.badgeClass} px-2 py-1">${m3.label}</span>
+            <span class="fw-bold text-muted small">VS</span>
+            <span class="badge ${m4.badgeClass} px-2 py-1">${m4.label}</span>
+            <span class="badge bg-success text-white ms-1 small fw-bold">4개 팀 균등 분배</span>
+        `;
     }
 }
 
@@ -771,7 +806,7 @@ async function runAutoTeamSplit() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 attendees: attendeeList,
-                teams: currentActiveTeamKeys.slice(0, 2)
+                teams: currentActiveTeamKeys
             })
         });
         const res = await resp.json();
@@ -800,7 +835,7 @@ function renderSplitPreview(data, shouldScroll = true) {
     const summaries = data.summaries || {};
     const tKeys = Object.keys(teams);
 
-    if (tKeys.length >= 2) {
+    if (tKeys.length === 2) {
         const r1 = summaries[tKeys[0]] ? summaries[tKeys[0]].rating : 0;
         const r2 = summaries[tKeys[1]] ? summaries[tKeys[1]].rating : 0;
         const diff = Math.abs(r1 - r2).toFixed(1);
@@ -808,6 +843,17 @@ function renderSplitPreview(data, shouldScroll = true) {
         const avg2 = summaries[tKeys[1]] ? summaries[tKeys[1]].avg.toFixed(3) : '.000';
         document.getElementById('splitBalanceBadge').innerHTML = 
             `전력 차이: ${diff}점 (팀타율: ${tKeys[0]} ${avg1} vs ${tKeys[1]} ${avg2}) ⚖️ 완벽 밸런스`;
+    } else if (tKeys.length > 2) {
+        const ratings = tKeys.map(k => (summaries[k] ? summaries[k].rating : 0));
+        const maxR = Math.max(...ratings);
+        const minR = Math.min(...ratings);
+        const maxDiff = (maxR - minR).toFixed(1);
+        const counts = tKeys.map(k => summaries[k]?.count || 0);
+        const minC = Math.min(...counts);
+        const maxC = Math.max(...counts);
+        const countStr = (minC === maxC) ? `각 팀 ${minC}명씩` : `팀당 ${minC}~${maxC}명`;
+        document.getElementById('splitBalanceBadge').innerHTML = 
+            `전력 균형: 4개 팀 분배 완료 (최대 전력차: ${maxDiff}점 · ${countStr} 균등 배정) ⚖️ 황금 밸런스`;
     }
 
     tKeys.forEach(tName => {
@@ -880,7 +926,7 @@ function renderSplitPreview(data, shouldScroll = true) {
         });
 
         const col = document.createElement('div');
-        col.className = 'col-md-6';
+        col.className = (tKeys.length > 2) ? 'col-12 col-lg-6 mb-3' : 'col-md-6 mb-3';
         col.innerHTML = `
             <div class="card h-100 shadow-sm border-0 rounded-3 overflow-hidden ${meta.cardClass}">
                 <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center border-bottom flex-wrap gap-1">
@@ -1073,6 +1119,11 @@ function switchMode(mode) {
     }
 
     updateActiveTeams();
+    if (lastSplitResult && lastSplitResult.teams && Object.keys(lastSplitResult.teams).length !== currentActiveTeamKeys.length) {
+        lastSplitResult = null;
+        const sec = document.getElementById('splitResultSection');
+        if (sec) sec.classList.add('d-none');
+    }
     renderSetupTable();
     applySettings();
 }

@@ -566,34 +566,52 @@ def build_team_split(attendee_names, target_teams=None, conn=None):
             p_copy['team'] = assigned_team
             teams[assigned_team].append(p_copy)
 
-        if num_teams == 2:
-            tA, tB = target_teams[0], target_teams[1]
-            improved = True
-            iterations = 0
-            while improved and iterations < 25:
-                iterations += 1
-                improved = False
-                curr_diff = abs(sum(p['rating'] for p in teams[tA]) - sum(p['rating'] for p in teams[tB]))
-                best_diff = curr_diff
-                best_swap = None
+        # 다수 팀(2팀, 4팀 등) 전력 밸런싱 최적화 (Multi-team Swap Optimization)
+        # 팀 간 선수 1인당 평균 전력 점수(Rating) 편차를 최소화하도록 팀 간 선수 스왑 반복
+        improved = True
+        iterations = 0
+        while improved and iterations < 35:
+            iterations += 1
+            improved = False
 
-                for i, pA in enumerate(teams[tA]):
-                    for j, pB in enumerate(teams[tB]):
-                        new_diff = abs((sum(p['rating'] for p in teams[tA]) - pA['rating'] + pB['rating']) -
-                                       (sum(p['rating'] for p in teams[tB]) - pB['rating'] + pA['rating']))
-                        if new_diff < best_diff - 0.5:
-                            best_diff = new_diff
-                            best_swap = (i, j)
+            counts = {t: len(teams[t]) for t in target_teams}
+            sums = {t: sum(p['rating'] for p in teams[t]) for t in target_teams}
+            avgs = {t: (sums[t] / counts[t]) if counts[t] > 0 else 0.0 for t in target_teams}
 
-                if best_swap:
-                    i, j = best_swap
-                    pA = teams[tA][i]
-                    pB = teams[tB][j]
-                    pA['team'] = tB
-                    pB['team'] = tA
-                    teams[tA][i] = pB
-                    teams[tB][j] = pA
-                    improved = True
+            mean_avg = sum(avgs.values()) / num_teams if num_teams > 0 else 0.0
+            curr_loss = sum((avgs[t] - mean_avg)**2 for t in target_teams)
+
+            best_imp = 0
+            best_swap = None
+
+            for i in range(num_teams):
+                for j in range(i + 1, num_teams):
+                    tA, tB = target_teams[i], target_teams[j]
+                    if not teams[tA] or not teams[tB]:
+                        continue
+                    for idxA, pA in enumerate(teams[tA]):
+                        for idxB, pB in enumerate(teams[tB]):
+                            new_sums = dict(sums)
+                            new_sums[tA] = sums[tA] - pA['rating'] + pB['rating']
+                            new_sums[tB] = sums[tB] - pB['rating'] + pA['rating']
+
+                            new_avgs = {t: new_sums[t] / counts[t] for t in target_teams}
+                            new_loss = sum((new_avgs[t] - mean_avg)**2 for t in target_teams)
+
+                            imp = curr_loss - new_loss
+                            if imp > best_imp + 0.0001:
+                                best_imp = imp
+                                best_swap = (tA, idxA, tB, idxB)
+
+            if best_swap:
+                tA, idxA, tB, idxB = best_swap
+                pA = teams[tA][idxA]
+                pB = teams[tB][idxB]
+                pA['team'] = tB
+                pB['team'] = tA
+                teams[tA][idxA] = pB
+                teams[tB][idxB] = pA
+                improved = True
 
         result_teams = {}
         team_summaries = {}
