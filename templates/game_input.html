@@ -119,18 +119,23 @@
     font-weight: bold;
 }
 .preview-lineup-item {
-    padding: 6px 10px;
-    border-radius: 6px;
-    margin-bottom: 5px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
     background: #ffffff;
     border: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 0.85rem;
+    transition: all 0.15s ease;
+}
+.preview-lineup-item:hover {
+    border-color: #cbd5e1;
+    background-color: #f8fafc;
 }
 .role-badge {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
@@ -881,11 +886,22 @@ function renderSplitPreview(data, shouldScroll = true) {
             if (p.season_avg >= 1.0) avgStr = p.season_avg.toFixed(3);
             else if (p.season_avg > 0) avgStr = p.season_avg.toFixed(3).replace(/^0\./, '.');
 
-            let hrStr = (p.season_hr && p.season_hr > 0) ? ` · 홈런 ${p.season_hr}` : '';
+            let hrStr = (p.season_hr && p.season_hr > 0) ? ` · ${p.season_hr}HR` : '';
             let rbiStr = (p.season_rbi && p.season_rbi > 0) ? ` · ${p.season_rbi}타점` : '';
-            let guestBadge = p.is_guest ? '<span class="badge bg-light text-dark border ms-1">신규/게스트</span>' : '';
-            let condBadge = p.condition_badge ? `<span class="badge ${p.condition_badge.class} py-0 px-1 ms-1" style="font-size:0.68rem;" title="${p.condition_badge.desc}">${p.condition_badge.emoji} ${p.condition_badge.text}</span>` : '';
-            let growthBadge = p.growth_badge ? `<span class="badge ${p.growth_badge.class} py-0 px-1 ms-1" style="font-size:0.68rem;" title="${p.growth_badge.desc}">${p.growth_badge.emoji} ${p.growth_badge.text}</span>` : '';
+
+            let statsHtml = '';
+            if (!p.is_guest && (p.season_ab || 0) > 0) {
+                statsHtml = `<span class="small text-secondary" style="font-size:0.82rem; white-space:nowrap;">
+                    <strong class="text-primary stat-mono">타율 ${avgStr}</strong>
+                    <span class="text-muted fw-normal ms-1">(${p.season_ab}타수 ${p.season_hits}안타${hrStr}${rbiStr})</span>
+                </span>`;
+            } else {
+                statsHtml = `<span class="badge bg-light text-secondary border fw-normal py-0 px-1" style="font-size:0.72rem; white-space:nowrap;">신규 참가자 (기록 대기)</span>`;
+            }
+
+            let condBadge = p.condition_badge ? `<span class="badge ${p.condition_badge.class} py-0 px-1" style="font-size:0.68rem; white-space:nowrap;" title="${p.condition_badge.desc}">${p.condition_badge.emoji} ${p.condition_badge.text}</span>` : '';
+            let growthBadge = p.growth_badge ? `<span class="badge ${p.growth_badge.class} py-0 px-1" style="font-size:0.68rem; white-space:nowrap;" title="${p.growth_badge.desc}">${p.growth_badge.emoji} ${p.growth_badge.text}</span>` : '';
+            let guestBadge = p.is_guest ? '<span class="badge bg-light text-dark border py-0 px-1" style="font-size:0.68rem; white-space:nowrap;">신규/게스트</span>' : '';
 
             // 상대 팀 목록 추출 (팀 이동 드롭다운용)
             const otherTeams = tKeys.filter(k => k !== tName);
@@ -897,9 +913,9 @@ function renderSplitPreview(data, shouldScroll = true) {
 
             itemsHtml += `
                 <div class="preview-lineup-item">
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- 타순 위/아래 순번 스왑 버튼 -->
-                        <div class="btn-group btn-group-sm me-1" role="group">
+                    <!-- 1. 좌측: 타순 위/아래 순번 스왑 버튼 및 타순 번호 -->
+                    <div class="d-flex align-items-center gap-1 me-2 flex-shrink-0">
+                        <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn btn-outline-secondary p-0 px-1 border" 
                                 style="line-height:1.2; font-size:0.7rem;"
                                 title="타순 1단계 위로 이동" ${pIdx === 0 ? 'disabled' : ''} onclick="moveLineupOrder('${tName}', ${pIdx}, -1)">
@@ -911,20 +927,29 @@ function renderSplitPreview(data, shouldScroll = true) {
                                 ▼
                             </button>
                         </div>
-
-                        <span class="badge bg-dark rounded-circle" style="width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;">${p.order}</span>
-                        <strong class="text-dark fs-6">${p.name}</strong>
-                        ${condBadge}
-                        ${growthBadge}
-                        ${guestBadge}
+                        <span class="badge bg-dark rounded-circle" style="width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; font-size:0.8rem;">${p.order}</span>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-secondary small fw-bold">타율 ${avgStr} <span class="text-muted fw-normal">(${p.season_ab || 0}타수 ${p.season_hits || 0}안타${hrStr}${rbiStr})</span></span>
-                        <span class="badge ${roleClass} role-badge">${p.role || `${p.order}번`}</span>
 
-                        <!-- 팀 변경 드롭다운 -->
+                    <!-- 2. 중앙: 2줄 정보 구성 (윗줄: 이름 + 타율/기록, 아랫줄: 컨디션/성장/역할 뱃지) -->
+                    <div class="flex-grow-1 overflow-hidden" style="min-width: 0;">
+                        <!-- 윗줄: 이름 & 타율/기록 정보 -->
+                        <div class="d-flex align-items-center gap-2 mb-1" style="line-height:1.3;">
+                            <span class="fw-bold text-dark fs-6 text-nowrap" style="letter-spacing: -0.3px;">${p.name}</span>
+                            ${statsHtml}
+                        </div>
+                        <!-- 아랫줄: 컨디션 / 성장 / 역할 뱃지 -->
+                        <div class="d-flex align-items-center gap-1 flex-wrap" style="line-height:1.2;">
+                            ${condBadge}
+                            ${growthBadge}
+                            <span class="badge ${roleClass} role-badge" style="font-size:0.68rem; white-space:nowrap;">${p.role || `${p.order}번`}</span>
+                            ${guestBadge}
+                        </div>
+                    </div>
+
+                    <!-- 3. 우측: 다른 팀 이동 드롭다운 -->
+                    <div class="ms-2 flex-shrink-0">
                         <div class="dropdown">
-                            <button class="btn btn-outline-primary btn-sm py-0 px-2 dropdown-toggle small" type="button" data-bs-toggle="dropdown" title="다른 팀으로 이동" style="font-size:0.75rem;">
+                            <button class="btn btn-outline-primary btn-sm py-1 px-2 dropdown-toggle small" type="button" data-bs-toggle="dropdown" title="다른 팀으로 이동" style="font-size:0.75rem; white-space:nowrap;">
                                 <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>팀이동
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm py-1">
