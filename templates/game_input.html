@@ -366,7 +366,7 @@
 
         <!-- 배정 결과 미리보기 카드 (초기에는 d-none) -->
         <div id="splitResultSection" class="mt-4 pt-3 border-top d-none">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
                     <i class="fa-solid fa-scale-balanced text-success fs-5"></i>
                     <span>전력 균등 팀 배정 및 최적 타순 생성 완료</span>
@@ -377,6 +377,15 @@
                 <button type="button" class="btn btn-success btn-lg px-4 fw-bold shadow" onclick="applySplitToScoreSheet()">
                     <i class="fa-solid fa-table-list me-2"></i>📋 경기 기록지에 즉시 적용 (이닝별 성적 입력 시작)
                 </button>
+            </div>
+
+            <!-- 수동 조정 팁 안내 바 -->
+            <div class="alert alert-light border small py-2 px-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <i class="fa-solid fa-hand-pointer text-primary me-1"></i>
+                    <strong>자유로운 수동 조정 지원:</strong> 각 선수의 <strong>▲ / ▼ 버튼</strong>을 눌러 타순을 변경하거나, <strong>[팀이동]</strong> 버튼으로 상대 팀으로 선수를 재배정할 수 있습니다. (전력 지표 실시간 자동 재계산)
+                </div>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">조정 완료 후 [경기 기록지에 즉시 적용] 클릭</span>
             </div>
 
             <!-- 팀별 라인업 미리보기 2열 그리드 -->
@@ -781,7 +790,7 @@ async function runAutoTeamSplit() {
     }
 }
 
-function renderSplitPreview(data) {
+function renderSplitPreview(data, shouldScroll = true) {
     const sec = document.getElementById('splitResultSection');
     const container = document.getElementById('splitLineupContainer');
     sec.classList.remove('d-none');
@@ -807,7 +816,7 @@ function renderSplitPreview(data) {
         const meta = WBC_TEAM_META[tName] || { label: tName, cardClass: '', badgeClass: 'bg-primary text-white' };
 
         let itemsHtml = '';
-        pList.forEach(p => {
+        pList.forEach((p, pIdx) => {
             let roleClass = 'bg-secondary text-white';
             if (p.order === 4) roleClass = 'bg-danger text-white'; // 거포
             else if (p.order === 3) roleClass = 'bg-warning text-dark'; // 중심타자
@@ -823,16 +832,48 @@ function renderSplitPreview(data) {
             let rbiStr = (p.season_rbi && p.season_rbi > 0) ? ` · ${p.season_rbi}타점` : '';
             let guestBadge = p.is_guest ? '<span class="badge bg-light text-dark border ms-1">신규/게스트</span>' : '';
 
+            // 상대 팀 목록 추출 (팀 이동 드롭다운용)
+            const otherTeams = tKeys.filter(k => k !== tName);
+            let teamSwitchOptions = '';
+            otherTeams.forEach(ot => {
+                const otMeta = WBC_TEAM_META[ot] || { label: ot };
+                teamSwitchOptions += `<li><button class="dropdown-item py-1 small fw-bold" type="button" onclick="switchLineupTeam('${tName}', ${pIdx}, '${ot}')"><i class="fa-solid fa-arrow-right-arrow-left text-primary me-2"></i>${otMeta.label} (으)로 이동</button></li>`;
+            });
+
             itemsHtml += `
                 <div class="preview-lineup-item">
                     <div class="d-flex align-items-center gap-2">
+                        <!-- 타순 위/아래 순번 스왑 버튼 -->
+                        <div class="btn-group btn-group-sm me-1" role="group">
+                            <button type="button" class="btn btn-outline-secondary p-0 px-1 border" 
+                                style="line-height:1.2; font-size:0.7rem;"
+                                title="타순 1단계 위로 이동" ${pIdx === 0 ? 'disabled' : ''} onclick="moveLineupOrder('${tName}', ${pIdx}, -1)">
+                                ▲
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary p-0 px-1 border" 
+                                style="line-height:1.2; font-size:0.7rem;"
+                                title="타순 1단계 아래로 이동" ${pIdx === pList.length - 1 ? 'disabled' : ''} onclick="moveLineupOrder('${tName}', ${pIdx}, 1)">
+                                ▼
+                            </button>
+                        </div>
+
                         <span class="badge bg-dark rounded-circle" style="width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;">${p.order}</span>
-                        <strong class="text-dark">${p.name}</strong>
+                        <strong class="text-dark fs-6">${p.name}</strong>
                         ${guestBadge}
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-secondary small fw-bold">타율 ${avgStr}${hrStr}${rbiStr}</span>
                         <span class="badge ${roleClass} role-badge">${p.role || `${p.order}번`}</span>
+
+                        <!-- 팀 변경 드롭다운 -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 dropdown-toggle small" type="button" data-bs-toggle="dropdown" title="다른 팀으로 이동" style="font-size:0.75rem;">
+                                <i class="fa-solid fa-arrow-right-arrow-left me-1"></i>팀이동
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm py-1">
+                                ${teamSwitchOptions}
+                            </ul>
+                        </div>
                     </div>
                 </div>
             `;
@@ -842,7 +883,7 @@ function renderSplitPreview(data) {
         col.className = 'col-md-6';
         col.innerHTML = `
             <div class="card h-100 shadow-sm border-0 rounded-3 overflow-hidden ${meta.cardClass}">
-                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center border-bottom">
+                <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center border-bottom flex-wrap gap-1">
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge ${meta.badgeClass} fs-6">${meta.label}</span>
                         <span class="badge bg-light text-dark border">${pList.length}명 배정</span>
@@ -860,7 +901,67 @@ function renderSplitPreview(data) {
         container.appendChild(col);
     });
 
-    sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (shouldScroll) {
+        sec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function moveLineupOrder(tName, pIdx, dir) {
+    if (!lastSplitResult || !lastSplitResult.teams || !lastSplitResult.teams[tName]) return;
+    const list = lastSplitResult.teams[tName];
+    const targetIdx = pIdx + dir;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+
+    // 선수 스왑
+    const temp = list[pIdx];
+    list[pIdx] = list[targetIdx];
+    list[targetIdx] = temp;
+
+    // 타순 번호 재정렬
+    list.forEach((p, idx) => {
+        p.order = idx + 1;
+    });
+
+    renderSplitPreview(lastSplitResult, false);
+}
+
+function switchLineupTeam(fromTeam, pIdx, toTeam) {
+    if (!lastSplitResult || !lastSplitResult.teams) return;
+    const fromList = lastSplitResult.teams[fromTeam];
+    const toList = lastSplitResult.teams[toTeam];
+    if (!fromList || !toList) return;
+
+    // 선수 이동
+    const player = fromList.splice(pIdx, 1)[0];
+    player.team = toTeam;
+    toList.push(player);
+
+    // 타순 번호 재정렬
+    fromList.forEach((p, idx) => { p.order = idx + 1; });
+    toList.forEach((p, idx) => { p.order = idx + 1; });
+
+    // 전력 및 팀타율 실시간 재계산
+    recalcSplitSummaries();
+
+    renderSplitPreview(lastSplitResult, false);
+}
+
+function recalcSplitSummaries() {
+    if (!lastSplitResult || !lastSplitResult.teams) return;
+    const teams = lastSplitResult.teams;
+    lastSplitResult.summaries = {};
+    for (const tName in teams) {
+        const pList = teams[tName] || [];
+        const teamAvg = pList.length > 0 ? (pList.reduce((acc, p) => acc + (p.season_avg || 0), 0) / pList.length) : 0;
+        const teamRating = pList.reduce((acc, p) => acc + (p.rating || 0), 0);
+        lastSplitResult.summaries[tName] = {
+            count: pList.length,
+            avg: Math.round(teamAvg * 1000) / 1000,
+            rating: Math.round(teamRating * 10) / 10,
+            total_hits: pList.reduce((acc, p) => acc + (p.season_hits || 0), 0),
+            total_hr: pList.reduce((acc, p) => acc + (p.season_hr || 0), 0)
+        };
+    }
 }
 
 function applySplitToScoreSheet() {
@@ -1123,10 +1224,11 @@ function renderSetupTable() {
                 </select>
             </td>
             <td>
-                <div class="input-group input-group-sm" style="width: 100px; margin: auto;">
-                    <span class="input-group-text p-1">타순</span>
-                    <input type="number" class="form-control text-center p-1 fw-bold" min="1" max="25"
+                <div class="input-group input-group-sm" style="width: 125px; margin: auto;">
+                    <button type="button" class="btn btn-outline-secondary px-1" onclick="stepSetupOrder(${idx}, -1)" title="타순 1단계 위로">▲</button>
+                    <input type="number" class="form-control text-center p-0 fw-bold" min="1" max="25"
                         value="${item.order}" onchange="setupList[${idx}].order = parseInt(this.value)||1">
+                    <button type="button" class="btn btn-outline-secondary px-1" onclick="stepSetupOrder(${idx}, 1)" title="타순 1단계 아래로">▼</button>
                 </div>
             </td>
             <td>
@@ -1139,6 +1241,14 @@ function renderSetupTable() {
     });
 
     updateSummaryBadge();
+}
+
+function stepSetupOrder(idx, delta) {
+    if (!setupList[idx]) return;
+    const cur = parseInt(setupList[idx].order) || 1;
+    const next = Math.max(1, cur + delta);
+    setupList[idx].order = next;
+    renderSetupTable();
 }
 
 function deleteSetupRow(idx) {
