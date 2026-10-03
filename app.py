@@ -2246,6 +2246,10 @@ def generate_sns_payload(d=None):
         'awards': awards if data_mode == 'single' else {}
     }
 
+@app.route('/manual')
+def manual_page():
+    return render_template('manual.html')
+
 @app.route('/players')
 @admin_required
 def players_page():
