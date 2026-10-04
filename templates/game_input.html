@@ -519,6 +519,13 @@
 </div>
 {% endif %}
 
+<!-- 등록 선수 자동완성 Datalist -->
+<datalist id="registeredPlayersDatalist">
+    {% for p in players %}
+    <option value="{{ p.name }}">{{ p.name }}{% if p.title %} ({{ p.title }}){% endif %} [{{ p.team or 'WBC' }}]</option>
+    {% endfor %}
+</datalist>
+
 <!-- ========================================================================= -->
 <!-- [섹션 1] 팀 선택 및 타순 설정 창 -->
 <!-- ========================================================================= -->
@@ -1866,9 +1873,22 @@ function scrollToSetup() {
 }
 
 // -------------------------------------------------------------
-// [2] 설정 적용하기 (팀별 분리 & 타순 정렬)
+// [2] 설정 적용하기 (팀별 분리 & 타순 정렬) - 기존 입력된 이닝/타점 안전 보존
 // -------------------------------------------------------------
 function applySettings() {
+    // 이전 입력 데이터(이닝 기호 및 타점) 보존용 캐시
+    const cachedStats = {};
+    Object.keys(appliedTeamData).forEach(tk => {
+        (appliedTeamData[tk] || []).forEach(p => {
+            if (p.name && p.name.trim()) {
+                cachedStats[p.name.trim()] = {
+                    innings: [...p.innings],
+                    rbi: p.rbi || 0
+                };
+            }
+        });
+    });
+
     appliedTeamData = {};
 
     currentActiveTeamKeys.forEach(tKey => {
@@ -1877,9 +1897,13 @@ function applySettings() {
             .filter(p => p.team === tKey && p.name.trim())
             .sort((a, b) => a.order - b.order);
 
-        // 타순 번호 정규화
+        // 타순 번호 정규화 및 캐시된 이닝/타점 복원
         teamPlayers.forEach((p, i) => {
             p.order = i + 1;
+            if (cachedStats[p.name.trim()]) {
+                p.innings = cachedStats[p.name.trim()].innings;
+                p.rbi = cachedStats[p.name.trim()].rbi;
+            }
         });
 
         // 각 팀 밑에 대타용 빈 공란 2개 기본 배치!
@@ -1961,12 +1985,12 @@ function renderSeparatedTables() {
                         </div>
                     </td>
 
-                    <!-- 선수명 -->
+                    <!-- 선수명 (선택/입력 시 player_id 자동 동기화) -->
                     <td style="width: 110px; min-width: 110px;">
-                        <input type="text" class="form-control form-control-sm text-center fw-bold px-1 ${isBlank ? 'player-name-blank' : ''}"
+                        <input type="text" list="registeredPlayersDatalist" class="form-control form-control-sm text-center fw-bold px-1 ${isBlank ? 'player-name-blank' : ''}"
                             style="font-size:0.88rem; letter-spacing:-0.3px;"
-                            value="${player.name}" placeholder="대타/선수명"
-                            onchange="appliedTeamData['${tKey}'][${rIdx}].name = this.value.trim(); renderSeparatedTables();">
+                            value="${player.name}" placeholder="선수명 선택/입력"
+                            onchange="onPlayerNameChange('${tKey}', ${rIdx}, this.value)">
                     </td>
 
                     <!-- 1~13 이닝 -->
@@ -1976,6 +2000,13 @@ function renderSeparatedTables() {
                     <td class="fw-bold text-center" style="width: 38px;">${stats.ab}</td>
                     <td class="fw-bold text-success text-center" style="width: 38px;">${stats.hits}</td>
                     <td class="stat-mono fw-bold text-primary text-center" style="width: 50px;">${formatRateJs(stats.avg)}</td>
+
+                    <!-- 팀 이동 버튼 (기록 유지한 채 상대팀으로 전격 이동) -->
+                    <td style="width: 46px;" class="text-center">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-1 py-0" style="font-size:0.75rem;" title="상대 팀으로 선수 이동" onclick="movePlayerToOtherTeam('${tKey}', ${rIdx})">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i>이동
+                        </button>
+                    </td>
 
                     <!-- 삭제 -->
                     <td style="width: 32px;" class="text-center">
@@ -2005,7 +2036,7 @@ function renderSeparatedTables() {
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-team mb-0 align-middle" style="min-width: 820px;">
+                        <table class="table table-bordered table-team mb-0 align-middle" style="min-width: 860px;">
                             <thead class="table-dark text-nowrap">
                                 <tr>
                                     <th style="width: 44px;">타순</th>
@@ -2017,6 +2048,7 @@ function renderSeparatedTables() {
                                     <th class="bg-secondary" style="width: 38px;">타수</th>
                                     <th class="bg-success" style="width: 38px;">안타</th>
                                     <th class="bg-primary" style="width: 50px;">타율</th>
+                                    <th style="width: 46px;">이동</th>
                                     <th style="width: 32px;">삭제</th>
                                 </tr>
                             </thead>
@@ -2033,6 +2065,7 @@ function renderSeparatedTables() {
                                     <td class="text-success">${teamHits}</td>
                                     <td class="text-primary stat-mono">${formatRateJs(teamAvg)}</td>
                                     <td></td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -2042,6 +2075,34 @@ function renderSeparatedTables() {
         `;
         container.appendChild(col);
     });
+}
+
+function onPlayerNameChange(teamKey, rIdx, val) {
+    const trimmed = (val || '').trim();
+    const p = appliedTeamData[teamKey][rIdx];
+    p.name = trimmed;
+    const found = dbPlayers.find(dp => dp.name === trimmed);
+    if (found) {
+        p.player_id = found.id;
+    } else {
+        p.player_id = 0;
+    }
+    renderSeparatedTables();
+}
+
+function movePlayerToOtherTeam(currentTeamKey, rIdx) {
+    const otherTeamKey = currentActiveTeamKeys.find(k => k !== currentTeamKey) || (currentTeamKey === 'World' ? 'Believers' : 'World');
+    if (!appliedTeamData[otherTeamKey]) {
+        appliedTeamData[otherTeamKey] = [];
+    }
+    const [player] = appliedTeamData[currentTeamKey].splice(rIdx, 1);
+    if (player) {
+        player.team = otherTeamKey;
+        player.order = appliedTeamData[otherTeamKey].length + 1;
+        appliedTeamData[otherTeamKey].push(player);
+    }
+    appliedTeamData[currentTeamKey].forEach((p, idx) => p.order = idx + 1);
+    renderSeparatedTables();
 }
 
 function addRosterBlankRow(teamKey) {
@@ -2144,9 +2205,11 @@ function saveGameRecords() {
             const hasInning = p.innings.some(s => s && s.trim() !== '');
             if (!hasName && !hasInning) return;
 
+            const trimmedName = p.name.trim();
+            const matchedDb = dbPlayers.find(dp => dp.name === trimmedName);
             const rec = {
-                player_id: p.player_id || 0,
-                name: p.name.trim() || `${p.order}번타자`,
+                player_id: matchedDb ? matchedDb.id : (p.player_id || 0),
+                name: trimmedName || `${p.order}번타자`,
                 team: tKey,
                 order: p.order,
                 rbi: p.rbi || 0
@@ -2170,65 +2233,74 @@ function saveGameRecords() {
         const t2 = document.getElementById('selectTeam2').value;
         const s1 = parseInt(document.getElementById('scoreTeam1').value) || 0;
         const s2 = parseInt(document.getElementById('scoreTeam2').value) || 0;
-        worldScore = (t1 === 'World' ? s1 : (t2 === 'World' ? s2 : s1));
-        believersScore = (t1 === 'Believers' ? s1 : (t2 === 'Believers' ? s2 : s2));
 
-        // 전광판 이닝 점수 추출
+        // 전광판 이닝 점수 추출 및 합계 계산
         const t1Scores = [];
         const t2Scores = [];
         let hasInningData = false;
+        let t1Sum = 0;
+        let t2Sum = 0;
         for (let inn = 1; inn <= 9; inn++) {
-            const v1 = (document.getElementById(`inn_t1_${inn}`).value || '').trim();
-            const v2 = (document.getElementById(`inn_t2_${inn}`).value || '').trim();
+            const el1 = document.getElementById(`inn_t1_${inn}`);
+            const el2 = document.getElementById(`inn_t2_${inn}`);
+            const v1 = (el1 ? el1.value : '').trim();
+            const v2 = (el2 ? el2.value : '').trim();
             if (v1 !== '' && !isNaN(v1)) {
-                t1Scores.push(parseInt(v1, 10));
+                const n1 = parseInt(v1, 10);
+                t1Scores.push(n1);
+                t1Sum += n1;
                 hasInningData = true;
             } else {
                 t1Scores.push('-');
             }
             if (v2 !== '' && !isNaN(v2)) {
-                t2Scores.push(parseInt(v2, 10));
+                const n2 = parseInt(v2, 10);
+                t2Scores.push(n2);
+                t2Sum += n2;
                 hasInningData = true;
             } else {
                 t2Scores.push('-');
             }
         }
 
-        const detailsObj = { [t1]: s1, [t2]: s2 };
-        if (hasInningData) {
-            detailsObj.scoreboard = {
-                innings_count: 9,
-                start_inning: 4,
-                played_innings: 6,
-                note: '스크린 6이닝 매치 (4회~9회 진행)',
-                teams: [
-                    {
-                        name: t1,
-                        team_name: (t1 === 'Believers' ? 'Believers 🔥' : (t1 === 'World' ? 'World ⚡' : `${t1} ⚾`)),
-                        badge_class: `badge-${t1.toLowerCase()}`,
-                        order: 'top',
-                        order_label: '초 (선공)',
-                        scores: t1Scores,
-                        r: s1,
-                        h: 0,
-                        e: 0,
-                        is_winner: s1 > s2
-                    },
-                    {
-                        name: t2,
-                        team_name: (t2 === 'Believers' ? 'Believers 🔥' : (t2 === 'World' ? 'World ⚡' : `${t2} ⚾`)),
-                        badge_class: `badge-${t2.toLowerCase()}`,
-                        order: 'bottom',
-                        order_label: '말 (후공)',
-                        scores: t2Scores,
-                        r: s2,
-                        h: 0,
-                        e: 0,
-                        is_winner: s2 > s1
-                    }
-                ]
-            };
-        }
+        const finalS1 = (s1 > 0) ? s1 : t1Sum;
+        const finalS2 = (s2 > 0) ? s2 : t2Sum;
+        worldScore = (t1 === 'World' ? finalS1 : (t2 === 'World' ? finalS2 : finalS1));
+        believersScore = (t1 === 'Believers' ? finalS1 : (t2 === 'Believers' ? finalS2 : finalS2));
+
+        const detailsObj = { [t1]: finalS1, [t2]: finalS2 };
+        detailsObj.scoreboard = {
+            innings_count: 9,
+            start_inning: 4,
+            played_innings: 6,
+            note: '스크린 6이닝 매치 (4회~9회 진행)',
+            teams: [
+                {
+                    name: t1,
+                    team_name: (t1 === 'Believers' ? 'Believers 🔥' : (t1 === 'World' ? 'World ⚡' : `${t1} ⚾`)),
+                    badge_class: `badge-${t1.toLowerCase()}`,
+                    order: 'top',
+                    order_label: '초 (선공)',
+                    scores: t1Scores,
+                    r: finalS1,
+                    h: 0,
+                    e: 0,
+                    is_winner: finalS1 > finalS2
+                },
+                {
+                    name: t2,
+                    team_name: (t2 === 'Believers' ? 'Believers 🔥' : (t2 === 'World' ? 'World ⚡' : `${t2} ⚾`)),
+                    badge_class: `badge-${t2.toLowerCase()}`,
+                    order: 'bottom',
+                    order_label: '말 (후공)',
+                    scores: t2Scores,
+                    r: finalS2,
+                    h: 0,
+                    e: 0,
+                    is_winner: finalS2 > finalS1
+                }
+            ]
+        };
         scoreDetails = JSON.stringify(detailsObj);
     } else {
         const r1t1 = document.getElementById('selectR1T1').value;

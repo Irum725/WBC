@@ -1117,12 +1117,34 @@ def game_edit(gid):
         flash('수정할 경기 정보를 찾을 수 없습니다.', 'danger')
         return redirect(url_for('history'))
     
+    t1, t2 = 'World', 'Believers'
+    if game['score_details']:
+        try:
+            sd = json.loads(game['score_details'])
+            if 'scoreboard' in sd and sd['scoreboard'].get('teams'):
+                t1 = sd['scoreboard']['teams'][0].get('name', 'World')
+                t2 = sd['scoreboard']['teams'][1].get('name', 'Believers')
+            elif isinstance(sd, dict):
+                keys = [k for k in sd.keys() if k != 'scoreboard']
+                if len(keys) >= 2:
+                    t1, t2 = keys[0], keys[1]
+        except Exception:
+            pass
+
     players = get_players_with_season_stats(conn)
     recs = conn.execute('''
         SELECT br.*, p.name, p.title, p.team AS player_default_team
         FROM batting_records br JOIN players p ON p.id=br.player_id
-        WHERE br.game_id=? ORDER BY br.team, br.batting_order
-    ''', (gid,)).fetchall()
+        WHERE br.game_id=? 
+        ORDER BY 
+            CASE 
+                WHEN br.team = ? THEN 1 
+                WHEN br.team = ? THEN 2 
+                ELSE 3 
+            END,
+            br.batting_order ASC, 
+            br.id ASC
+    ''', (gid, t1, t2)).fetchall()
     conn.close()
 
     return render_template('game_input.html',
@@ -1164,15 +1186,13 @@ def game_save():
             gid = c.lastrowid
 
         for rec in data.get('records',[]):
-            pid = rec.get('player_id')
             pname = str(rec.get('name') or '').strip()
+            pid = rec.get('player_id')
             if not pname and not pid:
                 continue
             
-            # Auto-register if new player on the fly (substitute, guest)
-            if not pid or pid == 0 or str(pid) == '0':
-                if not pname:
-                    continue
+            # Always resolve by player name first if provided to prevent stale player_id mismatches
+            if pname:
                 c.execute('SELECT id FROM players WHERE name = ?', (pname,))
                 found = c.fetchone()
                 if found:
@@ -1180,6 +1200,11 @@ def game_save():
                 else:
                     c.execute('INSERT INTO players (name, team) VALUES (?, ?)', (pname, rec.get('team', 'World')))
                     pid = c.lastrowid
+            elif pid:
+                c.execute('SELECT name FROM players WHERE id = ?', (pid,))
+                found = c.fetchone()
+                if not found:
+                    continue
 
             innings = [rec.get(f'inn{i}') for i in range(1,14)]
             st = calc_stats(innings)
@@ -1210,11 +1235,33 @@ def game_detail(gid):
     game = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
     if not game: return redirect(url_for('history'))
     scoreboard = get_scoreboard_data(game, conn)
+
+    t1, t2 = 'World', 'Believers'
+    if scoreboard and scoreboard.get('teams') and len(scoreboard['teams']) >= 2:
+        t1 = scoreboard['teams'][0].get('name', 'World')
+        t2 = scoreboard['teams'][1].get('name', 'Believers')
+    elif game['score_details']:
+        try:
+            sd = json.loads(game['score_details'])
+            keys = [k for k in sd.keys() if k != 'scoreboard']
+            if len(keys) >= 2:
+                t1, t2 = keys[0], keys[1]
+        except Exception:
+            pass
+
     recs = conn.execute('''
         SELECT br.*, p.name, p.title, p.team AS player_default_team
         FROM batting_records br JOIN players p ON p.id=br.player_id
-        WHERE br.game_id=? ORDER BY br.id ASC
-    ''',(gid,)).fetchall()
+        WHERE br.game_id=? 
+        ORDER BY 
+            CASE 
+                WHEN br.team = ? THEN 1 
+                WHEN br.team = ? THEN 2 
+                ELSE 3 
+            END,
+            br.batting_order ASC, 
+            br.id ASC
+    ''',(gid, t1, t2)).fetchall()
     conn.close()
     awards = calc_game_awards(gid)
     return render_template('game_detail.html', game=game, records=recs, awards=awards, scoreboard=scoreboard, fmt_date=fmt_date)

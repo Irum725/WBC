@@ -1227,6 +1227,7 @@ function resetPromoSettings() {
 
 function onPromoInput() {
     savePromoSettings(false);
+    updatePosterQrCodes();
     clearTimeout(promoInputDebounce);
     promoInputDebounce = setTimeout(() => {
         generateSns();
@@ -1362,50 +1363,50 @@ function generateSns() {
 }
 
 function updatePosterQrCodes(webUrl, bandUrl) {
-    if (typeof QRCode === 'undefined') return;
-
-    let cleanWeb = (webUrl || document.getElementById('applyUrl')?.value || 'wbcclub.pythonanywhere.com').trim();
+    let cleanWeb = (webUrl || (document.getElementById('applyUrl') ? document.getElementById('applyUrl').value : '') || 'wbcclub.pythonanywhere.com').trim();
     if (!cleanWeb.startsWith('http://') && !cleanWeb.startsWith('https://')) {
         cleanWeb = 'https://' + cleanWeb;
     }
 
-    let cleanBand = (bandUrl || document.getElementById('bandUrl')?.value || 'band.us/@wbc').trim();
+    let cleanBand = (bandUrl || (document.getElementById('bandUrl') ? document.getElementById('bandUrl').value : '') || 'band.us/@wbc').trim();
     if (!cleanBand.startsWith('http://') && !cleanBand.startsWith('https://')) {
         cleanBand = 'https://' + cleanBand;
     }
 
-    const webBox = document.getElementById('cardWebsiteQr');
-    if (webBox) {
-        webBox.innerHTML = '';
+    renderQrBox('cardWebsiteQr', cleanWeb);
+    renderQrBox('cardBandQr', cleanBand);
+}
+
+function renderQrBox(elementId, textUrl) {
+    const box = document.getElementById(elementId);
+    if (!box) return;
+    box.innerHTML = '';
+
+    let rendered = false;
+    if (typeof QRCode !== 'undefined') {
         try {
-            new QRCode(webBox, {
-                text: cleanWeb,
+            new QRCode(box, {
+                text: textUrl,
                 width: 76,
                 height: 76,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M
             });
+            rendered = true;
         } catch (e) {
-            console.error('Website QR render error:', e);
+            console.warn('QRCode JS render error, falling back to API image:', e);
         }
     }
 
-    const bandBox = document.getElementById('cardBandQr');
-    if (bandBox) {
-        bandBox.innerHTML = '';
-        try {
-            new QRCode(bandBox, {
-                text: cleanBand,
-                width: 76,
-                height: 76,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        } catch (e) {
-            console.error('Band QR render error:', e);
-        }
+    if (!rendered) {
+        const img = document.createElement('img');
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(textUrl)}`;
+        img.alt = 'QR Code';
+        img.style.width = '76px';
+        img.style.height = '76px';
+        img.crossOrigin = 'anonymous';
+        box.appendChild(img);
     }
 }
 
