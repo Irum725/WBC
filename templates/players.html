@@ -15,6 +15,20 @@
                         <input type="text" name="name" class="form-control" placeholder="예: 홍길동" required>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label small fw-bold"><i class="fa-solid fa-cross me-1 text-primary"></i>교회 직분 / 직책</label>
+                        <select name="title" class="form-select">
+                            <option value="" selected>직분 선택 (선택 안 함 / 성도)</option>
+                            <option value="담임목사">담임목사</option>
+                            <option value="목사">목사</option>
+                            <option value="장로">장로</option>
+                            <option value="안수집사">안수집사</option>
+                            <option value="권사">권사</option>
+                            <option value="집사">집사</option>
+                            <option value="성도">성도</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">※ 직책 선택 시 '김형찬 담임목사', '김진혁 집사' 등 예우 호칭으로 전 사이트에 자동 표기됩니다.</small>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label small fw-bold">소속 배정 (미결정/유동 가능)</label>
                         <select name="team" class="form-select">
                             <option value="W.B.C" selected>W.B.C (자유/유동 배정 - 매 경기 밸런싱)</option>
@@ -43,6 +57,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>선수명</th>
+                            <th>직분 / 직책</th>
                             <th>소속</th>
                             <th>참여 경기수</th>
                             <th>상태</th>
@@ -52,10 +67,24 @@
                     <tbody>
                         {% for p in players %}
                         <tr>
-                            <td class="fw-bold">
+                            <td class="fw-bold text-nowrap">
                                 <a href="{{ url_for('analytics_page', player_id=p.id) }}" class="text-decoration-none text-dark hover-primary" title="성장 분석 차트 보기">
                                     {{ p.name }} <i class="fa-solid fa-chart-line text-primary small ms-1"></i>
                                 </a>
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('player_update_title', pid=p.id) }}" class="d-inline">
+                                    <select name="title" class="form-select form-select-sm text-center fw-bold {% if p.title in ['담임목사', '목사'] %}border-primary text-primary{% elif p.title == '장로' %}border-success text-success{% else %}text-secondary{% endif %}" style="width: 105px; font-size: 0.8rem; margin: 0 auto;" onchange="this.form.submit()" title="직분 변경 시 즉시 저장됩니다">
+                                        <option value="" {% if not p.title %}selected{% endif %}>선택 안함</option>
+                                        <option value="담임목사" {% if p.title == '담임목사' %}selected{% endif %}>담임목사</option>
+                                        <option value="목사" {% if p.title == '목사' %}selected{% endif %}>목사</option>
+                                        <option value="장로" {% if p.title == '장로' %}selected{% endif %}>장로</option>
+                                        <option value="안수집사" {% if p.title == '안수집사' %}selected{% endif %}>안수집사</option>
+                                        <option value="권사" {% if p.title == '권사' %}selected{% endif %}>권사</option>
+                                        <option value="집사" {% if p.title == '집사' %}selected{% endif %}>집사</option>
+                                        <option value="성도" {% if p.title == '성도' %}selected{% endif %}>성도</option>
+                                    </select>
+                                </form>
                             </td>
                             <td>
                                 {% if p.team == 'World' %}

@@ -108,7 +108,7 @@
                     </td>
                     <td class="fw-bold text-nowrap text-start ps-3" data-col="name" data-val="{{ p.name }}">
                         <a href="{{ url_for('analytics_page', player_id=p.id) }}" class="text-decoration-none text-dark hover-primary" title="성장 분석 차트 보기">
-                            {{ p.name }}
+                            {{ p.name }}{% if p.title %} <span class="badge bg-light text-secondary border px-1" style="font-size: 0.72rem; font-weight: normal;">{{ p.title }}</span>{% endif %}
                         </a>
                         {% if p.condition_badge %}
                             <span class="badge {{ p.condition_badge.class }} py-0 px-2 ms-1 small" title="{{ p.condition_badge.desc }}">

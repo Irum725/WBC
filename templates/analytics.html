@@ -54,7 +54,7 @@
                 <select class="form-select fw-bold" id="mainPlayerSelect" onchange="loadPlayerData(this.value)">
                     {% for p in players %}
                     <option value="{{ p.id }}" {% if sel_player and sel_player.id == p.id %}selected{% endif %}>
-                        {{ p.name }}{% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %} ({{ p.team }}){% endif %}
+                        {{ p.name }}{% if p.title %} ({{ p.title }}){% endif %}{% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %} [{{ p.team }}]{% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -74,7 +74,7 @@
                 <select class="form-select" id="comparePlayerSelect" disabled onchange="loadCompareData(this.value)">
                     <option value="">-- 비교할 선수를 선택하세요 --</option>
                     {% for p in players %}
-                    <option value="{{ p.id }}">{{ p.name }}{% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %} ({{ p.team }}){% endif %}</option>
+                    <option value="{{ p.id }}">{{ p.name }}{% if p.title %} ({{ p.title }}){% endif %}{% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %} [{{ p.team }}]{% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -93,7 +93,7 @@
     <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="text-secondary small fw-bold"><i class="fa-solid fa-id-badge text-primary me-1"></i>선수 프로필 지표:</span>
-            <strong class="text-dark fs-6" id="badgePlayerName">{% if sel_player %}{{ sel_player.name }}{% else %}선수명{% endif %}</strong>
+            <strong class="text-dark fs-6" id="badgePlayerName">{% if sel_player %}{{ sel_player.name }}{% if sel_player.title %} {{ sel_player.title }}{% endif %}{% else %}선수명{% endif %}</strong>
             <span class="badge bg-light text-dark border" id="badgePlayerTeam">{% if sel_player %}{{ sel_player.team if sel_player.team and sel_player.team not in ['W.B.C', '자유', '미정'] else 'W.B.C' }}{% endif %}</span>
             <span class="badge py-1 px-2 {% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.class }}{% endif %}" id="badgeCondition" title="{% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.desc }}{% endif %}">
                 {% if sel_player and sel_player.condition_badge %}{{ sel_player.condition_badge.emoji }} {{ sel_player.condition_badge.text }}{% endif %}
@@ -337,11 +337,11 @@ function updateKpi(d) {
     }
 
     if (d.player) {
-        const teamSuffix = (d.player.team && !['W.B.C', '자유', '자유배정', '미정'].includes(d.player.team)) ? ` (${d.player.team})` : '';
-        document.getElementById('tablePlayerBadge').textContent = `${d.player.name}${teamSuffix}`;
+        const titleStr = d.player.title ? ` ${d.player.title}` : '';
+        document.getElementById('tablePlayerBadge').textContent = `${d.player.name}${titleStr}${teamSuffix}`;
         const nameEl = document.getElementById('badgePlayerName');
         const teamEl = document.getElementById('badgePlayerTeam');
-        if (nameEl) nameEl.textContent = d.player.name;
+        if (nameEl) nameEl.textContent = `${d.player.name}${titleStr}`;
         if (teamEl) teamEl.textContent = (d.player.team && !['자유', '미정'].includes(d.player.team)) ? d.player.team : 'W.B.C';
     }
 

@@ -35,7 +35,7 @@
                     <div class="col-md-3 col-6">
                         <div class="p-2 rounded bg-white bg-opacity-10 h-100">
                             <span class="badge bg-warning text-dark mb-1">🏅 경기 MVP</span>
-                            <div class="fw-bold fs-6">{{ awards.mvp.name }} <small class="text-white-50">({{ awards.mvp.team }})</small></div>
+                            <div class="fw-bold fs-6">{{ awards.mvp.name }}{% if awards.mvp.title %} <small class="text-warning-subtle fw-normal">({{ awards.mvp.title }})</small>{% endif %} <small class="text-white-50">({{ awards.mvp.team }})</small></div>
                             <small class="text-warning fw-bold">{{ awards.mvp.mvp_pts }}점</small>
                             <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.mvp.ab }}타수 {{ awards.mvp.hits }}안타 {{ awards.mvp.rbi }}타점</div>
                         </div>
@@ -45,7 +45,7 @@
                     <div class="col-md-3 col-6">
                         <div class="p-2 rounded bg-white bg-opacity-10 h-100">
                             <span class="badge bg-success mb-1">✨ MIP (기량발전)</span>
-                            <div class="fw-bold fs-6">{{ awards.mip.name }} <small class="text-white-50">({{ awards.mip.team }})</small></div>
+                            <div class="fw-bold fs-6">{{ awards.mip.name }}{% if awards.mip.title %} <small class="text-white-75 fw-normal">({{ awards.mip.title }})</small>{% endif %} <small class="text-white-50">({{ awards.mip.team }})</small></div>
                             <small class="text-light fw-bold">타율 {{ '%0.3f'|format(awards.mip.avg) }}</small>
                             <div class="text-white-50 text-truncate" style="font-size: 0.75rem;" title="{{ awards.mip_reason }}">{{ awards.mip_reason }}</div>
                         </div>
@@ -56,7 +56,7 @@
                     <div class="col-md-3 col-6">
                         <div class="p-2 rounded bg-white bg-opacity-10 h-100">
                             <span class="badge bg-info text-dark mb-1">🛡️ 언성 히어로</span>
-                            <div class="fw-bold fs-6">{{ awards.unsung.name }} <small class="text-white-50">({{ awards.unsung.team }})</small></div>
+                            <div class="fw-bold fs-6">{{ awards.unsung.name }}{% if awards.unsung.title %} <small class="text-white-75 fw-normal">({{ awards.unsung.title }})</small>{% endif %} <small class="text-white-50">({{ awards.unsung.team }})</small></div>
                             <small class="text-light fw-bold">{{ awards.unsung.batting_order }}번 타순</small>
                             <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.unsung.hits }}안타 {{ awards.unsung.rbi }}타점 기여</div>
                         </div>
@@ -67,7 +67,7 @@
                     <div class="col-md-3 col-6">
                         <div class="p-2 rounded bg-white bg-opacity-10 h-100">
                             <span class="badge bg-danger mb-1">🔥 허슬 플레이어</span>
-                            <div class="fw-bold fs-6">{{ awards.hustle.name }} <small class="text-white-50">({{ awards.hustle.team }})</small></div>
+                            <div class="fw-bold fs-6">{{ awards.hustle.name }}{% if awards.hustle.title %} <small class="text-white-75 fw-normal">({{ awards.hustle.title }})</small>{% endif %} <small class="text-white-50">({{ awards.hustle.team }})</small></div>
                             <small class="text-light fw-bold">삼진 {{ awards.hustle.k }}개</small>
                             <div class="text-white-50" style="font-size: 0.75rem;">{{ awards.hustle.ab }}타수 적극 스윙</div>
                         </div>
@@ -182,7 +182,7 @@
                             </span>
                         </td>
                         <td>{{ r.batting_order }}</td>
-                        <td class="fw-bold">{{ r.name }}</td>
+                        <td class="fw-bold">{{ r.name }}{% if r.title %} <small class="text-secondary fw-normal">({{ r.title }})</small>{% endif %}</td>
                         <td>{{ r.inn1 or '-' }}</td>
                         <td>{{ r.inn2 or '-' }}</td>
                         <td>{{ r.inn3 or '-' }}</td>

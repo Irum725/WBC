@@ -1141,7 +1141,7 @@ function renderMvpCandidates(cands) {
                 <input class="form-check-input ms-0 me-2" type="radio" name="mvpRadio" id="mvp_${idx+1}" value="${cand.name}" ${idx === 0 ? 'checked' : ''} onchange="generateSns()">
                 <label class="form-check-label d-flex justify-content-between align-items-center w-100 ps-2" for="mvp_${idx+1}">
                     <span>
-                        ${medal} <strong>${cand.name}</strong> <small class="text-muted">(${cand.team})</small>
+                        ${medal} <strong>${cand.name}${cand.title ? ` ${cand.title}` : ''}</strong> <small class="text-muted">(${cand.team})</small>
                     </span>
                     <span class="small d-flex align-items-center gap-1">
                         <span class="badge bg-danger text-white">🔥 ${cand.mvp_pts}점</span>

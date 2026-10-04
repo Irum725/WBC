@@ -52,15 +52,60 @@ def fmt_rate(val):
         return s[1:]
     return s
 
+# ─────────────────────────────────────────────
+# 교회 직분 / 직책 명칭 포맷팅 헬퍼 (담임목사, 목사, 장로, 집사 등)
+# ─────────────────────────────────────────────
+def format_player_display(name, title=''):
+    """기본 표기: '김형찬 담임목사', '김진혁 집사' (직책 없으면 '김진혁')"""
+    t = (title or '').strip()
+    return f"{name} {t}".strip() if t else name
+
+def format_player_honorific(name, title=''):
+    """예우 존칭 표기: '김형찬 담임목사님', '김응관 목사님', '정재홍 장로님', '김진혁 집사님'"""
+    t = (title or '').strip()
+    if not t or t == '성도':
+        return f"{name} 성도님"
+    if t == '담임목사':
+        return f"{name} 담임목사님"
+    if t in ('목사', '장로', '권사', '집사', '안수집사'):
+        return f"{name} {t}님"
+    if t.endswith('님'):
+        return f"{name} {t}"
+    return f"{name} {t}님"
+
 @app.template_filter('rate')
 def rate_filter(val):
     return fmt_rate(val)
+
+@app.template_filter('pname')
+def pname_filter(p_or_name, title=''):
+    if isinstance(p_or_name, dict):
+        return format_player_display(p_or_name.get('name', ''), p_or_name.get('title', ''))
+    if hasattr(p_or_name, '__getitem__') and not isinstance(p_or_name, str):
+        try:
+            return format_player_display(p_or_name['name'], p_or_name['title'] if 'title' in p_or_name.keys() else '')
+        except:
+            pass
+    return format_player_display(str(p_or_name), title)
+
+@app.template_filter('phonor')
+def phonor_filter(p_or_name, title=''):
+    if isinstance(p_or_name, dict):
+        return format_player_honorific(p_or_name.get('name', ''), p_or_name.get('title', ''))
+    if hasattr(p_or_name, '__getitem__') and not isinstance(p_or_name, str):
+        try:
+            return format_player_honorific(p_or_name['name'], p_or_name['title'] if 'title' in p_or_name.keys() else '')
+        except:
+            pass
+    return format_player_honorific(str(p_or_name), title)
 
 @app.context_processor
 def inject_auth():
     return {
         'is_admin': session.get('is_admin', False),
-        'fmt_rate': fmt_rate
+        'fmt_rate': fmt_rate,
+        'fmt_title': format_player_display,
+        'fmt_honor': format_player_honorific
     }
 
 # ─────────────────────────────────────────────
@@ -153,6 +198,11 @@ def init_db():
         c.execute("ALTER TABLE games ADD COLUMN match_type TEXT DEFAULT '2teams'")
     if 'score_details' not in cols:
         c.execute("ALTER TABLE games ADD COLUMN score_details TEXT DEFAULT ''")
+
+    # Check if title column exists in players
+    p_cols = [col[1] for col in c.execute("PRAGMA table_info(players)").fetchall()]
+    if 'title' not in p_cols:
+        c.execute("ALTER TABLE players ADD COLUMN title TEXT DEFAULT ''")
 
     conn.commit()
     conn.close()
@@ -374,7 +424,7 @@ def index():
 
     # TOP 5 선수 (p.id 포함)
     top5_rows = conn.execute('''
-        SELECT p.id, p.name, p.team,
+        SELECT p.id, p.name, p.team, p.title,
                COUNT(DISTINCT br.game_id) games,
                SUM(br.ab) tab, SUM(br.hits) th, SUM(br.hr) thr, SUM(br.rbi) trbi,
                CASE WHEN SUM(br.ab)>0
@@ -405,7 +455,7 @@ def index():
         gid = latest['id']
         scoreboard = get_scoreboard_data(latest, conn)
         latest_recs = conn.execute('''
-            SELECT p.name,br.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
+            SELECT p.name,p.title,br.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.team, br.batting_order
         ''', (gid,)).fetchall()
@@ -619,7 +669,7 @@ def get_all_player_badges(conn):
 # ─────────────────────────────────────────────
 def get_players_with_season_stats(conn):
     rows = conn.execute('''
-        SELECT p.id, p.name, p.team, p.is_active,
+        SELECT p.id, p.name, p.team, p.title, p.is_active,
                COUNT(DISTINCT br.game_id) AS games_count,
                COALESCE(SUM(br.ab), 0) AS season_ab,
                COALESCE(SUM(br.hits), 0) AS season_hits,
@@ -1069,7 +1119,7 @@ def game_edit(gid):
     
     players = get_players_with_season_stats(conn)
     recs = conn.execute('''
-        SELECT p.name, p.team, br.*
+        SELECT p.name, p.title, p.team, br.*
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.team, br.batting_order
     ''', (gid,)).fetchall()
@@ -1161,7 +1211,7 @@ def game_detail(gid):
     if not game: return redirect(url_for('history'))
     scoreboard = get_scoreboard_data(game, conn)
     recs = conn.execute('''
-        SELECT p.name,p.team,br.*
+        SELECT p.name,p.title,p.team,br.*
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.id ASC
     ''',(gid,)).fetchall()
@@ -1298,7 +1348,7 @@ def rankings():
     params = [team, team] if team != 'all' else []
     conn = get_db()
     rows = conn.execute(f'''
-        SELECT p.id,p.name,p.team,
+        SELECT p.id,p.name,p.team,p.title,
                (SELECT team FROM batting_records WHERE player_id=p.id ORDER BY game_id DESC LIMIT 1) recent_team,
                COUNT(DISTINCT br.game_id) games,
                SUM(br.ab) tab, SUM(br.hits) th,
@@ -1391,7 +1441,7 @@ def calc_game_awards(gid):
         return {}
 
     recs = conn.execute('''
-        SELECT p.id as player_id, p.name, p.team,
+        SELECT p.id as player_id, p.name, p.team, p.title,
                br.batting_order, br.ab, br.hits, br.singles, br.doubles,
                br.triples, br.hr, br.rbi, br.k, br.dp, br.avg, br.slg
         FROM batting_records br
@@ -1497,8 +1547,10 @@ def calc_game_awards(gid):
         ]
         if fallback_hustle:
             fallback_hustle.sort(key=lambda x: (x['ab'], -x['k']), reverse=True)
-            hustle = fallback_hustle[0]
-            hustle_reason = f"{hustle['ab']}타수 적극 스윙 및 투혼"
+    for aw in [mvp, mip, unsung, hustle]:
+        if aw:
+            aw['honor_name'] = format_player_honorific(aw['name'], aw.get('title'))
+            aw['display_name'] = format_player_display(aw['name'], aw.get('title'))
 
     conn.close()
     return {
@@ -1523,7 +1575,7 @@ def sns_page(gid=None):
     if gid:
         sel = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
         raw_recs = conn.execute('''
-            SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
+            SELECT p.name,p.title,p.team,br.ab,br.hits,br.singles,br.doubles,
                    br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.rbi DESC, br.hits DESC, br.avg DESC
@@ -1681,7 +1733,7 @@ def generate_sns_payload(d=None):
 
         # 선수 시즌 누적 기록 조회
         season_players = conn.execute('''
-            SELECT p.id, p.name, p.team,
+            SELECT p.id, p.name, p.team, p.title,
                    COUNT(DISTINCT br.game_id) games,
                    SUM(br.ab) ab, SUM(br.hits) hits,
                    SUM(br.singles) singles, SUM(br.doubles) doubles, SUM(br.triples) triples,
@@ -1983,7 +2035,7 @@ def generate_sns_payload(d=None):
         return jsonify({'err':'경기를 찾을 수 없습니다.'}), 404
 
     recs = conn.execute('''
-        SELECT p.name,p.team,br.ab,br.hits,br.singles,br.doubles,
+        SELECT p.name,p.title,p.team,br.ab,br.hits,br.singles,br.doubles,
                br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.avg DESC,br.hits DESC
@@ -2085,29 +2137,42 @@ def generate_sns_payload(d=None):
         else:
             hustle_detail = f" 삼진 {hustle_row['k']}개 {hustle_row['ab']}타수 전력 배팅과 투혼!"
 
+    mvp_title = mvp_row.get('title', '') if mvp_row else (awards.get('mvp', {}).get('title', '') if awards.get('mvp') else '')
+    mvp_honor = format_player_honorific(mvp_name, mvp_title)
+
+    mip_title = mip_row.get('title', '') if mip_row else (awards.get('mip', {}).get('title', '') if awards.get('mip') else '')
+    mip_honor = format_player_honorific(mip_name, mip_title)
+
+    unsung_title = unsung_row.get('title', '') if unsung_row else (awards.get('unsung', {}).get('title', '') if awards.get('unsung') else '')
+    unsung_honor = format_player_honorific(unsung_name, unsung_title)
+
+    hustle_title = hustle_row.get('title', '') if hustle_row else (awards.get('hustle', {}).get('title', '') if awards.get('hustle') else '')
+    hustle_honor = format_player_honorific(hustle_name, hustle_title)
+
     special_awards_lines = []
     if mip_name and mip_name != mvp_name:
-        special_awards_lines.append(f"✨ MIP (기량 발전상): {mip_name} 형제 [{mip_detail.strip()}]")
+        special_awards_lines.append(f"✨ MIP (기량 발전상): {mip_honor} [{mip_detail.strip()}]")
     if unsung_name and unsung_name != mvp_name and unsung_name != mip_name:
-        special_awards_lines.append(f"🛡️ 언성 히어로 (숨은 공로상): {unsung_name} 형제 [{unsung_detail.strip()}]")
+        special_awards_lines.append(f"🛡️ 언성 히어로 (숨은 공로상): {unsung_honor} [{unsung_detail.strip()}]")
     if hustle_name and hustle_name != mvp_name and hustle_name != mip_name and hustle_name != unsung_name:
-        special_awards_lines.append(f"🔥 허슬 플레이어 (열정 투혼상): {hustle_name} 형제 [{hustle_detail.strip()}]")
+        special_awards_lines.append(f"🔥 허슬 플레이어 (열정 투혼상): {hustle_honor} [{hustle_detail.strip()}]")
 
     special_awards_str = ("\n" + "\n".join(special_awards_lines)) if special_awards_lines else ""
 
     hr_line = ''
     if hr_lead:
-        hr_line = '\n💣 홈런: ' + '  '.join([f"{r['name']} {r['hr']}방🚀" for r in hr_lead])
+        hr_line = '\n💣 홈런: ' + '  '.join([f"{format_player_display(r['name'], r.get('title'))} {r['hr']}방🚀" for r in hr_lead])
 
     rbi_line = ""
     if rbi_lead:
-        rbi_line = "\n🎯 타점왕(해결사): " + "  ".join([f"{r['name']} {r['rbi']}타점" for r in rbi_lead[:3]])
+        rbi_line = "\n🎯 타점왕(해결사): " + "  ".join([f"{format_player_display(r['name'], r.get('title'))} {r['rbi']}타점" for r in rbi_lead[:3]])
 
     medals = ['🥇','🥈','🥉','  4','  5']
     top5 = ''
     for i, r in enumerate(sorted_hitters[:5]):
         m = medals[i] if i < 3 else f'  {i+1}'
-        top5 += f"\n   {m} {r['name']}  {r['mvp_pts']}점 ({r['ab']}타수 {r['hits']}안타 {r['rbi']}타점"
+        disp_name = format_player_display(r['name'], r.get('title'))
+        top5 += f"\n   {m} {disp_name}  {r['mvp_pts']}점 ({r['ab']}타수 {r['hits']}안타 {r['rbi']}타점"
         if r['hr'] > 0: top5 += f" {r['hr']}홈런"
         top5 += f" 타율 {r['avg']:.3f})"
 
@@ -2133,7 +2198,7 @@ def generate_sns_payload(d=None):
 🎊 오늘의 영예의 시상 (Awards)
 ━━━━━━━━━━━━━━━━━━━━━
 
-🏅 MVP: {mvp_name} 형제{mvp_detail}{special_awards_str}{rbi_line}{hr_line}
+🏅 MVP: {mvp_honor}{mvp_detail}{special_awards_str}{rbi_line}{hr_line}
 
 📈 활약 타자 TOP 5 (가중치 종합점수순){top5}
 
@@ -2153,20 +2218,21 @@ def generate_sns_payload(d=None):
 #세계로교회 #WBC #WorldBelieversClub
 #스크린야구 #전도회 #야빠"""
 
-    short_mip_str = f"\n✨ MIP (기량발전): {mip_name} 형제" if mip_name else ""
-    short_unsung_str = f"\n🛡️ 언성 히어로: {unsung_name} 형제" if unsung_name else ""
+    short_mip_str = f"\n✨ MIP (기량발전): {mip_honor}" if mip_name else ""
+    short_unsung_str = f"\n🛡️ 언성 히어로: {unsung_honor}" if unsung_name else ""
 
     lead_hitter_info = "—"
     if sorted_hitters:
         lh = sorted_hitters[0]
-        lead_hitter_info = f"{lh['name']} [🔥 {lh['mvp_pts']}점] ({lh['ab']}타수 {lh['hits']}안타 {lh['rbi']}타점 타율 {lh['avg']:.3f})"
+        lh_disp = format_player_display(lh['name'], lh.get('title'))
+        lead_hitter_info = f"{lh_disp} [🔥 {lh['mvp_pts']}점] ({lh['ab']}타수 {lh['hits']}안타 {lh['rbi']}타점 타율 {lh['avg']:.3f})"
 
     short_msg = f"""⚾ W.B.C 경기 결과 | {dstr}
 
 ⚡ World Team  {ws_score}점
 🔥 Believers  {bs_score}점
 
-🏅 MVP: {mvp_name} 형제{mvp_detail}{short_mip_str}{short_unsung_str}
+🏅 MVP: {mvp_honor}{mvp_detail}{short_mip_str}{short_unsung_str}
 🎯 경기 최고 활약(종합 1위): {lead_hitter_info}
 {rbi_line}{hr_line}
 
@@ -2436,11 +2502,27 @@ def players_page():
 def player_add():
     name = request.form.get('name','').strip()
     team = request.form.get('team','W.B.C').strip() or 'W.B.C'
+    title = request.form.get('title','').strip()
     if name:
         conn = get_db()
-        conn.execute('INSERT INTO players(name,team) VALUES(?,?)',(name,team))
+        conn.execute('INSERT INTO players(name,team,title) VALUES(?,?,?)',(name,team,title))
         conn.commit(); conn.close()
-        flash(f'✅ {name} 선수가 등록되었습니다. (소속: {team})','success')
+        disp = format_player_display(name, title)
+        flash(f'✅ {disp} 선수가 등록되었습니다.','success')
+    return redirect(url_for('players_page'))
+
+@app.route('/players/<int:pid>/update_title', methods=['POST'])
+@admin_required
+def player_update_title(pid):
+    title = request.form.get('title','').strip()
+    conn = get_db()
+    conn.execute('UPDATE players SET title=? WHERE id=?', (title, pid))
+    conn.commit()
+    player = conn.execute('SELECT name FROM players WHERE id=?', (pid,)).fetchone()
+    conn.close()
+    pname = player['name'] if player else '선수'
+    disp = format_player_display(pname, title)
+    flash(f'✅ {disp} 직책(직분)이 업데이트되었습니다.', 'success')
     return redirect(url_for('players_page'))
 
 @app.route('/players/<int:pid>/toggle', methods=['POST'])
@@ -2504,7 +2586,7 @@ def api_players():
 def analytics_page():
     pid = request.args.get('player_id', type=int)
     conn = get_db()
-    players = conn.execute('SELECT id, name, team FROM players WHERE is_active=1 ORDER BY team, name').fetchall()
+    players = conn.execute('SELECT id, name, team, title FROM players WHERE is_active=1 ORDER BY team, name').fetchall()
     sel_player = None
     if pid:
         sel_player = conn.execute('SELECT * FROM players WHERE id=?', (pid,)).fetchone()

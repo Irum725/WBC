@@ -1031,11 +1031,13 @@ function initPlayerChips() {
         let condEmoji = p.condition_badge ? `<span class="badge-icon" title="[최근 컨디션] ${p.condition_badge.text}: ${p.condition_badge.desc}">${p.condition_badge.emoji}</span>` : '';
         let growthEmoji = p.growth_badge ? `<span class="badge-icon" title="[성장 지표] ${p.growth_badge.text}: ${p.growth_badge.desc}">${p.growth_badge.emoji}</span>` : '';
         let badgeLogos = (condEmoji || growthEmoji) ? `<span class="d-inline-flex gap-1 align-items-center ms-1">${condEmoji}${growthEmoji}</span>` : '';
+        let titleBadge = p.title ? `<span class="badge bg-light text-secondary border px-1" style="font-size: 0.65rem; font-weight: normal;">${p.title}</span>` : '';
 
         chip.innerHTML = `
             <span class="fw-bold">${p.name}</span>
+            ${titleBadge}
             ${badgeLogos}
-            <span class="chip-stat ms-2">${avgStr}</span>
+            <span class="chip-stat ms-1">${avgStr}</span>
         `;
         chip.onclick = () => togglePlayerChip(chip);
         container.appendChild(chip);
@@ -1093,7 +1095,9 @@ function parseNamesFromRawText(text) {
     const lines = text.split(/[\r\n,]+/);
     const names = [];
     lines.forEach(line => {
-        const clean = line.replace(/^[0-9]+[\.\)\:\-\s]*/, '').trim();
+        let clean = line.replace(/^[0-9]+[\.\)\:\-\s]*/, '').trim();
+        // 교회 직분/호칭 접미사 제거 (예: 김형찬 담임목사 -> 김형찬, 정재홍 장로님 -> 정재홍)
+        clean = clean.replace(/\s*(담임목사|목사|장로|안수집사|권사|집사|성도|형제|자매)(님)?$/g, '').trim();
         if (clean && clean.length <= 15) {
             names.push(clean);
         }
