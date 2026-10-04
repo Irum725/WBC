@@ -323,24 +323,28 @@
                                 {% endif %}
                             </span>
                             <div>
-                                <div class="fw-bold d-flex align-items-center gap-1 flex-wrap">
+                                <div class="fw-bold d-flex align-items-center gap-1">
                                     {{ p.name }}{% if p.title %} <span class="badge bg-light text-secondary border px-1" style="font-size: 0.68rem; font-weight: normal;">{{ p.title }}</span>{% endif %}
                                     {% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %}
                                     <span class="badge {% if p.team == 'World' %}badge-world{% elif p.team == 'Believers' %}badge-believers{% elif p.team == 'Faith' %}badge-faith{% elif p.team == 'Grace' %}badge-grace{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
                                         {{ p.team }}
                                     </span>
                                     {% endif %}
+                                </div>
+                                {% if p.condition_badge or p.growth_badge %}
+                                <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
                                     {% if p.condition_badge %}
-                                        <span class="badge {{ p.condition_badge.class }} py-0 px-1" style="font-size: 0.62rem;" title="{{ p.condition_badge.desc }}">
+                                        <span class="badge {{ p.condition_badge.class }} py-0 px-1" style="font-size: 0.65rem;" title="{{ p.condition_badge.desc }}">
                                             {{ p.condition_badge.emoji }} {{ p.condition_badge.text }}
                                         </span>
                                     {% endif %}
                                     {% if p.growth_badge %}
-                                        <span class="badge {{ p.growth_badge.class }} py-0 px-1" style="font-size: 0.62rem;" title="{{ p.growth_badge.desc }}">
+                                        <span class="badge {{ p.growth_badge.class }} py-0 px-1" style="font-size: 0.65rem;" title="{{ p.growth_badge.desc }}">
                                             {{ p.growth_badge.emoji }} {{ p.growth_badge.text }}
                                         </span>
                                     {% endif %}
                                 </div>
+                                {% endif %}
                                 <div class="text-muted small" style="font-size: 0.75rem;">
                                     {{ p.tab }}타수 {{ p.th }}안타 
                                     {% if p.thr > 0 %}<span class="text-danger fw-bold">({{ p.thr }}HR)</span>{% endif %}
