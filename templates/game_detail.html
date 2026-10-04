@@ -83,8 +83,13 @@
     <div class="px-3 pt-3">
         <div class="scoreboard-matrix-wrap mb-3">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                <span class="text-white fw-bold small">
-                    <i class="fa-solid fa-chalkboard text-warning me-1"></i>정규 전광판 경기 스코어보드 (Official Scoreboard)
+                <span class="text-white fw-bold small d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-chalkboard text-warning"></i>정규 전광판 경기 스코어보드 (Official Scoreboard)
+                    {% if is_admin %}
+                    <button type="button" class="btn btn-warning btn-sm py-0 px-2 fw-bold text-dark shadow-sm" style="font-size: 0.76rem;" data-bs-toggle="modal" data-bs-target="#scoreboardEditModal">
+                        <i class="fa-solid fa-pen-to-square me-1"></i>회별 점수 수기 입력/수정
+                    </button>
+                    {% endif %}
                 </span>
                 <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.72rem;">
                     <i class="fa-solid fa-baseball-bat-ball me-1"></i>스크린 6이닝 매치 (4회~9회 진행)
@@ -92,7 +97,7 @@
             </div>
             <div class="scoreboard-swipe-hint d-md-none mb-2">
                 <span><i class="fa-solid fa-arrows-left-right text-warning me-1"></i>좌우로 밀어서 9회 및 R·H·E 확인</span>
-                <span class="badge bg-warning text-dark">R {{ scoreboard.teams[0].r if scoreboard.teams else 10 }} : {{ scoreboard.teams[1].r if scoreboard.teams|length > 1 else 1 }}</span>
+                <span class="badge bg-warning text-dark">R {{ scoreboard.teams[0].r if scoreboard.teams else 0 }} : {{ scoreboard.teams[1].r if scoreboard.teams|length > 1 else 0 }}</span>
             </div>
             <div class="scoreboard-scroll-container">
                 <table class="scoreboard-matrix-table">
@@ -135,7 +140,11 @@
             <div class="scoreboard-note-bar">
                 <i class="fa-solid fa-circle-info text-info"></i>
                 <span>
-                    <strong>경기 안내:</strong> 스크린야구 6이닝 규정에 따라 4회~9회(실제 1~6회)로 진행되었으며, Believers(초공격 선공)와 World(말공격 후공) 모두 9회까지 정규 공격을 완료하였습니다.
+                    {% if scoreboard.note and scoreboard.note != '정규 경기' %}
+                    <strong>경기 안내:</strong> {{ scoreboard.note }}
+                    {% else %}
+                    <strong>경기 안내:</strong> 스크린야구 6이닝 규정에 따라 4회~9회(실제 1~6회)로 진행되었으며, {{ scoreboard.teams[0].name }}({{ scoreboard.teams[0].order_label }})와 {{ scoreboard.teams[1].name if scoreboard.teams|length > 1 else '상대팀' }}({{ scoreboard.teams[1].order_label if scoreboard.teams|length > 1 else '후공' }}) 모두 정규 공격을 완료하였습니다.
+                    {% endif %}
                 </span>
             </div>
         </div>
@@ -203,4 +212,193 @@
         </div>
     </div>
 </div>
+
+<!-- ============================================================== -->
+<!-- [운영진 모달] 전광판 회별 점수 수기 입력 및 수정 모달 -->
+<!-- ============================================================== -->
+{% if is_admin and scoreboard and scoreboard.teams %}
+<div class="modal fade" id="scoreboardEditModal" tabindex="-1" aria-labelledby="scoreboardEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold fs-6" id="scoreboardEditModalLabel">
+                    <i class="fa-solid fa-chalkboard text-warning me-2"></i>정규 전광판 회별 점수(이닝 스코어) 수기 입력
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    <strong>입력 안내:</strong> 스크린야구 6이닝 매치(4회~9회) 또는 1~9회 전체 각 이닝별 점수를 입력하세요. 
+                    숫자를 입력하면 <strong>총 득점(R)</strong>이 자동으로 합산되며, 저장 시 경기 최종 스코어보드에 즉시 반영됩니다.
+                </div>
+
+                <form id="scoreboardEditForm">
+                    <div class="table-responsive bg-white rounded shadow-sm p-2 mb-3">
+                        <table class="table table-bordered align-middle text-center mb-0" style="min-width: 600px;">
+                            <thead class="table-dark small">
+                                <tr>
+                                    <th style="width: 140px;">팀 / 공격순서</th>
+                                    {% for inn in range(1, 10) %}
+                                    <th style="width: 48px;" class="{% if inn >= 4 %}bg-primary text-white{% endif %}">
+                                        <div>{{ inn }}회</div>
+                                        {% if inn >= 4 %}<span class="badge bg-warning text-dark py-0" style="font-size:0.65rem;">{{ inn - 3 }}</span>{% endif %}
+                                    </th>
+                                    {% endfor %}
+                                    <th class="bg-danger text-white" style="width: 60px;">R (합계)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in scoreboard.teams %}
+                                {% set t_idx = loop.index0 %}
+                                <tr>
+                                    <td class="text-start ps-3 fw-bold">
+                                        <input type="hidden" name="team_name_{{ t_idx }}" value="{{ t.name }}">
+                                        <input type="hidden" name="team_order_{{ t_idx }}" value="{{ t.order }}">
+                                        <input type="hidden" name="team_order_label_{{ t_idx }}" value="{{ t.order_label }}">
+                                        <input type="hidden" name="team_badge_{{ t_idx }}" value="{{ t.badge_class }}">
+                                        <input type="hidden" name="team_h_{{ t_idx }}" value="{{ t.h }}">
+                                        <input type="hidden" name="team_e_{{ t_idx }}" value="{{ t.e }}">
+                                        <input type="hidden" name="team_hr_{{ t_idx }}" value="{{ t.hr }}">
+
+                                        <span class="badge {{ t.badge_class }} me-1">{{ t.name }}</span>
+                                        <span class="small text-muted">({{ t.order_label }})</span>
+                                    </td>
+                                    {% for inn in range(1, 10) %}
+                                    {% set val = t.scores[inn - 1] if t.scores|length >= inn else '-' %}
+                                    {% set val_clean = '' if val in ['-', 'null', None] else val %}
+                                    <td class="p-1 {% if inn >= 4 %}bg-light{% endif %}">
+                                        <input type="text" 
+                                               class="form-control form-control-sm text-center fw-bold inn-score-input inn-t{{ t_idx }}" 
+                                               data-team="{{ t_idx }}" 
+                                               name="inn_{{ t_idx }}_{{ inn }}" 
+                                               value="{{ val_clean }}" 
+                                               placeholder="-" 
+                                               maxlength="2" 
+                                               oninput="calcModalScoreTotal({{ t_idx }})">
+                                    </td>
+                                    {% endfor %}
+                                    <td class="p-1 bg-warning-subtle">
+                                        <input type="number" 
+                                               id="total_r_{{ t_idx }}" 
+                                               name="total_r_{{ t_idx }}" 
+                                               class="form-control form-control-sm text-center fw-bold fs-6 text-danger" 
+                                               value="{{ t.r }}" 
+                                               readonly>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted mb-1">
+                                <i class="fa-solid fa-comment-dots me-1"></i>전광판 하단 안내 문구 (선택)
+                            </label>
+                            <input type="text" id="sbModalNote" class="form-control form-control-sm" 
+                                   value="{{ scoreboard.note or '스크린 6이닝 매치 (4회~9회 진행)' }}" 
+                                   placeholder="예: 스크린야구 6이닝 규정에 따라 4회~9회(실제 1~6회)로 진행되었습니다.">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-white border-top">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-4" onclick="saveScoreboardData()">
+                    <i class="fa-solid fa-save me-1"></i>전광판 점수 저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
+
+{% block scripts %}
+{% if is_admin and scoreboard and scoreboard.teams %}
+<script>
+function calcModalScoreTotal(teamIdx) {
+    const inputs = document.querySelectorAll('.inn-t' + teamIdx);
+    let total = 0;
+    let hasNumeric = false;
+    inputs.forEach(input => {
+        const val = input.value.trim();
+        if (val !== '' && !isNaN(val)) {
+            total += parseInt(val, 10);
+            hasNumeric = true;
+        }
+    });
+    const totalEl = document.getElementById('total_r_' + teamIdx);
+    if (totalEl) {
+        totalEl.value = total;
+    }
+}
+
+async function saveScoreboardData() {
+    const teamCount = {{ scoreboard.teams|length }};
+    const teams = [];
+
+    for (let i = 0; i < teamCount; i++) {
+        const tNameInput = document.querySelector(`input[name="team_name_${i}"]`);
+        const tOrderInput = document.querySelector(`input[name="team_order_${i}"]`);
+        const tOrderLabelInput = document.querySelector(`input[name="team_order_label_${i}"]`);
+        const tBadgeInput = document.querySelector(`input[name="team_badge_${i}"]`);
+        const tHInput = document.querySelector(`input[name="team_h_${i}"]`);
+        const tEInput = document.querySelector(`input[name="team_e_${i}"]`);
+        const tHrInput = document.querySelector(`input[name="team_hr_${i}"]`);
+        const tTotalRInput = document.getElementById(`total_r_${i}`);
+
+        const scores = [];
+        for (let inn = 1; inn <= 9; inn++) {
+            const innInput = document.querySelector(`input[name="inn_${i}_${inn}"]`);
+            const val = innInput ? innInput.value.trim() : '';
+            if (val === '' || val === '-') {
+                scores.push('-');
+            } else {
+                scores.push(parseInt(val, 10) || 0);
+            }
+        }
+
+        teams.push({
+            name: tNameInput ? tNameInput.value : '',
+            order: tOrderInput ? tOrderInput.value : 'top',
+            order_label: tOrderLabelInput ? tOrderLabelInput.value : '',
+            badge_class: tBadgeInput ? tBadgeInput.value : '',
+            scores: scores,
+            r: tTotalRInput ? parseInt(tTotalRInput.value, 10) || 0 : 0,
+            h: tHInput ? parseInt(tHInput.value, 10) || 0 : 0,
+            e: tEInput ? parseInt(tEInput.value, 10) || 0 : 0,
+            hr: tHrInput ? parseInt(tHrInput.value, 10) || 0 : 0
+        });
+    }
+
+    const note = document.getElementById('sbModalNote') ? document.getElementById('sbModalNote').value.trim() : '';
+
+    try {
+        const res = await fetch('/game/{{ game.id }}/scoreboard/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                teams: teams,
+                note: note,
+                start_inning: 4,
+                played_innings: 6
+            })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert('전광판 이닝 점수가 성공적으로 저장되었습니다!');
+            window.location.reload();
+        } else {
+            alert('저장 실패: ' + (data.err || '오류가 발생했습니다.'));
+        }
+    } catch (e) {
+        alert('서버 통신 오류: ' + e);
+    }
+}
+</script>
+{% endif %}
+{% endblock %}
+

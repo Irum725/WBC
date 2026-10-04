@@ -248,9 +248,6 @@ def get_scoreboard_data(game, conn=None):
         except Exception:
             details = {}
     
-    if details.get('teams') and isinstance(details['teams'], list):
-        return details
-    
     gid = game['id']
     close_conn = False
     if conn is None:
@@ -266,43 +263,87 @@ def get_scoreboard_data(game, conn=None):
     stat_map = {row['team']: dict(row) for row in t_stats}
     if close_conn:
         conn.close()
+
+    # details 내부에 'scoreboard'가 있거나, details 자체가 'teams'를 가지고 있는 경우
+    sb_obj = details.get('scoreboard') if isinstance(details.get('scoreboard'), dict) else details
+    if sb_obj.get('teams') and isinstance(sb_obj['teams'], list):
+        teams = []
+        for t in sb_obj['teams']:
+            t_copy = dict(t)
+            t_name = t_copy.get('name', 'Team')
+            # 안타 수 및 홈런 수는 타격 기록에서 최신 반영
+            if t_name in stat_map:
+                t_copy['h'] = stat_map[t_name].get('thits', t_copy.get('h', 0))
+                t_copy['hr'] = stat_map[t_name].get('thr', t_copy.get('hr', 0))
+            if not t_copy.get('badge_class'):
+                t_copy['badge_class'] = f"badge-{t_name.lower()}"
+            teams.append(t_copy)
+        
+        # 승패 여부 계산
+        if len(teams) >= 2:
+            r0 = int(teams[0].get('r', 0) or 0)
+            r1 = int(teams[1].get('r', 0) or 0)
+            teams[0]['is_winner'] = r0 > r1
+            teams[1]['is_winner'] = r1 > r0
+
+        return {
+            'innings_count': sb_obj.get('innings_count', 9),
+            'start_inning': sb_obj.get('start_inning', 4),
+            'played_innings': sb_obj.get('played_innings', 6),
+            'note': sb_obj.get('note', '정규 전광판 경기'),
+            'teams': teams
+        }
         
     w_score = game['world_score'] if game['world_score'] is not None else 0
     b_score = game['believers_score'] if game['believers_score'] is not None else 0
     
+    # 경기 대진에 맞게 팀 추출 (details에 저장된 팀 매치업 우선)
+    t1_name = 'Believers'
+    t2_name = 'World'
+    t1_score = b_score
+    t2_score = w_score
+
+    # score_details가 단순 매핑 {team1: s1, team2: s2}인 경우
+    simple_keys = [k for k in details.keys() if k not in ('room1', 'room2', 'scoreboard', 'teams')]
+    if len(simple_keys) >= 2:
+        t1_name = simple_keys[0]
+        t2_name = simple_keys[1]
+        t1_score = details[t1_name]
+        t2_score = details[t2_name]
+
     teams = [
         {
-            'name': 'World',
-            'team_name': 'World ⚡',
-            'badge_class': 'badge-world',
+            'name': t1_name,
+            'team_name': f"{t1_name} 🔥" if t1_name == 'Believers' else f"{t1_name} ⚡",
+            'badge_class': f"badge-{t1_name.lower()}",
             'order': 'top',
             'order_label': '초 (선공)',
             'scores': ['-'] * 9,
-            'r': w_score,
-            'h': stat_map.get('World', {}).get('thits', 0),
+            'r': t1_score,
+            'h': stat_map.get(t1_name, {}).get('thits', 0),
             'e': 0,
-            'hr': stat_map.get('World', {}).get('thr', 0),
-            'is_winner': w_score > b_score
+            'hr': stat_map.get(t1_name, {}).get('thr', 0),
+            'is_winner': t1_score > t2_score
         },
         {
-            'name': 'Believers',
-            'team_name': 'Believers 🔥',
-            'badge_class': 'badge-believers',
+            'name': t2_name,
+            'team_name': f"{t2_name} ⚡" if t2_name == 'World' else f"{t2_name} 🔥",
+            'badge_class': f"badge-{t2_name.lower()}",
             'order': 'bottom',
             'order_label': '말 (후공)',
             'scores': ['-'] * 9,
-            'r': b_score,
-            'h': stat_map.get('Believers', {}).get('thits', 0),
+            'r': t2_score,
+            'h': stat_map.get(t2_name, {}).get('thits', 0),
             'e': 0,
-            'hr': stat_map.get('Believers', {}).get('thr', 0),
-            'is_winner': b_score > w_score
+            'hr': stat_map.get(t2_name, {}).get('thr', 0),
+            'is_winner': t2_score > t1_score
         }
     ]
     return {
         'innings_count': 9,
-        'start_inning': 1,
-        'played_innings': 9,
-        'note': '정규 경기',
+        'start_inning': 4,
+        'played_innings': 6,
+        'note': '스크린 6이닝 매치 (4회~9회 진행)',
         'teams': teams
     }
 
@@ -1127,6 +1168,119 @@ def game_detail(gid):
     conn.close()
     awards = calc_game_awards(gid)
     return render_template('game_detail.html', game=game, records=recs, awards=awards, scoreboard=scoreboard, fmt_date=fmt_date)
+
+@app.route('/game/<int:gid>/scoreboard/save', methods=['POST'])
+@admin_required
+def game_scoreboard_save(gid):
+    data = request.get_json() or {}
+    teams_data = data.get('teams', [])
+    note = data.get('note', '정규 전광판 경기')
+    start_inn = int(data.get('start_inning', 4) or 4)
+    played_inn = int(data.get('played_innings', 6) or 6)
+
+    if not teams_data or len(teams_data) < 2:
+        return jsonify({'ok': False, 'err': '최소 2팀의 스코어보드 데이터가 필요합니다.'}), 400
+
+    conn = get_db()
+    try:
+        game = conn.execute('SELECT * FROM games WHERE id = ?', (gid,)).fetchone()
+        if not game:
+            conn.close()
+            return jsonify({'ok': False, 'err': '해당 경기를 찾을 수 없습니다.'}), 404
+
+        # 기존 score_details 파싱
+        existing_details = {}
+        if game['score_details']:
+            try:
+                existing_details = json.loads(game['score_details'])
+            except Exception:
+                existing_details = {}
+
+        # 각 팀의 scores 검증 및 r 합계 계산
+        formatted_teams = []
+        scores_by_team = {}
+        for t in teams_data:
+            t_name = str(t.get('name', '')).strip()
+            raw_scores = t.get('scores', [])
+            int_scores = []
+            for s in raw_scores:
+                try:
+                    s_str = str(s).strip()
+                    if s_str in ('-', '', 'null', 'None'):
+                        int_scores.append('-')
+                    else:
+                        int_scores.append(int(s_str))
+                except Exception:
+                    int_scores.append('-')
+            
+            # 9이닝 보장
+            while len(int_scores) < 9:
+                int_scores.append('-')
+            int_scores = int_scores[:9]
+
+            # R 계산 (숫자 점수들의 합계 또는 직접 입력된 r)
+            numeric_sum = sum(s for s in int_scores if isinstance(s, int))
+            t_r = int(t.get('r')) if t.get('r') is not None and str(t.get('r')).isdigit() else numeric_sum
+
+            scores_by_team[t_name] = t_r
+
+            formatted_teams.append({
+                'name': t_name,
+                'team_name': t.get('team_name') or f"{t_name} 🔥" if t_name == 'Believers' else f"{t_name} ⚡",
+                'badge_class': t.get('badge_class') or f"badge-{t_name.lower()}",
+                'order': t.get('order', 'top'),
+                'order_label': t.get('order_label', '초 (선공)' if len(formatted_teams) == 0 else '말 (후공)'),
+                'scores': int_scores,
+                'r': t_r,
+                'h': int(t.get('h', 0) or 0),
+                'e': int(t.get('e', 0) or 0),
+                'hr': int(t.get('hr', 0) or 0),
+                'is_winner': False
+            })
+
+        # 승패 결정
+        if len(formatted_teams) >= 2:
+            r0 = formatted_teams[0]['r']
+            r1 = formatted_teams[1]['r']
+            formatted_teams[0]['is_winner'] = r0 > r1
+            formatted_teams[1]['is_winner'] = r1 > r0
+
+        scoreboard_dict = {
+            'innings_count': 9,
+            'start_inning': start_inn,
+            'played_innings': played_inn,
+            'note': note,
+            'teams': formatted_teams
+        }
+
+        # existing_details 에 scoreboard 객체 업데이트
+        existing_details['scoreboard'] = scoreboard_dict
+        # 2팀인 경우 팀별 점수도 동기화
+        for tn, tr in scores_by_team.items():
+            if tn in ('World', 'Believers', 'Faith', 'Grace'):
+                existing_details[tn] = tr
+
+        # World / Believers 점수 추출하여 games 컬럼 업데이트
+        w_score = scores_by_team.get('World')
+        b_score = scores_by_team.get('Believers')
+        if w_score is None:
+            w_score = formatted_teams[0]['r'] if formatted_teams[0]['name'] == 'World' else (formatted_teams[1]['r'] if formatted_teams[1]['name'] == 'World' else game['world_score'])
+        if b_score is None:
+            b_score = formatted_teams[0]['r'] if formatted_teams[0]['name'] == 'Believers' else (formatted_teams[1]['r'] if formatted_teams[1]['name'] == 'Believers' else game['believers_score'])
+
+        new_details_str = json.dumps(existing_details, ensure_ascii=False)
+        conn.execute('''
+            UPDATE games
+            SET score_details = ?, world_score = ?, believers_score = ?
+            WHERE id = ?
+        ''', (new_details_str, w_score, b_score, gid))
+        conn.commit()
+        return jsonify({'ok': True, 'msg': '전광판 점수가 성공적으로 저장되었습니다.'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'ok': False, 'err': str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/game/<int:gid>/delete', methods=['POST'])
 @admin_required
