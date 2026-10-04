@@ -396,6 +396,7 @@
     </div>
 </div>
 
+{% if not edit_game %}
 <!-- ========================================================================= -->
 <!-- [스마트 도구] 참석인원 기반 팀 자동 분배 & 타순 추천 카드 -->
 <!-- ========================================================================= -->
@@ -516,26 +517,31 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- ========================================================================= -->
 <!-- [섹션 1] 팀 선택 및 타순 설정 창 -->
 <!-- ========================================================================= -->
 <div class="card shadow-sm border-0 mb-4" id="setupCard">
-    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="fw-bold text-dark">
             <i class="fa-solid fa-users-gear text-primary me-2"></i>1. 출전팀 배정 및 타순 설정
             <span class="badge bg-secondary ms-2" id="attendanceSummary">출전 인원 집계 중</span>
         </div>
         <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm fw-bold" onclick="toggleSetupCard()" id="btnToggleSetup">
+                <i class="fa-solid {% if edit_game %}fa-chevron-down{% else %}fa-chevron-up{% endif %}" id="setupToggleIcon"></i> 
+                <span id="setupToggleText">{% if edit_game %}팀·타순 변경 펼치기{% else %}접기{% endif %}</span>
+            </button>
             <button type="button" class="btn btn-outline-success btn-sm fw-bold" onclick="addSetupBlankRow()">
-                <i class="fa-solid fa-user-plus me-1"></i>대타/게스트 즉석 추가
+                <i class="fa-solid fa-user-plus me-1"></i>대타/게스트 추가
             </button>
             <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-sm" onclick="applySettings()">
                 <i class="fa-solid fa-check me-1"></i>설정 적용하기 (팀별 분리·정렬)
             </button>
         </div>
     </div>
-    <div class="card-body p-3 bg-light">
+    <div class="card-body p-3 bg-light {% if edit_game %}d-none{% endif %}" id="setupCardBody">
         <p class="text-muted small mb-2">
             선수별로 출전할 <strong>팀</strong>과 <strong>타순(번호)</strong>을 설정하세요. 설정 후 <strong>[설정 적용하기]</strong>를 누르면 하단에 해당 팀별로 분류된 타격 테이블이 정렬되어 표시됩니다.
         </p>
@@ -566,6 +572,23 @@
         </div>
     </div>
 </div>
+
+{% if edit_game %}
+<div class="alert alert-warning py-3 px-3 mb-3 d-flex align-items-center justify-content-between shadow-sm border-warning">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fa-solid fa-pen-to-square text-warning-emphasis fs-4 me-1"></i>
+        <div>
+            <div class="fw-bold text-dark">제{{ edit_game.game_number }}회 경기 타격 기록 수정 모드</div>
+            <div class="small text-secondary">
+                기존 선수들의 이닝별 타격 기호(①, ②, ③, ★, K, O 등)와 타점이 아래 타격 기록지에 로드되어 있습니다. 기호나 타점을 클릭하여 바로 수정한 후 하단의 <strong>[이 경기 수정 내용 최종 저장]</strong>을 누르세요.
+            </div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-dark fw-bold text-nowrap ms-2" onclick="scrollToSetup()">
+        <i class="fa-solid fa-users-gear me-1"></i>출전 명단/타순 변경
+    </button>
+</div>
+{% endif %}
 
 <!-- ========================================================================= -->
 <!-- [섹션 2] 팀별 분리 타격 기록지 (설정 적용 시 갱신됨) -->
@@ -722,21 +745,47 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('matchupSec4Teams').classList.add('d-none');
             document.getElementById('modeBadge').innerText = '2개 팀 경기';
 
+            const validTeams = ['World', 'Believers', 'Faith', 'Grace'];
+            let team1 = 'World', team2 = 'Believers';
+            let score1 = (editGame.world_score !== null && editGame.world_score !== undefined) ? editGame.world_score : 0;
+            let score2 = (editGame.believers_score !== null && editGame.believers_score !== undefined) ? editGame.believers_score : 0;
+
             try {
                 const det = JSON.parse(editGame.score_details || '{}');
-                const tKeys = Object.keys(det);
-                if (tKeys.length >= 2) {
-                    document.getElementById('selectTeam1').value = tKeys[0];
-                    document.getElementById('scoreTeam1').value = det[tKeys[0]];
-                    document.getElementById('selectTeam2').value = tKeys[1];
-                    document.getElementById('scoreTeam2').value = det[tKeys[1]];
+                const sbData = det.scoreboard || (det.teams ? det : null);
+
+                if (sbData && sbData.teams && sbData.teams.length >= 2) {
+                    team1 = sbData.teams[0].name;
+                    team2 = sbData.teams[1].name;
+                    if (sbData.teams[0].r !== undefined) score1 = sbData.teams[0].r;
+                    else if (det[team1] !== undefined) score1 = det[team1];
+                    if (sbData.teams[1].r !== undefined) score2 = sbData.teams[1].r;
+                    else if (det[team2] !== undefined) score2 = det[team2];
                 } else {
-                    document.getElementById('scoreTeam1').value = editGame.world_score || 0;
-                    document.getElementById('scoreTeam2').value = editGame.believers_score || 0;
+                    const validTeamKeys = Object.keys(det).filter(k => validTeams.includes(k));
+                    if (validTeamKeys.length >= 2) {
+                        team1 = validTeamKeys[0];
+                        team2 = validTeamKeys[1];
+                        if (det[team1] !== undefined) score1 = det[team1];
+                        if (det[team2] !== undefined) score2 = det[team2];
+                    }
                 }
 
+                // If editRecords has distinct teams, sync with records
+                if (editRecords && editRecords.length > 0) {
+                    const recTeams = Array.from(new Set(editRecords.map(r => r.team).filter(t => validTeams.includes(t))));
+                    if (recTeams.length >= 2) {
+                        team1 = recTeams[0];
+                        team2 = recTeams[1];
+                    }
+                }
+
+                document.getElementById('selectTeam1').value = team1;
+                document.getElementById('scoreTeam1').value = score1;
+                document.getElementById('selectTeam2').value = team2;
+                document.getElementById('scoreTeam2').value = score2;
+
                 // [회별 점수 복원]
-                const sbData = det.scoreboard || (det.teams ? det : null);
                 if (sbData && sbData.teams && sbData.teams.length >= 2) {
                     const t1Sb = sbData.teams[0];
                     const t2Sb = sbData.teams[1];
@@ -758,8 +807,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             } catch(e) {
-                document.getElementById('scoreTeam1').value = editGame.world_score || 0;
-                document.getElementById('scoreTeam2').value = editGame.believers_score || 0;
+                console.error('editGame 2teams load error:', e);
+                document.getElementById('selectTeam1').value = team1;
+                document.getElementById('scoreTeam1').value = score1;
+                document.getElementById('selectTeam2').value = team2;
+                document.getElementById('scoreTeam2').value = score2;
             }
         }
     }
@@ -1788,7 +1840,28 @@ function updateSummaryBadge() {
     document.getElementById('attendanceSummary').innerText = `총 ${activeCount}명 출전 대기`;
 }
 
+function toggleSetupCard() {
+    const body = document.getElementById('setupCardBody');
+    const icon = document.getElementById('setupToggleIcon');
+    const text = document.getElementById('setupToggleText');
+    if (!body) return;
+    const isHidden = body.classList.contains('d-none');
+    if (isHidden) {
+        body.classList.remove('d-none');
+        if (icon) icon.className = 'fa-solid fa-chevron-up';
+        if (text) text.innerText = '팀·타순 접기';
+    } else {
+        body.classList.add('d-none');
+        if (icon) icon.className = 'fa-solid fa-chevron-down';
+        if (text) text.innerText = '팀·타순 변경 펼치기';
+    }
+}
+
 function scrollToSetup() {
+    const body = document.getElementById('setupCardBody');
+    if (body && body.classList.contains('d-none')) {
+        toggleSetupCard();
+    }
     document.getElementById('setupCard').scrollIntoView({ behavior: 'smooth' });
 }
 

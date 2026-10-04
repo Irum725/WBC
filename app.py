@@ -1119,7 +1119,7 @@ def game_edit(gid):
     
     players = get_players_with_season_stats(conn)
     recs = conn.execute('''
-        SELECT p.name, p.title, p.team, br.*
+        SELECT br.*, p.name, p.title, p.team AS player_default_team
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.team, br.batting_order
     ''', (gid,)).fetchall()
@@ -1211,7 +1211,7 @@ def game_detail(gid):
     if not game: return redirect(url_for('history'))
     scoreboard = get_scoreboard_data(game, conn)
     recs = conn.execute('''
-        SELECT p.name,p.title,p.team,br.*
+        SELECT br.*, p.name, p.title, p.team AS player_default_team
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.id ASC
     ''',(gid,)).fetchall()
@@ -1575,7 +1575,7 @@ def sns_page(gid=None):
     if gid:
         sel = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
         raw_recs = conn.execute('''
-            SELECT p.name,p.title,p.team,br.ab,br.hits,br.singles,br.doubles,
+            SELECT p.name,p.title,br.team,br.ab,br.hits,br.singles,br.doubles,
                    br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.rbi DESC, br.hits DESC, br.avg DESC
@@ -2035,7 +2035,7 @@ def generate_sns_payload(d=None):
         return jsonify({'err':'경기를 찾을 수 없습니다.'}), 404
 
     recs = conn.execute('''
-        SELECT p.name,p.title,p.team,br.ab,br.hits,br.singles,br.doubles,
+        SELECT p.name,p.title,br.team,br.ab,br.hits,br.singles,br.doubles,
                br.triples,br.hr,br.rbi,br.avg,br.slg,br.k,br.dp
         FROM batting_records br JOIN players p ON p.id=br.player_id
         WHERE br.game_id=? ORDER BY br.avg DESC,br.hits DESC
@@ -2541,7 +2541,7 @@ def export_excel(gid):
     conn = get_db()
     game = conn.execute('SELECT * FROM games WHERE id=?',(gid,)).fetchone()
     recs = conn.execute('''
-        SELECT p.name,p.team,br.batting_order,
+        SELECT p.name,br.team,br.batting_order,
                br.inn1,br.inn2,br.inn3,br.inn4,br.inn5,br.inn6,br.inn7,
                br.inn8,br.inn9,br.inn10,br.inn11,br.inn12,br.inn13,
                br.ab,br.hits,br.singles,br.doubles,br.triples,br.hr,
