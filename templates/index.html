@@ -325,9 +325,11 @@
                             <div>
                                 <div class="fw-bold d-flex align-items-center gap-1 flex-wrap">
                                     {{ p.name }}
+                                    {% if p.team and p.team not in ['W.B.C', '자유', '자유배정', '미정'] %}
                                     <span class="badge {% if p.team == 'World' %}badge-world{% elif p.team == 'Believers' %}badge-believers{% elif p.team == 'Faith' %}badge-faith{% elif p.team == 'Grace' %}badge-grace{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
                                         {{ p.team }}
                                     </span>
+                                    {% endif %}
                                     {% if p.condition_badge %}
                                         <span class="badge {{ p.condition_badge.class }} py-0 px-1" style="font-size: 0.62rem;" title="{{ p.condition_badge.desc }}">
                                             {{ p.condition_badge.emoji }} {{ p.condition_badge.text }}

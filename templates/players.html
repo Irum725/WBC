@@ -15,11 +15,15 @@
                         <input type="text" name="name" class="form-control" placeholder="예: 홍길동" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">기본 소속팀</label>
-                        <select name="team" class="form-select" required>
+                        <label class="form-label small fw-bold">소속 배정 (미결정/유동 가능)</label>
+                        <select name="team" class="form-select">
+                            <option value="W.B.C" selected>W.B.C (자유/유동 배정 - 매 경기 밸런싱)</option>
                             <option value="World">World Team ⚡</option>
                             <option value="Believers">Believers Team 🔥</option>
+                            <option value="Faith">Faith Team 🦅</option>
+                            <option value="Grace">Grace Team 👑</option>
                         </select>
+                        <small class="text-muted d-block mt-1">※ 팀이 고정되지 않은 경우 <strong>W.B.C (자유/유동 배정)</strong>으로 등록하면, 매 경기 스마트 팀 빌더가 참석자 밸런스에 맞춰 자동 배정합니다.</small>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fa-solid fa-plus me-1"></i>선수 추가
@@ -39,7 +43,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>선수명</th>
-                            <th>기본 소속팀</th>
+                            <th>소속</th>
                             <th>참여 경기수</th>
                             <th>상태</th>
                             <th>관리</th>
@@ -54,9 +58,17 @@
                                 </a>
                             </td>
                             <td>
-                                <span class="badge {{ 'badge-world' if p.team == 'World' else 'badge-believers' }}">
-                                    {{ p.team }}
-                                </span>
+                                {% if p.team == 'World' %}
+                                <span class="badge badge-world">World</span>
+                                {% elif p.team == 'Believers' %}
+                                <span class="badge badge-believers">Believers</span>
+                                {% elif p.team == 'Faith' %}
+                                <span class="badge badge-faith">Faith</span>
+                                {% elif p.team == 'Grace' %}
+                                <span class="badge badge-grace">Grace</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border">W.B.C (자유)</span>
+                                {% endif %}
                             </td>
                             <td>{{ p.gc }}회</td>
                             <td>

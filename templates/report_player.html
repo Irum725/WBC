@@ -341,11 +341,15 @@
                         </small>
                     </div>
                     <div class="text-end">
-                        <div class="d-flex align-items-center gap-1 justify-content-end">
+                            {% if rep.player.team and rep.player.team not in ['W.B.C', '자유', '자유배정', '미정'] %}
                             <span class="badge {{ 'bg-primary' if rep.player.team == 'World' else 'bg-danger' }} fs-6 fw-bold">
                                 {{ rep.player.name }} ({{ rep.player.team }})
                             </span>
-                            <span class="badge bg-dark small">{{ rep.style_title }}</span>
+                            {% else %}
+                            <span class="badge bg-dark fs-6 fw-bold">
+                                {{ rep.player.name }} (W.B.C)
+                            </span>
+                            {% endif %}
                         </div>
                         <small class="text-muted" style="font-size: 0.68rem;">W.B.C 세계로교회 공식 분석 | 기준 경기일자: <strong class="text-dark">{{ last_game_date }}</strong></small>
                     </div>
@@ -451,7 +455,7 @@
                             <i class="fa-solid fa-list-ol text-primary me-1"></i>선수별 전 경기 출전 상세 로그 (Game-by-Game)
                         </div>
                         <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
-                            {{ rep.player.name }} ({{ rep.player.team }})
+                            {{ rep.player.name }}{% if rep.player.team and rep.player.team not in ['W.B.C', '자유', '자유배정', '미정'] %} ({{ rep.player.team }}){% endif %}
                         </span>
                     </div>
                     <table class="table table-bordered table-compact mb-0">

@@ -405,7 +405,7 @@ def index():
         gid = latest['id']
         scoreboard = get_scoreboard_data(latest, conn)
         latest_recs = conn.execute('''
-            SELECT p.name,p.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
+            SELECT p.name,br.team,br.ab,br.hits,br.hr,br.avg,br.slg,br.batting_order
             FROM batting_records br JOIN players p ON p.id=br.player_id
             WHERE br.game_id=? ORDER BY br.team, br.batting_order
         ''', (gid,)).fetchall()
@@ -1294,11 +1294,12 @@ def game_delete(gid):
 @app.route('/rankings')
 def rankings():
     team = request.args.get('team','all')
-    where = 'AND p.team=?' if team != 'all' else ''
-    params = [team] if team != 'all' else []
+    where = 'AND (p.team=? OR p.id IN (SELECT player_id FROM batting_records WHERE team=?))' if team != 'all' else ''
+    params = [team, team] if team != 'all' else []
     conn = get_db()
     rows = conn.execute(f'''
         SELECT p.id,p.name,p.team,
+               (SELECT team FROM batting_records WHERE player_id=p.id ORDER BY game_id DESC LIMIT 1) recent_team,
                COUNT(DISTINCT br.game_id) games,
                SUM(br.ab) tab, SUM(br.hits) th,
                SUM(br.singles) t1b, SUM(br.doubles) t2b, SUM(br.triples) t3b,
@@ -2434,12 +2435,12 @@ def players_page():
 @admin_required
 def player_add():
     name = request.form.get('name','').strip()
-    team = request.form.get('team','')
-    if name and team in ('World','Believers'):
+    team = request.form.get('team','W.B.C').strip() or 'W.B.C'
+    if name:
         conn = get_db()
         conn.execute('INSERT INTO players(name,team) VALUES(?,?)',(name,team))
         conn.commit(); conn.close()
-        flash(f'✅ {name} 선수가 추가되었습니다.','success')
+        flash(f'✅ {name} 선수가 등록되었습니다. (소속: {team})','success')
     return redirect(url_for('players_page'))
 
 @app.route('/players/<int:pid>/toggle', methods=['POST'])

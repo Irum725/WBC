@@ -2,17 +2,25 @@
 {% block title %}개인별 시즌 누적 순위표 - W.B.C{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1"><i class="fa-solid fa-ranking-star text-primary me-2"></i>개인별 시즌 누적 순위표</h4>
         <p class="text-muted small mb-0">상단 항목(타율, 안타, 홈런 등)을 클릭하면 해당 분야별 실시간 순위로 즉시 정렬됩니다.</p>
     </div>
     <div class="btn-group" role="group">
-        <a href="{{ url_for('rankings', team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체</a>
-        <a href="{{ url_for('rankings', team='World') }}" class="btn btn-sm {{ 'btn-primary' if team_filter == 'World' else 'btn-outline-primary' }}">World ⚡</a>
-        <a href="{{ url_for('rankings', team='Believers') }}" class="btn btn-sm {{ 'btn-warning text-dark' if team_filter == 'Believers' else 'btn-outline-warning' }}">Believers 🔥</a>
-        <a href="{{ url_for('rankings', team='Faith') }}" class="btn btn-sm {{ 'btn-success' if team_filter == 'Faith' else 'btn-outline-success' }}">Faith 🦅</a>
-        <a href="{{ url_for('rankings', team='Grace') }}" class="btn btn-sm {{ 'btn-secondary' if team_filter == 'Grace' else 'btn-outline-secondary' }}">Grace 👑</a>
+        <a href="{{ url_for('rankings', team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체 (W.B.C 통합)</a>
+        <a href="{{ url_for('rankings', team='World') }}" class="btn btn-sm {{ 'btn-primary' if team_filter == 'World' else 'btn-outline-primary' }}">World ⚡ 출전</a>
+        <a href="{{ url_for('rankings', team='Believers') }}" class="btn btn-sm {{ 'btn-warning text-dark' if team_filter == 'Believers' else 'btn-outline-warning' }}">Believers 🔥 출전</a>
+        <a href="{{ url_for('rankings', team='Faith') }}" class="btn btn-sm {{ 'btn-success' if team_filter == 'Faith' else 'btn-outline-success' }}">Faith 🦅 출전</a>
+        <a href="{{ url_for('rankings', team='Grace') }}" class="btn btn-sm {{ 'btn-secondary' if team_filter == 'Grace' else 'btn-outline-secondary' }}">Grace 👑 출전</a>
+    </div>
+</div>
+
+<!-- 유동 팀 편성 및 W.B.C 통합 순위 안내 -->
+<div class="alert alert-info border-0 shadow-sm py-2 px-3 small d-flex align-items-center mb-3">
+    <i class="fa-solid fa-circle-info text-primary me-2 fs-5"></i>
+    <div>
+        <strong>W.B.C 순위 집계 안내:</strong> 선수별 팀은 영구 고정되지 않으며, 매 경기 참석자 밸런스(스마트 팀 빌더)에 맞춰 유동적으로 편성됩니다. 따라서 개인 순위는 특정 팀에 종속되지 않고 <strong>W.B.C 통합 누적 성적</strong>으로 공정하게 집계됩니다.
     </div>
 </div>
 
@@ -43,8 +51,8 @@
                     <th class="sortable-th" data-col="name" data-type="text" style="width: 220px; min-width: 190px;" title="클릭하여 선수명 정렬">
                         선수명 / 컨디션·성장 <i class="fa-solid fa-sort sort-icon"></i>
                     </th>
-                    <th class="sortable-th" data-col="team" data-type="text" style="width: 95px;" title="클릭하여 소속팀 정렬">
-                        소속팀 <i class="fa-solid fa-sort sort-icon"></i>
+                    <th class="sortable-th" data-col="team" data-type="text" style="width: 95px;" title="클릭하여 소속 정렬">
+                        소속 <i class="fa-solid fa-sort sort-icon"></i>
                     </th>
                     <th class="sortable-th" data-col="games" data-type="num" style="width: 55px;" title="클릭하여 경기수 정렬">
                         경기수 <i class="fa-solid fa-sort sort-icon"></i>
@@ -123,7 +131,7 @@
                         {% elif p.team == 'Grace' %}
                             <span class="badge badge-grace">Grace</span>
                         {% else %}
-                            <span class="badge bg-secondary">{{ p.team }}</span>
+                            <span class="badge bg-secondary-subtle text-secondary border">W.B.C (자유)</span>
                         {% endif %}
                     </td>
                     <td data-col="games" data-val="{{ p.games }}">{{ p.games }}</td>
