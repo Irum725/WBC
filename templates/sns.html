@@ -9,6 +9,13 @@ if (typeof html2canvas === 'undefined') {
     document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>');
 }
 </script>
+<!-- QRCode.js for Local Instant QR Generation (Bundled Local with CDN fallback) -->
+<script src="{{ url_for('static', filename='js/qrcode.min.js') }}"></script>
+<script>
+if (typeof QRCode === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+}
+</script>
 <style>
 /* ─────────────────────────────────────────────
    4:3 브로드캐스트 스타디움 포스터 그래픽 스타일
@@ -461,6 +468,82 @@ if (typeof html2canvas === 'undefined') {
     color: #fef08a;
 }
 
+/* ───── QR CODES (WEBSITE & BAND) ───── */
+.qr-codes-container {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.qr-guide-header {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 6px;
+}
+.qr-guide-badge {
+    display: inline-block;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(147, 197, 253, 0.45);
+    color: #93c5fd;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: -0.2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.qr-cards-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+}
+.qr-card {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 6px 4px 5px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+}
+.qr-code-box {
+    width: 76px;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    overflow: hidden;
+}
+.qr-code-box canvas,
+.qr-code-box img {
+    width: 76px !important;
+    height: 76px !important;
+    display: block;
+}
+.qr-card-title {
+    font-size: 11px;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 4px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+.qr-card-sub {
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    margin-top: 2px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 /* ───── BOTTOM FOOTER (FULL WIDTH) ───── */
 .broadcast-bottom-footer {
     border-top: 1.5px solid rgba(239, 68, 68, 0.7);
@@ -660,7 +743,7 @@ if (typeof html2canvas === 'undefined') {
                     <input type="text" class="form-control form-control-sm" id="cautionBox" value="※ 단, 10월 시즌경기는 10월 4일(주일) 17:00 진행!" oninput="onPromoInput()">
                 </div>
 
-                <div class="row g-2 mb-2">
+                <div class="row g-2 mb-1">
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">순위/선수기록 링크</label>
                         <input type="text" class="form-control form-control-sm" id="applyUrl" value="wbcclub.pythonanywhere.com" placeholder="예: wbcclub.pythonanywhere.com" oninput="onPromoInput()">
@@ -669,6 +752,9 @@ if (typeof html2canvas === 'undefined') {
                         <label class="form-label small fw-bold mb-1">네이버 밴드</label>
                         <input type="text" class="form-control form-control-sm" id="bandUrl" value="band.us/@wbc" oninput="onPromoInput()">
                     </div>
+                </div>
+                <div class="form-text small text-primary mb-2 mt-0">
+                    <i class="fa-solid fa-qrcode me-1"></i>입력한 링크로 포스터 내 <strong>홈페이지 & 밴드 QR코드</strong>가 자동 생성됩니다.
                 </div>
 
                 <div class="mb-3">
@@ -863,6 +949,34 @@ if (typeof html2canvas === 'undefined') {
                                             <li>- 육아 아빠 언제든 환영</li>
                                             <li>- 회비 : 경기참석시 1만원</li>
                                         </ul>
+
+                                        <!-- QR CODES SECTION (홈페이지 & 밴드) -->
+                                        <div class="qr-codes-container">
+                                            <div class="qr-guide-header">
+                                                <span class="qr-guide-badge">
+                                                    <i class="fa-solid fa-qrcode me-1 text-warning"></i>스마트폰 카메라로 스캔
+                                                </span>
+                                            </div>
+                                            <div class="qr-cards-row">
+                                                <!-- 홈페이지 QR -->
+                                                <div class="qr-card">
+                                                    <div class="qr-code-box" id="cardWebsiteQr"></div>
+                                                    <div class="qr-card-title">
+                                                        <i class="fa-solid fa-globe text-primary me-1"></i>홈페이지
+                                                    </div>
+                                                    <div class="qr-card-sub">기록·순위표</div>
+                                                </div>
+
+                                                <!-- 네이버 밴드 QR -->
+                                                <div class="qr-card">
+                                                    <div class="qr-code-box" id="cardBandQr"></div>
+                                                    <div class="qr-card-title">
+                                                        <i class="fa-solid fa-users text-success me-1"></i>네이버밴드
+                                                    </div>
+                                                    <div class="qr-card-sub">동호회 밴드</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1247,6 +1361,54 @@ function generateSns() {
     .catch(err => console.error(err));
 }
 
+function updatePosterQrCodes(webUrl, bandUrl) {
+    if (typeof QRCode === 'undefined') return;
+
+    let cleanWeb = (webUrl || document.getElementById('applyUrl')?.value || 'wbcclub.pythonanywhere.com').trim();
+    if (!cleanWeb.startsWith('http://') && !cleanWeb.startsWith('https://')) {
+        cleanWeb = 'https://' + cleanWeb;
+    }
+
+    let cleanBand = (bandUrl || document.getElementById('bandUrl')?.value || 'band.us/@wbc').trim();
+    if (!cleanBand.startsWith('http://') && !cleanBand.startsWith('https://')) {
+        cleanBand = 'https://' + cleanBand;
+    }
+
+    const webBox = document.getElementById('cardWebsiteQr');
+    if (webBox) {
+        webBox.innerHTML = '';
+        try {
+            new QRCode(webBox, {
+                text: cleanWeb,
+                width: 76,
+                height: 76,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } catch (e) {
+            console.error('Website QR render error:', e);
+        }
+    }
+
+    const bandBox = document.getElementById('cardBandQr');
+    if (bandBox) {
+        bandBox.innerHTML = '';
+        try {
+            new QRCode(bandBox, {
+                text: cleanBand,
+                width: 76,
+                height: 76,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } catch (e) {
+            console.error('Band QR render error:', e);
+        }
+    }
+}
+
 function renderGraphicCard(d) {
     if (!d) return;
 
@@ -1379,6 +1541,9 @@ function renderGraphicCard(d) {
     document.getElementById('cardApplyLink').innerText = p.apply_url || 'wbcclub.pythonanywhere.com';
     document.getElementById('cardBandLink').innerText = p.band_url || 'band.us/@wbc';
     document.getElementById('cardContactText').innerText = p.contact_info || '이주호집사 010-3485-2419';
+
+    // 4-1. QR CODES (홈페이지 & 네이버 밴드) 갱신
+    updatePosterQrCodes(p.apply_url, p.band_url);
 
     // 5. 경기 공식 순위표 탭 (Detailed Standings Tab) 동기화
     const rankingsBody = document.getElementById('rankingsTabBody');
@@ -1536,6 +1701,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMvpCandidates(gameMvpCands);
     if (currentGraphicData) {
         renderGraphicCard(currentGraphicData);
+    } else {
+        updatePosterQrCodes();
     }
     generateSns();
 });
