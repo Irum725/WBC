@@ -1163,7 +1163,7 @@ def game_detail(gid):
     recs = conn.execute('''
         SELECT p.name,p.team,br.*
         FROM batting_records br JOIN players p ON p.id=br.player_id
-        WHERE br.game_id=? ORDER BY br.team,br.batting_order
+        WHERE br.game_id=? ORDER BY br.id ASC
     ''',(gid,)).fetchall()
     conn.close()
     awards = calc_game_awards(gid)
@@ -1477,6 +1477,8 @@ def calc_game_awards(gid):
         r for r in rec_list
         if r['ab'] >= 3 and r['k'] == 0
         and (not mvp or r['player_id'] != mvp['player_id'])
+        and (not mip or r['player_id'] != mip['player_id'])
+        and (not unsung or r['player_id'] != unsung['player_id'])
     ]
     hustle = None
     hustle_reason = ""
@@ -1484,6 +1486,18 @@ def calc_game_awards(gid):
         hustle_cands.sort(key=lambda x: (x['ab'], x['hits']), reverse=True)
         hustle = hustle_cands[0]
         hustle_reason = f"{hustle['ab']}타수 삼진 0개! 끈질긴 인플레이와 전력 배팅"
+    else:
+        # 삼진 0명이 없을 경우 최다 타수 출전자
+        fallback_hustle = [
+            r for r in rec_list 
+            if (not mvp or r['player_id'] != mvp['player_id'])
+            and (not mip or r['player_id'] != mip['player_id'])
+            and (not unsung or r['player_id'] != unsung['player_id'])
+        ]
+        if fallback_hustle:
+            fallback_hustle.sort(key=lambda x: (x['ab'], -x['k']), reverse=True)
+            hustle = fallback_hustle[0]
+            hustle_reason = f"{hustle['ab']}타수 적극 스윙 및 투혼"
 
     conn.close()
     return {
