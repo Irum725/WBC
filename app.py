@@ -1390,30 +1390,68 @@ def game_delete(gid):
 
 @app.route('/rankings')
 def rankings():
-    team = request.args.get('team','all')
-    where = 'AND (p.team=? OR p.id IN (SELECT player_id FROM batting_records WHERE team=?))' if team != 'all' else ''
-    params = [team, team] if team != 'all' else []
     conn = get_db()
-    rows = conn.execute(f'''
-        SELECT p.id,p.name,p.team,p.title,
-               (SELECT team FROM batting_records WHERE player_id=p.id ORDER BY game_id DESC LIMIT 1) recent_team,
-               COUNT(DISTINCT br.game_id) games,
-               SUM(br.ab) tab, SUM(br.hits) th,
-               SUM(br.singles) t1b, SUM(br.doubles) t2b, SUM(br.triples) t3b,
-               SUM(br.hr) thr, SUM(br.rbi) trbi, SUM(br.k) tk, SUM(br.dp) tdp,
-               CASE WHEN SUM(br.ab)>0
-                    THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END savg,
-               CASE WHEN SUM(br.ab)>0
-                    THEN ROUND(CAST(SUM(br.singles)+SUM(br.doubles)*2+SUM(br.triples)*3+SUM(br.hr)*4 AS REAL)/SUM(br.ab),3) ELSE 0 END sslg,
-               CASE WHEN SUM(br.ab)>0
-                    THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END sobp,
-               MAX(br.game_id) last_game_id
-        FROM players p
-        LEFT JOIN batting_records br ON br.player_id=p.id
-        WHERE p.is_active=1 {where}
-        GROUP BY p.id HAVING SUM(br.ab)>=1
-        ORDER BY savg DESC, th DESC, tab DESC
-    ''', params).fetchall()
+    games = conn.execute('SELECT * FROM games ORDER BY game_number DESC, id DESC').fetchall()
+    
+    game_id = request.args.get('game_id', 'all')
+    team = request.args.get('team', 'all')
+    
+    selected_game = None
+    awards = {}
+    
+    if game_id != 'all':
+        try:
+            gid = int(game_id)
+            selected_game = conn.execute('SELECT * FROM games WHERE id = ?', (gid,)).fetchone()
+            if not selected_game:
+                game_id = 'all'
+        except (ValueError, TypeError):
+            game_id = 'all'
+
+    if selected_game:
+        awards = calc_game_awards(selected_game['id'])
+        team_where = 'AND br.team = ?' if team != 'all' else ''
+        params = [selected_game['id']]
+        if team != 'all':
+            params.append(team)
+
+        rows = conn.execute(f'''
+            SELECT p.id, p.name, p.title, p.team as default_team,
+                   br.team, br.batting_order,
+                   1 as games,
+                   br.ab as tab, br.hits as th,
+                   br.singles as t1b, br.doubles as t2b, br.triples as t3b,
+                   br.hr as thr, br.rbi as trbi, br.k as tk, br.dp as tdp,
+                   br.avg as savg, br.slg as sslg, br.obp as sobp,
+                   br.game_id as last_game_id
+            FROM batting_records br
+            JOIN players p ON p.id = br.player_id
+            WHERE br.game_id = ? {team_where}
+            ORDER BY br.avg DESC, br.hits DESC, br.rbi DESC, br.ab DESC
+        ''', params).fetchall()
+    else:
+        where = 'AND (p.team=? OR p.id IN (SELECT player_id FROM batting_records WHERE team=?))' if team != 'all' else ''
+        params = [team, team] if team != 'all' else []
+        rows = conn.execute(f'''
+            SELECT p.id, p.name, p.team, p.title,
+                   (SELECT team FROM batting_records WHERE player_id=p.id ORDER BY game_id DESC LIMIT 1) recent_team,
+                   COUNT(DISTINCT br.game_id) games,
+                   SUM(br.ab) tab, SUM(br.hits) th,
+                   SUM(br.singles) t1b, SUM(br.doubles) t2b, SUM(br.triples) t3b,
+                   SUM(br.hr) thr, SUM(br.rbi) trbi, SUM(br.k) tk, SUM(br.dp) tdp,
+                   CASE WHEN SUM(br.ab)>0
+                        THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END savg,
+                   CASE WHEN SUM(br.ab)>0
+                        THEN ROUND(CAST(SUM(br.singles)+SUM(br.doubles)*2+SUM(br.triples)*3+SUM(br.hr)*4 AS REAL)/SUM(br.ab),3) ELSE 0 END sslg,
+                   CASE WHEN SUM(br.ab)>0
+                        THEN ROUND(CAST(SUM(br.hits) AS REAL)/SUM(br.ab),3) ELSE 0 END sobp,
+                   MAX(br.game_id) last_game_id
+            FROM players p
+            LEFT JOIN batting_records br ON br.player_id=p.id
+            WHERE p.is_active=1 {where}
+            GROUP BY p.id HAVING SUM(br.ab)>=1
+            ORDER BY savg DESC, th DESC, tab DESC
+        ''', params).fetchall()
 
     badges_map = get_all_player_badges(conn)
     players_list = []
@@ -1423,10 +1461,29 @@ def rankings():
         badges = badges_map.get(pid, {})
         d['condition_badge'] = badges.get('condition')
         d['growth_badge'] = badges.get('growth')
+
+        # Single game award badge
+        if selected_game and awards:
+            d['award_badge'] = None
+            if awards.get('mvp') and awards['mvp'].get('player_id') == pid:
+                d['award_badge'] = {'emoji': '🏅', 'text': 'MVP', 'class': 'bg-warning text-dark'}
+            elif awards.get('mip') and awards['mip'].get('player_id') == pid:
+                d['award_badge'] = {'emoji': '✨', 'text': 'MIP', 'class': 'bg-success text-white'}
+            elif awards.get('unsung') and awards['unsung'].get('player_id') == pid:
+                d['award_badge'] = {'emoji': '🛡️', 'text': '언성히어로', 'class': 'bg-info text-dark'}
+            elif awards.get('hustle') and awards['hustle'].get('player_id') == pid:
+                d['award_badge'] = {'emoji': '🔥', 'text': '허슬', 'class': 'bg-danger text-white'}
+
         players_list.append(d)
 
     conn.close()
-    return render_template('rankings.html', players=players_list, team_filter=team)
+    return render_template('rankings.html', 
+        players=players_list, 
+        team_filter=team,
+        games=games,
+        selected_game_id=str(game_id),
+        selected_game=selected_game,
+        awards=awards)
 
 @app.route('/history')
 def history():

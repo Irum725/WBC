@@ -1,21 +1,104 @@
 {% extends 'base.html' %}
-{% block title %}개인별 시즌 누적 순위표 - W.B.C{% endblock %}
+{% block title %}{% if selected_game %}제{{ selected_game.game_number }}회 공식 경기 순위표{% else %}개인별 시즌 누적 순위표{% endif %} - W.B.C{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-    <div>
-        <h4 class="fw-bold mb-1"><i class="fa-solid fa-ranking-star text-primary me-2"></i>개인별 시즌 누적 순위표</h4>
-        <p class="text-muted small mb-0">상단 항목(타율, 안타, 홈런 등)을 클릭하면 해당 분야별 실시간 순위로 즉시 정렬됩니다.</p>
-    </div>
-    <div class="btn-group" role="group">
-        <a href="{{ url_for('rankings', team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체 (W.B.C 통합)</a>
-        <a href="{{ url_for('rankings', team='World') }}" class="btn btn-sm {{ 'btn-primary' if team_filter == 'World' else 'btn-outline-primary' }}">World ⚡ 출전</a>
-        <a href="{{ url_for('rankings', team='Believers') }}" class="btn btn-sm {{ 'btn-warning text-dark' if team_filter == 'Believers' else 'btn-outline-warning' }}">Believers 🔥 출전</a>
-        <a href="{{ url_for('rankings', team='Faith') }}" class="btn btn-sm {{ 'btn-success' if team_filter == 'Faith' else 'btn-outline-success' }}">Faith 🦅 출전</a>
-        <a href="{{ url_for('rankings', team='Grace') }}" class="btn btn-sm {{ 'btn-secondary' if team_filter == 'Grace' else 'btn-outline-secondary' }}">Grace 👑 출전</a>
+<!-- [상단 헤더 & 회차(경기) 선택 네비게이션] -->
+<div class="card shadow-sm border-0 mb-3 bg-white">
+    <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-ranking-star text-primary"></i>
+                    {% if selected_game %}
+                        <span>제{{ selected_game.game_number }}회 공식 경기 순위표</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle fs-6">단일 경기</span>
+                    {% else %}
+                        <span>개인별 2026 시즌 누적 순위표</span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-6">시즌 전체 누적</span>
+                    {% endif %}
+                </h4>
+                <p class="text-muted small mb-0">
+                    {% if selected_game %}
+                        {{ selected_game.game_date }} 경기 결과 및 타자별 공식 개인 성적 순위표입니다.
+                    {% else %}
+                        2026 정규 시즌 전 경기 타격 성적을 종합 집계한 공식 랭킹입니다.
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- 팀 필터 (World, Believers 등) -->
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('rankings', game_id=selected_game_id, team='all') }}" class="btn btn-sm {{ 'btn-dark' if team_filter == 'all' else 'btn-outline-dark' }}">전체 (W.B.C 통합)</a>
+                <a href="{{ url_for('rankings', game_id=selected_game_id, team='World') }}" class="btn btn-sm {{ 'btn-primary' if team_filter == 'World' else 'btn-outline-primary' }}">World ⚡</a>
+                <a href="{{ url_for('rankings', game_id=selected_game_id, team='Believers') }}" class="btn btn-sm {{ 'btn-warning text-dark' if team_filter == 'Believers' else 'btn-outline-warning' }}">Believers 🔥</a>
+                <a href="{{ url_for('rankings', game_id=selected_game_id, team='Faith') }}" class="btn btn-sm {{ 'btn-success' if team_filter == 'Faith' else 'btn-outline-success' }}">Faith 🦅</a>
+                <a href="{{ url_for('rankings', game_id=selected_game_id, team='Grace') }}" class="btn btn-sm {{ 'btn-secondary' if team_filter == 'Grace' else 'btn-outline-secondary' }}">Grace 👑</a>
+            </div>
+        </div>
+
+        <!-- [회차/기간 선택 버튼 바] -->
+        <div class="d-flex align-items-center gap-2 flex-wrap pt-2 border-top">
+            <span class="text-muted small fw-bold text-nowrap">
+                <i class="fa-solid fa-calendar-days text-primary me-1"></i>조회 회차 선택:
+            </span>
+            <div class="d-flex gap-1 flex-wrap align-items-center">
+                <a href="{{ url_for('rankings', game_id='all', team=team_filter) }}" 
+                   class="btn btn-sm px-3 fw-bold {{ 'btn-primary shadow-sm' if selected_game_id == 'all' else 'btn-outline-secondary' }}">
+                    <i class="fa-solid fa-layer-group me-1"></i>🌟 시즌 전체 누적
+                </a>
+                {% for g in games %}
+                <a href="{{ url_for('rankings', game_id=g.id, team=team_filter) }}" 
+                   class="btn btn-sm px-3 fw-bold {{ 'btn-primary shadow-sm' if selected_game_id == g.id|string else 'btn-outline-secondary' }}">
+                    <i class="fa-solid fa-baseball-bat-ball me-1"></i>제{{ g.game_number }}회 ({{ g.game_date[5:] }})
+                </a>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 
+{% if selected_game %}
+<!-- 단일 경기 요약 및 수상 배너 -->
+<div class="card shadow-sm border-0 mb-3 border-start border-4 border-primary">
+    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="badge bg-dark fs-6">제{{ selected_game.game_number }}회 경기</span>
+            <span class="small text-muted"><i class="fa-regular fa-calendar me-1"></i>{{ selected_game.game_date }}</span>
+            <span class="small text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ selected_game.location or '스크린야구장' }}</span>
+            <div class="fw-bold fs-6">
+                <span class="text-primary">World {{ selected_game.world_score if selected_game.world_score is not none else '-' }}</span>
+                <span class="text-muted mx-1">:</span>
+                <span class="text-danger">{{ selected_game.believers_score if selected_game.believers_score is not none else '-' }} Believers</span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('game_detail', gid=selected_game.id) }}" class="btn btn-outline-primary btn-sm fw-bold">
+                <i class="fa-solid fa-file-lines me-1"></i>상세 기록지 / 스코어보드
+            </a>
+            <a href="{{ url_for('sns_page', gid=selected_game.id) }}" class="btn btn-outline-secondary btn-sm" title="SNS 포스터">
+                <i class="fa-solid fa-share-nodes"></i>
+            </a>
+        </div>
+    </div>
+    {% if awards and (awards.mvp or awards.mip or awards.unsung or awards.hustle) %}
+    <div class="card-footer bg-white py-2 px-3 d-flex align-items-center gap-3 flex-wrap small">
+        <span class="fw-bold text-dark"><i class="fa-solid fa-award text-warning me-1"></i>경기 특별 시상:</span>
+        {% if awards.mvp %}
+        <span>🏅 <strong>MVP:</strong> {{ awards.mvp.name }}{% if awards.mvp.title %} {{ awards.mvp.title }}{% endif %} <span class="text-muted">({{ awards.mvp.team }})</span></span>
+        {% endif %}
+        {% if awards.mip %}
+        <span>✨ <strong>MIP:</strong> {{ awards.mip.name }}{% if awards.mip.title %} {{ awards.mip.title }}{% endif %} <span class="text-muted">({{ awards.mip.team }})</span></span>
+        {% endif %}
+        {% if awards.unsung %}
+        <span>🛡️ <strong>언성히어로:</strong> {{ awards.unsung.name }}{% if awards.unsung.title %} {{ awards.unsung.title }}{% endif %} <span class="text-muted">({{ awards.unsung.team }})</span></span>
+        {% endif %}
+        {% if awards.hustle %}
+        <span>🔥 <strong>허슬:</strong> {{ awards.hustle.name }}{% if awards.hustle.title %} {{ awards.hustle.title }}{% endif %} <span class="text-muted">({{ awards.hustle.team }})</span></span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
 <!-- 유동 팀 편성 및 W.B.C 통합 순위 안내 -->
 <div class="alert alert-info border-0 shadow-sm py-2 px-3 small d-flex align-items-center mb-3">
     <i class="fa-solid fa-circle-info text-primary me-2 fs-5"></i>
@@ -23,6 +106,7 @@
         <strong>W.B.C 순위 집계 안내:</strong> 선수별 팀은 영구 고정되지 않으며, 매 경기 참석자 밸런스(스마트 팀 빌더)에 맞춰 유동적으로 편성됩니다. 따라서 개인 순위는 특정 팀에 종속되지 않고 <strong>W.B.C 통합 누적 성적</strong>으로 공정하게 집계됩니다.
     </div>
 </div>
+{% endif %}
 
 <!-- 빠른 순위 정렬 프리셋 버튼 바 -->
 <div class="card shadow-sm border-0 mb-3 bg-light">
@@ -48,14 +132,14 @@
             <thead class="table-dark text-nowrap">
                 <tr>
                     <th style="width: 75px;">순위</th>
-                    <th class="sortable-th" data-col="name" data-type="text" style="width: 180px; min-width: 160px;" title="클릭하여 선수명 정렬">
+                    <th class="sortable-th" data-col="name" data-type="text" style="width: 190px; min-width: 170px;" title="클릭하여 선수명 정렬">
                         선수명 / 컨디션·성장 <i class="fa-solid fa-sort sort-icon"></i>
                     </th>
-                    <th class="sortable-th" data-col="team" data-type="text" style="width: 95px;" title="클릭하여 소속 정렬">
-                        소속 <i class="fa-solid fa-sort sort-icon"></i>
+                    <th class="sortable-th" data-col="team" data-type="text" style="width: 100px;" title="클릭하여 소속 정렬">
+                        {% if selected_game %}출전팀{% else %}소속{% endif %} <i class="fa-solid fa-sort sort-icon"></i>
                     </th>
-                    <th class="sortable-th" data-col="games" data-type="num" style="width: 55px;" title="클릭하여 경기수 정렬">
-                        경기수 <i class="fa-solid fa-sort sort-icon"></i>
+                    <th class="sortable-th" data-col="{% if selected_game %}order{% else %}games{% endif %}" data-type="num" style="width: 60px;" title="클릭하여 정렬">
+                        {% if selected_game %}타순{% else %}경기수{% endif %} <i class="fa-solid fa-sort sort-icon"></i>
                     </th>
                     <th class="sortable-th" data-col="tab" data-type="num" style="width: 55px;" title="클릭하여 타수 정렬">
                         타수 <i class="fa-solid fa-sort sort-icon"></i>
@@ -107,12 +191,15 @@
                         {% endif %}
                     </td>
                     <td class="text-start ps-3 py-2 text-nowrap" data-col="name" data-val="{{ p.name }}">
-                        <div class="d-flex align-items-center gap-1">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
                             <a href="{{ url_for('analytics_page', player_id=p.id) }}" class="fw-bold text-decoration-none text-dark hover-primary" title="성장 분석 차트 보기" style="font-size: 0.95rem;">
                                 {{ p.name }}
                             </a>
                             {% if p.title %}
                                 <span class="badge bg-light text-secondary border px-1" style="font-size: 0.72rem; font-weight: normal;">{{ p.title }}</span>
+                            {% endif %}
+                            {% if p.award_badge %}
+                                <span class="badge {{ p.award_badge.class }} py-0 px-2 small" style="font-size: 0.72rem;">{{ p.award_badge.emoji }} {{ p.award_badge.text }}</span>
                             {% endif %}
                         </div>
                         {% if p.condition_badge or p.growth_badge %}
@@ -132,18 +219,24 @@
                     </td>
                     <td data-col="team" data-val="{{ p.team }}">
                         {% if p.team == 'World' %}
-                            <span class="badge badge-world">World</span>
+                            <span class="badge badge-world">World ⚡</span>
                         {% elif p.team == 'Believers' %}
-                            <span class="badge badge-believers">Believers</span>
+                            <span class="badge badge-believers">Believers 🔥</span>
                         {% elif p.team == 'Faith' %}
-                            <span class="badge badge-faith">Faith</span>
+                            <span class="badge badge-faith">Faith 🦅</span>
                         {% elif p.team == 'Grace' %}
-                            <span class="badge badge-grace">Grace</span>
+                            <span class="badge badge-grace">Grace 👑</span>
                         {% else %}
                             <span class="badge bg-secondary-subtle text-secondary border">W.B.C (자유)</span>
                         {% endif %}
                     </td>
+                    {% if selected_game %}
+                    <td data-col="order" data-val="{{ p.batting_order or 99 }}">
+                        <span class="badge bg-light text-dark border">{{ p.batting_order or '-' }}번</span>
+                    </td>
+                    {% else %}
                     <td data-col="games" data-val="{{ p.games }}">{{ p.games }}</td>
+                    {% endif %}
                     <td data-col="tab" data-val="{{ p.tab }}">{{ p.tab }}</td>
                     <td class="fw-bold text-success" data-col="th" data-val="{{ p.th }}">{{ p.th }}</td>
                     <td data-col="t1b" data-val="{{ p.t1b }}">{{ p.t1b }}</td>
@@ -195,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusText = document.getElementById('sortStatusText');
 
     const colLabels = {
-        name: '선수명', team: '소속팀', games: '경기수', tab: '타수',
+        name: '선수명', team: '소속팀', games: '경기수', order: '타순', tab: '타수',
         th: '안타', t1b: '1루타', t2b: '2루타', t3b: '3루타',
         thr: '홈런', trbi: '타점', tk: '삼진', tdp: '병살',
         savg: '타율', sslg: '장타율', sobp: '출루율'

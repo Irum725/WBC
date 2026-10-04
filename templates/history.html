@@ -37,6 +37,9 @@
                 </div>
             </div>
             <div class="card-footer bg-white border-top-0 d-flex justify-content-end gap-1 pb-3 flex-wrap">
+                <a href="{{ url_for('rankings', game_id=g.id) }}" class="btn btn-outline-info text-dark btn-sm fw-bold" title="이 경기 순위표 보기">
+                    <i class="fa-solid fa-ranking-star me-1"></i>순위표
+                </a>
                 <a href="{{ url_for('game_detail', gid=g.id) }}" class="btn btn-outline-primary btn-sm">
                     상세보기
                 </a>
