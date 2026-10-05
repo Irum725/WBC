@@ -338,6 +338,7 @@ function updateKpi(d) {
 
     if (d.player) {
         const titleStr = d.player.title ? ` ${d.player.title}` : '';
+        const teamSuffix = (d.player.team && !['W.B.C', '자유', '자유배정', '미정'].includes(d.player.team)) ? ` [${d.player.team}]` : '';
         document.getElementById('tablePlayerBadge').textContent = `${d.player.name}${titleStr}${teamSuffix}`;
         const nameEl = document.getElementById('badgePlayerName');
         const teamEl = document.getElementById('badgePlayerTeam');
