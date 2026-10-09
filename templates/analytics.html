@@ -552,6 +552,15 @@ function renderProdChart() {
     const hr = currentMainData.timeline.map(t => t.hr);
     const rbi = currentMainData.timeline.map(t => t.rbi);
 
+    // 안타 합계와 타점의 최대값을 계산하여 좌우 Y축(안타 수/타점 수) 스케일을 100% 동일하게 동기화
+    const maxVals = currentMainData.timeline.map(t => {
+        const hits = (t.singles || 0) + (t.doubles || 0) + (t.triples || 0) + (t.hr || 0);
+        const rbiVal = t.rbi || 0;
+        return Math.max(hits, rbiVal);
+    });
+    const peak = maxVals.length > 0 ? Math.max(...maxVals) : 2;
+    const yMax = Math.max(3, peak + 1);
+
     prodChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -564,7 +573,9 @@ function renderProdChart() {
                     borderColor: '#ff9800',
                     backgroundColor: '#ff9800',
                     borderWidth: 3,
-                    pointRadius: 5,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    tension: 0.1,
                     yAxisID: 'y1'
                 },
                 {
@@ -604,20 +615,51 @@ function renderProdChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             scales: {
                 x: { stacked: true },
                 y: {
                     stacked: true,
                     title: { display: true, text: '안타 수' },
-                    ticks: { precision: 0 },
-                    beginAtZero: true
+                    min: 0,
+                    max: yMax,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    },
+                    grid: { color: '#f0f0f0' }
                 },
                 y1: {
                     position: 'right',
                     title: { display: true, text: '타점 수' },
-                    ticks: { precision: 0 },
-                    grid: { drawOnChartArea: false },
-                    beginAtZero: true
+                    min: 0,
+                    max: yMax,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    },
+                    grid: { drawOnChartArea: false }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        footer: function(tooltipItems) {
+                            let totalHits = 0;
+                            let rbiVal = 0;
+                            tooltipItems.forEach(item => {
+                                if (['1루타', '2루타', '3루타', '홈런 ★'].includes(item.dataset.label)) {
+                                    totalHits += item.raw || 0;
+                                } else if (item.dataset.label === '타점 (RBI)') {
+                                    rbiVal = item.raw || 0;
+                                }
+                            });
+                            return `총 안타: ${totalHits}개 | 타점: ${rbiVal}점`;
+                        }
+                    }
                 }
             }
         }
